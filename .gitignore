@@ -2,8 +2,8 @@ venv312/
 __pycache__/
 *.pyc
 .env
+*.egg-info/
 
 llm_models/*.gguf
-generated_sql/
 
 *.log
