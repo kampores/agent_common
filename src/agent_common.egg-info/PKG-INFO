@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: agent_common
+Version: 0.1.0
+Summary: 중앙 에이전트 및 하위 SQL 생성 서비스를 위한 공통 로깅/설정 모듈
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: fastapi
+Requires-Dist: requests
