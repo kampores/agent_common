@@ -252,7 +252,8 @@ class LlmClient:
 
         try:
             content = data["choices"][0]["message"]["content"]
-            logger.info("[LlmClient] External LLM API 응답 수집 성공. content: %s", content)
+            content_flat = str(content).replace("\n", " ").replace("\r", "")
+            logger.info("[LlmClient] External LLM API 응답 수집 성공. content: %s", content_flat)
         except (KeyError, IndexError, TypeError) as exc:
             raise LlmInferenceError(f"External LLM response did not contain choices[0].message.content: {data}") from exc
 
@@ -331,7 +332,8 @@ class LlmClient:
         # Fabrix API 응답 형식: 최상위 content 필드
         try:
             content = data["content"]
-            logger.info("[LlmClient] Fabrix API 응답 수집 성공. content: %s", content)
+            content_flat = str(content).replace("\n", " ").replace("\r", "")
+            logger.info("[LlmClient] Fabrix API 응답 수집 성공. content: %s", content_flat)
         except (KeyError, TypeError) as exc:
             raise LlmInferenceError(f"Fabrix API 응답에 'content' 필드가 없습니다. : {data}") from exc
 

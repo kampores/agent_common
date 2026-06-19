@@ -58,6 +58,12 @@ class ProjectLogger:
             handlers=handlers,
             force=True,
         )
+        # 외부 서드파티 디버그성 로그가 과도하게 노출되는 것을 방지하기 위해 로거 레벨 조정
+        logging.getLogger("metricflow").setLevel(logging.WARNING)
+        logging.getLogger("metricflow_semantics").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+
         cls._configured = True
 
     @classmethod
