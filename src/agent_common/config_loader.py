@@ -35,12 +35,17 @@ def configure(config_dir: str | Path) -> None:
 
 @lru_cache(maxsize=1)
 def get_settings() -> dict[str, Any]:
-    """설정 디렉토리 하위의 모든 YAML 설정 파일을 알파벳 순서로 병합하여 반환한다."""
+    """설정 디렉토리 하위의 모든 YAML 설정 파일을 알파벳 순서로 병합하여 반환한다.
+    
+    호출 프로젝트의 config 디렉토리 설정들을 로드하여 병합합니다.
+    """
     settings: dict[str, Any] = {}
-    if not CONFIG_DIR.exists():
-        return settings
-    for path in sorted(CONFIG_DIR.glob("*.yml")):
-        _deep_merge(settings, _load_yaml_mapping(path))
+    
+    # 호출 프로젝트 고유 설정 로드 및 병합
+    if CONFIG_DIR.exists():
+        for path in sorted(CONFIG_DIR.glob("*.yml")):
+            _deep_merge(settings, _load_yaml_mapping(path))
+            
     return settings
 
 
