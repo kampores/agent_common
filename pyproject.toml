@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent_common"
+version = "0.1.0"
+description = "중앙 에이전트 및 하위 SQL 생성 서비스를 위한 공통 로깅/설정 모듈"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "fastapi",
+    "requests"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
