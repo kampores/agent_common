@@ -14,5 +14,6 @@ dependencies = [
     "requests"
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+package-dir = {"agent_common" = "src"}
+packages = ["agent_common"]
