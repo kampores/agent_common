@@ -19,8 +19,8 @@ import yaml
 # 기본적으로 현재 작업 디렉토리(Current Working Directory)를 기준으로 삼습니다.
 ROOT = Path(os.getcwd()).resolve()
 
-# agent_common 패키지 자체의 디렉토리 경로를 계산합니다.
-PACKAGE_DIR = Path(__file__).resolve().parent
+# agent_common 패키지 자체의 루트 디렉토리 경로를 계산합니다.
+PACKAGE_DIR = Path(__file__).resolve().parent.parent
 
 # 설정 파일이 위치한 기본 디렉토리 (도메인 의미: 전역 설정 또는 스크립트별 개별 설정을 담은 YAML 파일의 위치)
 CONFIG_DIR = ROOT / "config"
