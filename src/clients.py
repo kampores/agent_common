@@ -1,0 +1,242 @@
+# 작성일: 2026-07-20
+# 설계자: 경포씨엔씨
+# 설계자 소속: 김유상
+# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+
+"""
+Dell ECS(S3), Google Cloud Storage(GCS), Google Cloud BigQuery(BQ) 등 
+스토리지 및 데이터베이스 시스템과의 연결 및 데이터 입출력을 담당하는 공용 클라이언트 모듈입니다.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+from typing import Any, Dict, Generator
+
+import boto3
+from botocore.client import Config as BotoConfig
+from google.cloud import storage
+from google.cloud import bigquery
+from google.oauth2 import service_account
+
+from agent_common.error_handler import ErrorHandler
+
+
+class EcsClient:
+    """
+    Dell ECS (S3 호환) 저장소와의 연결 및 데이터 조회를 담당하는 공용 클라이언트 클래스.
+    """
+
+    def __init__(
+        self,
+        endpoint_url: str,
+        access_key: str,
+        secret_key: str,
+        bucket_name: str,
+        logger: logging.Logger,
+        error_messages: Dict[str, str],
+    ):
+        # endpoint_url: Dell ECS API 서버 주소 (예: http://10.39.79.21:9020)
+        self.endpoint_url: str = endpoint_url
+        # access_key: S3 연결에 사용하는 인증 키 ID
+        self.access_key: str = access_key
+        # secret_key: S3 연결에 사용하는 비밀번호
+        self.secret_key: str = secret_key
+        # bucket_name: 조회의 대상이 되는 ECS 버킷명
+        self.bucket_name: str = bucket_name
+        # logger: 프로그램 전체 로깅을 담당하는 로거 인스턴스
+        self.logger: logging.Logger = logger
+        # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
+        self.error_messages: Dict[str, str] = error_messages
+        # client: boto3 s3 클라이언트 인스턴스
+        self.client: Any = None
+        self._connect()
+
+    def _connect(self):
+        """
+        boto3 S3 클라이언트를 사용하여 Dell ECS 접속을 초기화하고 연결을 검증합니다.
+        """
+        try:
+            self.client = boto3.client(
+                "s3",
+                aws_access_key_id=self.access_key,
+                aws_secret_access_key=self.secret_key,
+                endpoint_url=self.endpoint_url,
+                config=BotoConfig(signature_version="s3v4"),
+            )
+        except Exception as e:
+            # 공용 에러 핸들러 네트워크 예외 기록 수행
+            ErrorHandler.handle_network_error(e, f"Dell ECS 연결 ({self.endpoint_url})")
+            msg = self.error_messages.get(
+                "ecs_connection_failed", "Dell ECS 연결에 실패했습니다: {error}"
+            ).format(error=str(e))
+            raise ConnectionError(msg) from e
+
+    def list_objects(self, prefix: str = "") -> Generator[Dict[str, Any], None, None]:
+        """
+        지정된 버킷 및 프리픽스 범위 하위의 ECS 오브젝트 목록을 안전하게 조회(페이징)합니다.
+        """
+        try:
+            paginator = self.client.get_paginator("list_objects_v2")
+            pages = paginator.paginate(Bucket=self.bucket_name, Prefix=prefix)
+            for page in pages:
+                if "Contents" in page:
+                    for obj in page["Contents"]:
+                        yield obj
+        except Exception as e:
+            msg = self.error_messages.get(
+                "ecs_list_failed", "ECS 오브젝트 목록 조회에 실패했습니다: {error}"
+            ).format(error=str(e))
+            self.logger.error(msg)
+            raise RuntimeError(msg) from e
+
+    def get_object_stream(self, key: str) -> Any:
+        """
+        특정 파일의 파일 스트림 객체(StreamingBody)를 ECS로부터 획득합니다.
+        """
+        try:
+            response = self.client.get_object(Bucket=self.bucket_name, Key=key)
+            return response["Body"]
+        except Exception as e:
+            raise RuntimeError(f"ECS 파일 스트림 획득 실패: {key}, 에러: {str(e)}") from e
+
+
+class GcsClient:
+    """
+    Google Cloud Storage(GCS) 버킷 연결 및 파일 스트림 업로드를 담당하는 공용 클라이언트 클래스.
+    """
+
+    def __init__(
+        self,
+        bucket_name: str,
+        credentials_path: str,
+        logger: logging.Logger,
+        error_messages: Dict[str, str],
+    ):
+        # bucket_name: 대상 GCS 버킷명
+        self.bucket_name: str = bucket_name
+        # credentials_path: GCP 서비스 계정 키 JSON 경로 (비어있으면 기본 Application Default Credentials 사용)
+        self.credentials_path: str = credentials_path
+        # logger: 프로그램 전체 로깅을 담당하는 로거 인스턴스
+        self.logger: logging.Logger = logger
+        # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
+        self.error_messages: Dict[str, str] = error_messages
+        # client: google-cloud-storage 클라이언트 인스턴스
+        self.client: Any = None
+        # bucket: 연결 완료된 GCS Bucket 객체
+        self.bucket: Any = None
+        self._connect()
+
+    def _connect(self):
+        """
+        Google Cloud Storage 클라이언트를 초기화하고 해당 버킷의 연결/접근 권한 상태를 검증합니다.
+        """
+        try:
+            if self.credentials_path and self.credentials_path.strip() != "":
+                if not Path(self.credentials_path).exists():
+                    raise FileNotFoundError(f"인증키 파일을 찾을 수 없습니다: {self.credentials_path}")
+                credentials = service_account.Credentials.from_service_account_file(
+                    self.credentials_path
+                )
+                self.client = storage.Client(credentials=credentials)
+            else:
+                self.client = storage.Client()
+
+            # 버킷에 대한 접근 권한 및 존재 여부 검사
+            self.bucket = self.client.get_bucket(self.bucket_name)
+        except Exception as e:
+            # 공용 에러 핸들러 네트워크 예외 기록 수행
+            ErrorHandler.handle_network_error(e, f"GCS 버킷 연결 ({self.bucket_name})")
+            msg = self.error_messages.get(
+                "gcs_connection_failed", "GCS 연결에 실패했습니다: {error}"
+            ).format(error=str(e))
+            raise ConnectionError(msg) from e
+
+    def upload_stream(self, stream: Any, destination_blob_name: str, size: int):
+        """
+        입력되는 스트림 데이터를 GCS 목적지 blob에 직접 스트리밍 업로드합니다.
+        """
+        try:
+            blob = self.bucket.blob(destination_blob_name)
+            # size 인수를 반드시 제공하여 GCS가 Content-Length를 인식할 수 있도록 처리
+            blob.upload_from_file(stream, size=size)
+        except Exception as e:
+            raise RuntimeError(f"GCS 업로드 실패: {destination_blob_name}, 에러: {str(e)}") from e
+
+
+class BigQueryClient:
+    """
+    Google Cloud BigQuery(BQ) 테이블 연결 및 JSON 데이터 스트리밍 적재를 담당하는 공용 클라이언트 클래스.
+    """
+
+    def __init__(
+        self,
+        project_id: str,
+        dataset_id: str,
+        table_id: str,
+        credentials_path: str,
+        logger: logging.Logger,
+        error_messages: Dict[str, str],
+    ):
+        # project_id: GCP 프로젝트 ID
+        self.project_id: str = project_id
+        # dataset_id: BigQuery 데이터셋 ID
+        self.dataset_id: str = dataset_id
+        # table_id: BigQuery 테이블 ID
+        self.table_id: str = table_id
+        # credentials_path: GCP 서비스 계정 키 JSON 경로
+        self.credentials_path: str = credentials_path
+        # logger: 프로그램 전체 로깅을 담당하는 로거 인스턴스
+        self.logger: logging.Logger = logger
+        # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
+        self.error_messages: Dict[str, str] = error_messages
+        # client: google-cloud-bigquery 클라이언트 인스턴스
+        self.client: Any = None
+        self._connect()
+
+    def _connect(self):
+        """
+        Google Cloud BigQuery 클라이언트를 초기화하고 연결 상태를 검증합니다.
+        """
+        try:
+            if self.credentials_path and self.credentials_path.strip() != "":
+                if not Path(self.credentials_path).exists():
+                    raise FileNotFoundError(f"인증키 파일을 찾을 수 없습니다: {self.credentials_path}")
+                credentials = service_account.Credentials.from_service_account_file(
+                    self.credentials_path
+                )
+                self.client = bigquery.Client(
+                    project=self.project_id, credentials=credentials
+                )
+            else:
+                self.client = bigquery.Client(project=self.project_id)
+        except Exception as e:
+            ErrorHandler.handle_network_error(e, f"BigQuery 연결 (Project: {self.project_id})")
+            msg = self.error_messages.get(
+                "bigquery_connection_failed", "BigQuery 연결에 실패했습니다: {error}"
+            ).format(error=str(e))
+            raise ConnectionError(msg) from e
+
+    def insert_json_data(self, json_data: Any):
+        """
+        JSON 객체(dict 또는 list)를 BigQuery 테이블에 직접 스트리밍 적재합니다.
+        """
+        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        if isinstance(json_data, dict):
+            rows_to_insert = [json_data]
+        elif isinstance(json_data, list):
+            rows_to_insert = json_data
+        else:
+            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
+
+        try:
+            errors = self.client.insert_rows_json(table_ref, rows_to_insert)
+            if errors:
+                raise RuntimeError(f"BigQuery insert API 반환 에러: {errors}")
+        except Exception as e:
+            msg = self.error_messages.get(
+                "bigquery_insert_failed",
+                "BigQuery 데이터 적재 실패: {table_id}, 에러: {error}",
+            ).format(table_id=self.table_id, error=str(e))
+            raise RuntimeError(msg) from e

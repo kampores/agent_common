@@ -13,6 +13,36 @@ from pathlib import Path
 from typing import Any
 
 
+class SingleLineFlattenFormatter(logging.Formatter):
+    """
+    모든 로그 레코드 및 예외 추적(Traceback) 데이터의 개행 문자를 제거하여 
+    단일 행(Single Line)으로 평탄화(Flatten)하는 공용 커스텀 로깅 포매터 클래스.
+    """
+
+    def flatten_to_single_line(self, text: str) -> str:
+        """텍스트 내부의 모든 개행 문자(\\n, \\r)를 공백으로 변환하여 단일 행으로 평탄화합니다."""
+        return text.replace("\n", " ").replace("\r", " ")
+
+    def format(self, record: logging.LogRecord) -> str:
+        # 1. 부모 클래스의 기본 포맷팅 수행
+        s = super().format(record)
+
+        # 2. 예외(Traceback) 정보가 포함된 경우 한 줄로 평탄화하여 포함
+        if record.exc_info:
+            if not record.exc_text:
+                record.exc_text = self.formatException(record.exc_info)
+
+        if record.exc_text:
+            exc_flat = self.flatten_to_single_line(record.exc_text)
+            s = f"{s} [Traceback: {exc_flat}]"
+            # 표준 포매터가 추가 개행을 출력하지 않도록 초기화
+            record.exc_text = None
+            record.exc_info = None
+
+        # 3. 전체 로그 메시지 1줄 평탄화 리턴
+        return self.flatten_to_single_line(s)
+
+
 class ProjectLogger:
     """앱과 스크립트의 로깅 설정을 표준화하는 프로젝트 로깅 클래스.
 
@@ -38,8 +68,12 @@ class ProjectLogger:
         level_name = str(setting("logging.level", "INFO")).upper()
         level = getattr(logging, level_name, logging.INFO)
         log_format = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+        formatter = SingleLineFlattenFormatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
 
-        handlers: list[logging.Handler] = [logging.StreamHandler()]
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        handlers: list[logging.Handler] = [console_handler]
+
         log_file = setting("logging.file", default_log_file)
         if log_file:
             from datetime import datetime
@@ -50,7 +84,9 @@ class ProjectLogger:
             dynamic_log_path = Path(today.strftime(str(log_file)))
             log_path = project_path(dynamic_log_path)
             log_path.parent.mkdir(parents=True, exist_ok=True)
-            handlers.append(logging.FileHandler(log_path, encoding="utf-8"))
+            file_handler = logging.FileHandler(log_path, encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            handlers.append(file_handler)
 
         logging.basicConfig(
             level=level,
