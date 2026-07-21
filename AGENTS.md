@@ -2,39 +2,48 @@
 
 ## Coding Rules
 
-- Do not hardcode configuration values, file paths, model names, API URLs, credentials, business constants, or label texts in the code files. Separate code and data by loading them from environment variables or configuration files (e.g., YAML).
-- Apply object-oriented design when adding or modifying non-trivial behaviors. Use classes with highly cohesive responsibilities and avoid writing giant procedural functions.
-- You do not need to create custom logging classes from the very beginning. However, once the project's codebase exceeds 2000 lines of code, create dedicated classes for `logging`, `config`, and `error` handling inside the `common` directory and centralize their usage. Do not use `print()` for runtime logging.
+- **No Hardcoding**: 
+  1. Do not embed configuration values, file paths, model names, API URLs, credentials, business constants, UI labels, or user-facing warning/error messages directly into the source code. Instead, separate code and data by loading them from environment variables or dedicated configuration files (e.g., YAML). (However, simple log formats for developer debugging and tracing can be declared in the code.)
+  2. Manage sensitive configurations such as passwords or API keys via environment variables.
+  3. Manage exception messages, patterned large-scale datasets, heuristic rules, regex patterns, or decision thresholds by organizing them in separate, dedicated dictionary-structured configuration files (e.g., YAML).
+- **Fail-Fast and Program Stability**:
+  1. Required configuration values for execution must be defined in the configuration file. If a required value is missing, do not fallback to code constants or run blindly; instead, report the missing configuration via logs/CLI and fail fast by immediately terminating the program. However, for optional settings, it is permitted to define and use fallbacks such as an empty string (`""`), an empty list (`[]`), `None` (null), or numeric `0` constants directly in the code.
+  2. Program termination due to missing configuration values must only occur during the early execution phase (e.g., server startup lifespan events or CLI launch). Once startup is complete, handle exceptions during request or task processing so that the process does not terminate abnormally, and returns stable error responses or recovers gracefully.
+- **Object-Oriented Design**: Apply object-oriented design principles when adding or modifying complex or non-trivial behaviors. Design highly cohesive classes with clearly separated responsibilities (following the Single Responsibility Principle) and avoid writing oversized, procedural functions.
+- **Common Module Architecture**: Once the total size of the project's codebase exceeds 2,000 lines of code, design independent classes for `logging`, `config`, and `error` handling inside a `common` package (or directory) to centralize and share their usage across modules. Do not use the `print()` function for runtime logging in production.
 
 ## Korean Commenting Rules
 
-- All files containing Korean characters must be saved with UTF-8 encoding.
+- All source code and documentation files containing Korean characters must be saved with UTF-8 encoding.
 - Code comments and docstrings must be written in Korean.
-- Write a Korean docstring explaining the purpose and intent for all functions and classes.
-- Write Korean comments for class variables explaining the domain meaning, allowed ranges, and subsequent data flow. Avoid comments that merely repeat the variable name or its type.
+- Write a detailed docstring in Korean for all classes and functions, explaining their role, purpose, and design intent.
+- Write clear Korean comments for class variables to describe their domain meaning, allowed value ranges, and role in subsequent data flows. Avoid trivial comments that merely repeat the variable name or its type.
 
 ## Python File Header Rules
 
-- At the beginning of each `.py` file, record the creation date, designer name, affiliation, and email addresses in comments.
-- Place headers before the module docstring, imports, and executable code.
-- Follow this header format:
+- At the beginning of each Python file (`.py`), record the file creation date, designer (author) name, affiliation, and contact email addresses as comments.
+- Place this header comment block at the very top of the file, before the module docstring, import statements, or any executable code.
+- Write a module-level docstring in Korean immediately following the header comment block to describe the file's purpose, role, and main functionality.
+- Follow this header format strictly:
 
 ```python
 # 작성일: YYYY-MM-DD
 # 설계자: 이름
 # 설계자 소속: 회사명
 # 설계자 이메일: name@example_corp.com, name@example_personnel.com
+
+"""
+이 파일의 목적과 주요 기능 및 설계 의도에 대한 상세한 한글 설명입니다.
+"""
 ```
+
 
 ## Logging Rules
 
-- All log records must be output as a single line (Single Line) to facilitate automated log parsing and ingestion (e.g., Logstash, Fluentd, CloudWatch).
-- Any newline characters (`\n`, `\r`) contained in the log message or serialized data (e.g., SQL queries, LLM responses, exceptions) must be escaped or replaced (e.g., with spaces) to ensure the log remains flat on a single line.
-- For debugging or error tracing, ensure that the correlation info (e.g., request parameters or natural language questions) and the results (e.g., generated SQL or warning lists) are logged in the same single line context.
+- **Single Line Output**: Output all log records as a single line (Single Line) to facilitate automated log parsing, ingestion, and indexing by external logging systems (e.g., Logstash, Fluentd, CloudWatch).
+- **Newline Handling**: Replace any newline characters (`\n`, `\r`) in the log message or serialized data (e.g., SQL queries, LLM responses, exceptions) with spaces or escape sequences to ensure the entire log entry remains flat on a single line.
+- **Context Preservation**: For easier debugging and error tracing, log the correlation context (e.g., request parameters or natural language queries) together with the execution results (e.g., generated SQL or warning lists) in the same single-line log context.
 
-## README and Documentation Rules
+## Virtual Environment Rules
 
-- Avoid trivial, tautological explanations in README documents or CLI options (e.g., "A is A").
-  - *Bad example: `--dialect: The dialect to be used.`*
-  - *Good example: `--dialect: The database syntax format (e.g., duckdb, postgres) where the queries will be executed.`*
-- Write detailed Korean documentation including explanations of terms, concrete mechanisms, and examples so that users can clearly understand the tools' roles, input domain meanings, and scope of configurations.
+- **Use Root Virtual Environment for General Tasks**: When executing general scripts, utility tasks, or installing additional packages via `pip install` that are not specific to any subproject, use the root virtual environment located at the workspace root (e.g., `venv312` or `.venv` at the workspace root) to avoid contaminating subproject-specific virtual environments.
