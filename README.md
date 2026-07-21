@@ -60,7 +60,7 @@ pip wheel . --no-build-isolation --no-deps -w dist/
   uv build --wheel
   ```
 
-*빌드가 완료되면 `dist/` 디렉터리에 `agent_common-0.2.1-py3-none-any.whl` 파일이 생성됩니다. 생성된 `.whl` 파일은 폐쇄망 배포용 `whls/` 폴더로 복사하여 사용할 수 있습니다.*
+*빌드가 완료되면 `dist/` 디렉터리에 `agent_common-0.2.2-py3-none-any.whl` 파일이 생성됩니다. 생성된 `.whl` 파일은 폐쇄망 배포용 `whls/` 폴더로 복사하여 사용할 수 있습니다.*
 
 ### Editable 모드 설치 (개발 환경)
 ```bash
@@ -69,12 +69,17 @@ pip install -e agent_common
 
 ### Wheel 패키지 설치 (폐쇄망 환경)
 ```bash
-pip install whls/agent_common-0.2.1-py3-none-any.whl
+pip install whls/agent_common-0.2.2-py3-none-any.whl
 ```
 
 ---
 
 ## 📋 버전 변경 이력 (Changelog)
+
+### v0.2.2 (2026-07-21)
+- **타임아웃(`transfer.timeout_seconds`) 바인딩**: `EcsClient`(boto3 connect/read), `GcsClient`(upload/get_blob), `BigQueryClient`(insert_rows_json)에 네트워크 연결 및 데이터 읽기 타임아웃 지원
+- **Fail-Fast 정책 강화**: `timeout_seconds` 설정 누락 시 코드 상수로 fallback(하드코딩)하지 않고, 초기 가동 시점에 에러 출력 후 즉시 종료하도록 구현
+- **GCS 메타데이터 크기 조회 지원**: `GcsClient.get_blob_size()`를 통한 동일 용량 파일 중복 이관 건너뛰기(Skip) 로직 제공
 
 ### v0.2.1 (2026-07-20)
 - **에러 메시지 사전 통합**: 파일 전송, ECS, GCS, BigQuery 공통 에러 메시지 템플릿을 `agent_common/config/errors.yml`로 통합 배치
