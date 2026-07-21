@@ -235,6 +235,7 @@ class BigQueryClient:
         logger: logging.Logger,
         error_messages: Dict[str, str],
         timeout_seconds: int | None = None,
+        ignore_unknown_values: bool | None = None,
     ):
         # project_id: GCP 프로젝트 ID
         self.project_id: str = project_id
@@ -262,6 +263,12 @@ class BigQueryClient:
             raise ValueError(msg)
 
         self.timeout_seconds: int = int(resolved_timeout)
+        # ignore_unknown_values: 미정의 JSON 키 무시/건너뛰기 여부 (config.yml에서 동적 로드)
+        self.ignore_unknown_values: bool = (
+            ignore_unknown_values
+            if ignore_unknown_values is not None
+            else bool(setting("bigquery.ignore_unknown_values", True))
+        )
         # client: google-cloud-bigquery 클라이언트 인스턴스
         self.client: Any = None
         self._connect()
@@ -289,11 +296,16 @@ class BigQueryClient:
             ).format(error=str(e))
             raise ConnectionError(msg) from e
 
-    def insert_json_data(self, json_data: Any, timeout: int | None = None):
+    def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None):
         """
         JSON 객체(dict 또는 list)를 BigQuery 테이블에 직접 스트리밍 적재합니다.
         """
         insert_timeout = timeout if timeout is not None else self.timeout_seconds
+        skip_unknown = (
+            ignore_unknown_values
+            if ignore_unknown_values is not None
+            else self.ignore_unknown_values
+        )
         table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
         if isinstance(json_data, dict):
             rows_to_insert = [json_data]
@@ -303,7 +315,12 @@ class BigQueryClient:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
         try:
-            errors = self.client.insert_rows_json(table_ref, rows_to_insert, timeout=insert_timeout)
+            errors = self.client.insert_rows_json(
+                table_ref,
+                rows_to_insert,
+                ignore_unknown_values=skip_unknown,
+                timeout=insert_timeout,
+            )
             if errors:
                 raise RuntimeError(f"BigQuery insert API 반환 에러: {errors}")
         except Exception as e:
