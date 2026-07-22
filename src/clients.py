@@ -122,6 +122,16 @@ class EcsClient:
         except Exception as e:
             raise RuntimeError(f"ECS 파일 스트림 획득 실패: {key}, 에러: {str(e)}") from e
 
+    def get_object_size(self, key: str) -> int | None:
+        """
+        Dell ECS 오브젝트의 파일 크기(bytes)를 헤더(head_object)로 빠르게 조회합니다.
+        """
+        try:
+            response = self.client.head_object(Bucket=self.bucket_name, Key=key)
+            return response.get("ContentLength")
+        except Exception:
+            return None
+
 
 class GcsClient:
     """
