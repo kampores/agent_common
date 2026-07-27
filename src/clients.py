@@ -339,3 +339,21 @@ class BigQueryClient:
                 "BigQuery 데이터 적재 실패: {table_id}, 에러: {error}",
             ).format(table_id=self.table_id, error=str(e))
             raise RuntimeError(msg) from e
+
+    def get_existing_keys(self, field_name: str = "recvPath") -> set[str]:
+        """
+        BigQuery 테이블에서 특정 필드(기본값: recvPath)의 기존 값들을 조회하여 set 구조로 반환합니다.
+
+        :param field_name: 기존 값을 조회할 컬럼명 (기본값: recvPath 또는 ecs_key)
+        :return: 이미 적재된 키 값들의 set 집합
+        """
+        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        query = f"SELECT DISTINCT {field_name} FROM `{table_ref}` WHERE {field_name} IS NOT NULL"
+        try:
+            query_job = self.client.query(query, timeout=self.timeout_seconds)
+            results = query_job.result()
+            return {str(row[field_name]) for row in results if row[field_name] is not None}
+        except Exception as e:
+            self.logger.warning("BigQuery 기존 적재 키 조회 중 오류 발생 (초기 적재이거나 컬럼 미존재 가능): %s", e)
+            return set()
+
