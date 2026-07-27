@@ -31,12 +31,15 @@
 
 새로운 버전으로 패키징하여 `.whl` 파일을 빌드할 경우 `agent_common` 디렉터리 내에서 아래 명령을 실행합니다.
 
-#### 1. 사내 폐쇄망 환경 (인터넷 차단, 오프라인 빌드)
-폐쇄망에서는 빌드 도구 격리(build isolation)로 인한 외부 PyPI 접속을 방지하기 위해 `--no-build-isolation` 및 `--no-deps` 옵션을 지정합니다.
+#### 1. 사내 폐쇄망 환경 (인터넷 차단, 완전히 오프라인 빌드)
+폐쇄망에서는 외부 PyPI 접속을 완전히 차단하기 위해 `--no-index` 옵션과 빌드 도구 격리 방지(`--no-build-isolation`), 의존성 설치 제외(`--no-deps`) 옵션을 함께 지정합니다.
 
 ```bash
-# 폐쇄망 오프라인 Wheel 빌드 (권장)
-pip wheel . --no-build-isolation --no-deps -w dist/
+# 루트 디렉터리에서 실행 시 (권장)
+pip wheel ./agent_common --no-index --no-build-isolation --no-deps -w whls/
+
+# agent_common 디렉터리 내부에서 실행 시
+pip wheel . --no-index --no-build-isolation --no-deps -w ../whls/
 ```
 
 #### 2. 인터넷 연동망 환경 (온라인 빌드)
@@ -60,7 +63,7 @@ pip wheel . --no-build-isolation --no-deps -w dist/
   uv build --wheel
   ```
 
-*빌드가 완료되면 `dist/` 디렉터리에 `agent_common-0.2.2-py3-none-any.whl` 파일이 생성됩니다. 생성된 `.whl` 파일은 폐쇄망 배포용 `whls/` 폴더로 복사하여 사용할 수 있습니다.*
+*빌드가 완료되면 `dist/` 디렉터리에 `agent_common-0.2.3-py3-none-any.whl` 파일이 생성됩니다. 생성된 `.whl` 파일은 폐쇄망 배포용 `whls/` 폴더로 복사하여 사용할 수 있습니다.*
 
 ### Editable 모드 설치 (개발 환경)
 ```bash
@@ -69,12 +72,21 @@ pip install -e agent_common
 
 ### Wheel 패키지 설치 (폐쇄망 환경)
 ```bash
-pip install whls/agent_common-0.2.2-py3-none-any.whl
+pip install whls/agent_common-0.2.3-py3-none-any.whl
 ```
 
 ---
 
 ## 📋 버전 변경 이력 (Changelog)
+
+### v0.2.5 (2026-07-27)
+- **BigQuery Native JSON 타입 스키마 바인딩**: `insert_rows_json` 호출 시 `Table` 객체를 전달하여 BigQuery Native `JSON` 컬럼을 SDK가 `RECORD`로 오인하지 않고 정상 인코딩하도록 스키마 사전 바인딩 개선
+
+### v0.2.4 (2026-07-27)
+- **BigQuery 적재 실패 필드 상세 로깅 강화**: `insert_rows_json` API 반환 오류 시 `location`(실패 필드명), `reason`, `message`를 명확히 1줄로 통합 출력하도록 개선
+
+### v0.2.3 (2026-07-27)
+- **BigQuery 기존 적재 키 조회 지원**: `BigQueryClient.get_existing_keys(field_name)` 메소드 추가로 중복 데이터 적재 사전 검사 및 Skip(건너뛰기) 성능 최적화 제공
 
 ### v0.2.2 (2026-07-21)
 - **타임아웃(`transfer.timeout_seconds`) 바인딩**: `EcsClient`(boto3 connect/read), `GcsClient`(upload/get_blob), `BigQueryClient`(insert_rows_json)에 네트워크 연결 및 데이터 읽기 타임아웃 지원

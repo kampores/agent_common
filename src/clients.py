@@ -285,7 +285,7 @@ class BigQueryClient:
 
     def _connect(self):
         """
-        Google Cloud BigQuery 클라이언트를 초기화하고 연결 상태를 검증합니다.
+        Google Cloud BigQuery 클라이언트를 초기화하고 연결 및 테이블 스키마 상태를 검증합니다.
         """
         try:
             if self.credentials_path and self.credentials_path.strip() != "":
@@ -299,6 +299,14 @@ class BigQueryClient:
                 )
             else:
                 self.client = bigquery.Client(project=self.project_id)
+            
+            # BigQuery Table 객체를 조회하여 스키마 타입(JSON, TIMESTAMP 등) 사전 캐싱
+            table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+            try:
+                self.table_obj = self.client.get_table(table_ref)
+            except Exception as table_err:
+                self.logger.warning("BigQuery 테이블 객체 조회 실패 (기본 문자열 레퍼런스로 대체): %s", table_err)
+                self.table_obj = table_ref
         except Exception as e:
             ErrorHandler.handle_network_error(e, f"BigQuery 연결 (Project: {self.project_id})")
             msg = self.error_messages.get(
@@ -317,6 +325,8 @@ class BigQueryClient:
             else self.ignore_unknown_values
         )
         table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        table_target = self.table_obj if getattr(self, "table_obj", None) else table_ref
+
         if isinstance(json_data, dict):
             rows_to_insert = [json_data]
         elif isinstance(json_data, list):
@@ -326,13 +336,22 @@ class BigQueryClient:
 
         try:
             errors = self.client.insert_rows_json(
-                table_ref,
+                table_target,
                 rows_to_insert,
                 ignore_unknown_values=skip_unknown,
                 timeout=insert_timeout,
             )
             if errors:
-                raise RuntimeError(f"BigQuery insert API 반환 에러: {errors}")
+                err_details = []
+                for err_item in errors:
+                    idx = err_item.get("index", 0)
+                    for e in err_item.get("errors", []):
+                        loc = e.get("location", "unknown_field")
+                        msg_str = e.get("message", "")
+                        rsn = e.get("reason", "")
+                        err_details.append(f"[Row={idx} Field={loc} Reason={rsn}] {msg_str}")
+                combined_err_msg = " | ".join(err_details) if err_details else str(errors)
+                raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_err_msg}")
         except Exception as e:
             msg = self.error_messages.get(
                 "bigquery_insert_failed",
