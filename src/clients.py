@@ -338,6 +338,7 @@ class BigQueryClient:
         # 1. load_table_from_json (Batch Load Job) 우선 시도
         try:
             job_config = bigquery.LoadJobConfig(
+                source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
                 write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
                 ignore_unknown_values=skip_unknown,
             )
