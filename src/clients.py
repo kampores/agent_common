@@ -342,6 +342,9 @@ class BigQueryClient:
                 write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
                 ignore_unknown_values=skip_unknown,
             )
+            if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):
+                job_config.schema = self.table_obj.schema
+
             load_job = self.client.load_table_from_json(
                 rows_to_insert,
                 table_target,
