@@ -79,6 +79,9 @@ pip install whls/agent_common-0.2.3-py3-none-any.whl
 
 ## 📋 버전 변경 이력 (Changelog)
 
+### v0.2.6 (2026-07-28)
+- **BigQuery 적재 로직 Fallback 전환 구조 반영**: `BigQueryClient.insert_json_data` 호출 시 배치 적재(`load_table_from_json`)를 우선 수행하고 예외 발생 시 스트리밍 적재(`insert_rows_json`)로 자동 fallback 하도록 안정성 개선
+
 ### v0.2.5 (2026-07-27)
 - **BigQuery Native JSON 타입 스키마 바인딩**: `insert_rows_json` 호출 시 `Table` 객체를 전달하여 BigQuery Native `JSON` 컬럼을 SDK가 `RECORD`로 오인하지 않고 정상 인코딩하도록 스키마 사전 바인딩 개선
 

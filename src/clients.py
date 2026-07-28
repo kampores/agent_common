@@ -316,7 +316,8 @@ class BigQueryClient:
 
     def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None):
         """
-        JSON 객체(dict 또는 list)를 BigQuery 테이블에 직접 스트리밍 적재합니다.
+        JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
+        1차적으로 load_table_from_json(배치 로드 Job)을 시도하며, 실패 시 fallback으로 insert_rows_json(스트리밍 로드)을 수행합니다.
         """
         insert_timeout = timeout if timeout is not None else self.timeout_seconds
         skip_unknown = (
@@ -334,6 +335,28 @@ class BigQueryClient:
         else:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
+        # 1. load_table_from_json (Batch Load Job) 우선 시도
+        try:
+            job_config = bigquery.LoadJobConfig(
+                write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+                ignore_unknown_values=skip_unknown,
+            )
+            load_job = self.client.load_table_from_json(
+                rows_to_insert,
+                table_target,
+                job_config=job_config,
+                timeout=insert_timeout,
+            )
+            load_job.result(timeout=insert_timeout)
+            return
+        except Exception as load_err:
+            clean_err = str(load_err).replace("\n", " ").replace("\r", " ")
+            self.logger.warning(
+                "BigQuery load_table_from_json 배치 적재 실패 (insert_rows_json 스트리밍 적재로 fallback 시도): %s",
+                clean_err,
+            )
+
+        # 2. 예외 발생 시 fallback: insert_rows_json (Streaming Insert) 시도
         try:
             errors = self.client.insert_rows_json(
                 table_target,
@@ -353,10 +376,11 @@ class BigQueryClient:
                 combined_err_msg = " | ".join(err_details) if err_details else str(errors)
                 raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_err_msg}")
         except Exception as e:
+            clean_insert_err = str(e).replace("\n", " ").replace("\r", " ")
             msg = self.error_messages.get(
                 "bigquery_insert_failed",
                 "BigQuery 데이터 적재 실패: {table_id}, 에러: {error}",
-            ).format(table_id=self.table_id, error=str(e))
+            ).format(table_id=self.table_id, error=clean_insert_err)
             raise RuntimeError(msg) from e
 
     def get_existing_keys(self, field_name: str = "recvPath") -> set[str]:
