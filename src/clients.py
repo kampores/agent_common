@@ -355,9 +355,17 @@ class BigQueryClient:
             return
         except Exception as load_err:
             clean_err = str(load_err).replace("\n", " ").replace("\r", " ")
+            sub_err_list = []
+            if hasattr(load_err, "errors") and getattr(load_err, "errors"):
+                for s_err in getattr(load_err, "errors"):
+                    loc = s_err.get("location", "unknown_field") if isinstance(s_err, dict) else "unknown"
+                    msg_str = s_err.get("message", str(s_err)) if isinstance(s_err, dict) else str(s_err)
+                    sub_err_list.append(f"[Loc={loc}] {msg_str}")
+            detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
             self.logger.warning(
-                "BigQuery load_table_from_json 배치 적재 실패 (insert_rows_json 스트리밍 적재로 fallback 시도): %s",
+                "BigQuery load_table_from_json 배치 적재 실패 (insert_rows_json 스트리밍 적재로 fallback 시도): %s%s",
                 clean_err,
+                detailed_info,
             )
 
         # 2. 예외 발생 시 fallback: insert_rows_json (Streaming Insert) 시도
