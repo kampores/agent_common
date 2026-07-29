@@ -279,6 +279,8 @@ class BigQueryClient:
             if ignore_unknown_values is not None
             else bool(setting("bigquery.ignore_unknown_values", True))
         )
+        # _use_streaming_only: load_table_from_json 권한 문제 등으로 실패 시 즉시 스트리밍 전용 모드로 전환 플래그
+        self._use_streaming_only: bool = False
         # client: google-cloud-bigquery 클라이언트 인스턴스
         self.client: Any = None
         self._connect()
@@ -318,6 +320,7 @@ class BigQueryClient:
         """
         JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
         1차적으로 load_table_from_json(배치 로드 Job)을 시도하며, 실패 시 fallback으로 insert_rows_json(스트리밍 로드)을 수행합니다.
+        한 번 배치 로드가 실패하면 이후 호출부터는 insert_rows_json 전용 모드로 전환됩니다.
         """
         insert_timeout = timeout if timeout is not None else self.timeout_seconds
         skip_unknown = (
@@ -335,38 +338,40 @@ class BigQueryClient:
         else:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
-        # 1. load_table_from_json (Batch Load Job) 우선 시도
-        try:
-            job_config = bigquery.LoadJobConfig(
-                source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-                write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
-                ignore_unknown_values=skip_unknown,
-            )
-            if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):
-                job_config.schema = self.table_obj.schema
+        # 1. load_table_from_json (Batch Load Job) 우선 시도 (스트리밍 전용 모드가 아닐 때만)
+        if not self._use_streaming_only:
+            try:
+                job_config = bigquery.LoadJobConfig(
+                    source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+                    write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+                    ignore_unknown_values=skip_unknown,
+                )
+                if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):
+                    job_config.schema = self.table_obj.schema
 
-            load_job = self.client.load_table_from_json(
-                rows_to_insert,
-                table_target,
-                job_config=job_config,
-                timeout=insert_timeout,
-            )
-            load_job.result(timeout=insert_timeout)
-            return
-        except Exception as load_err:
-            clean_err = str(load_err).replace("\n", " ").replace("\r", " ")
-            sub_err_list = []
-            if hasattr(load_err, "errors") and getattr(load_err, "errors"):
-                for s_err in getattr(load_err, "errors"):
-                    loc = s_err.get("location", "unknown_field") if isinstance(s_err, dict) else "unknown"
-                    msg_str = s_err.get("message", str(s_err)) if isinstance(s_err, dict) else str(s_err)
-                    sub_err_list.append(f"[Loc={loc}] {msg_str}")
-            detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
-            self.logger.warning(
-                "BigQuery load_table_from_json 배치 적재 실패 (insert_rows_json 스트리밍 적재로 fallback 시도): %s%s",
-                clean_err,
-                detailed_info,
-            )
+                load_job = self.client.load_table_from_json(
+                    rows_to_insert,
+                    table_target,
+                    job_config=job_config,
+                    timeout=insert_timeout,
+                )
+                load_job.result(timeout=insert_timeout)
+                return
+            except Exception as load_err:
+                self._use_streaming_only = True
+                clean_err = str(load_err).replace("\n", " ").replace("\r", " ")
+                sub_err_list = []
+                if hasattr(load_err, "errors") and getattr(load_err, "errors"):
+                    for s_err in getattr(load_err, "errors"):
+                        loc = s_err.get("location", "unknown_field") if isinstance(s_err, dict) else "unknown"
+                        msg_str = s_err.get("message", str(s_err)) if isinstance(s_err, dict) else str(s_err)
+                        sub_err_list.append(f"[Loc={loc}] {msg_str}")
+                detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
+                self.logger.warning(
+                    "BigQuery load_table_from_json 배치 적재 실패 (최초 1회 발생하여 이후 요청부터는 insert_rows_json 스트리밍 전용 모드로 자동 전환됩니다): %s%s",
+                    clean_err,
+                    detailed_info,
+                )
 
         # 2. 예외 발생 시 fallback: insert_rows_json (Streaming Insert) 시도
         try:
