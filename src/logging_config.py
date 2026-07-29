@@ -24,10 +24,27 @@ class SingleLineFlattenFormatter(logging.Formatter):
         return text.replace("\n", " ").replace("\r", " ")
 
     def format(self, record: logging.LogRecord) -> str:
+        # 0. 예외(Traceback) 발생 시 원천 지점([Origin: filename:Llineno in funcName()]) 추출
+        origin_prefix = ""
+        if record.exc_info and len(record.exc_info) >= 3 and record.exc_info[2]:
+            try:
+                import traceback
+                tb_list = traceback.extract_tb(record.exc_info[2])
+                if tb_list:
+                    last_frame = tb_list[-1]
+                    origin_file = Path(last_frame.filename).name
+                    origin_prefix = f"[Origin: {origin_file}:L{last_frame.lineno} in {last_frame.name}()] "
+            except Exception:
+                pass
+
         # 1. 부모 클래스의 기본 포맷팅 수행
         s = super().format(record)
 
-        # 2. 예외(Traceback) 정보가 포함된 경우 한 줄로 평탄화하여 포함
+        # 2. Origin 원천 지점 정보가 있으면 로그 메시지 서두에 결합
+        if origin_prefix:
+            s = f"{s} {origin_prefix}"
+
+        # 3. 예외(Traceback) 정보가 포함된 경우 한 줄로 평탄화하여 포함
         if record.exc_info:
             if not record.exc_text:
                 record.exc_text = self.formatException(record.exc_info)
@@ -39,7 +56,7 @@ class SingleLineFlattenFormatter(logging.Formatter):
             record.exc_text = None
             record.exc_info = None
 
-        # 3. 전체 로그 메시지 1줄 평탄화 리턴
+        # 4. 전체 로그 메시지 1줄 평탄화 리턴
         return self.flatten_to_single_line(s)
 
 
@@ -67,7 +84,7 @@ class ProjectLogger:
         """
         level_name = str(setting("logging.level", "INFO")).upper()
         level = getattr(logging, level_name, logging.INFO)
-        log_format = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+        log_format = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d %(funcName)s()] %(message)s"
         formatter = SingleLineFlattenFormatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
 
         console_handler = logging.StreamHandler()
