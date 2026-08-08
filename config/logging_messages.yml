@@ -1,0 +1,51 @@
+# 시스템 전역 표준 로그 메시지 템플릿 사전
+logging_messages:
+  DEBUG:
+    targets_detected: "{target_type} 대상 감지: 총 {total_files}개 파일 [MaxWorkers={max_workers}]"
+
+  INFO:
+    # 범용 프로그램 실행 및 동기화 생명주기 메시지
+    program_started: "{program_name} 프로그램을 가동합니다.{folder_msg}{date_msg}"
+    program_finished: "{program_name} 이관 프로그램 수행이 완료되었습니다."
+    sync_started: "{sync_type} 동기화 작업 시작: {src_type} '{src_name}' -> {dst_type} '{dst_name}' {context}"
+    sync_completed: "{sync_type} 동기화 작업 종료: 성공(또는 건너뜀) {success_count}개, 실패 {failure_count}개 / 총 {total_files}개"
+    folder_searching: "{storage_type} 폴더 탐색 중{target_info}: {search_prefix}"
+    no_target_files: "{target_type} 대상 파일이 없습니다."
+    targets_detected: "{target_type} 대상 감지: 총 {total_files}개 파일 [MaxWorkers={max_workers}]"
+
+    # 기존 개별 레거시 메시지
+    transfer_completed: "파일 전송 완료: {file_name}, 크기: {size_bytes} bytes"
+    transfer_skipped: "동일 용량 파일이 GCS에 존재하여 복사를 건너뜁니다: {file_name}"
+    run_started: "전송 작업 시작: 구분코드={lodin_dstlc_cd}, 대상일자={target_date}, 대상폴더={target_folder}"
+    run_finished: "전송 작업 완료: 총 처리={total_count}건, 성공={success_count}건, 건너뜔={skip_count}건, 실패={fail_count}건, 총소요시간={total_elapsed:.2f}초"
+
+  WARNING:
+    fallback_applied: "{target_name}을(를) 찾을 수 없어 기본 키({fallback_key})로 대체(Fallback) 적용합니다. [Key={key}]"
+    gcs_blob_meta_error: "GCS blob 메타데이터 조회 중 오류 발생 ({blob_name}): {error}"
+    bigquery_batch_load_fallback: "BigQuery 배치 적재 권한 미비로 스트리밍 전용 모드로 전환합니다."
+
+  ERROR:
+    # 공통 에러 메시지
+    regex_compile_error: "경로 매칭 정규식 컴파일 실패: {path_regex_str}, 에러: {error}"
+    missing_required_config: "필수 설정 정보가 누락되었습니다: {key}"
+    config_file_not_found: "설정 파일을 찾을 수 없습니다: {path}"
+    config_load_failed: "설정 파일을 불러오는 데 실패했습니다: {error}"
+    ecs_connection_failed: "Dell ECS 연결에 실패했습니다: {error}"
+    ecs_list_failed: "ECS 오브젝트 목록 조회에 실패했습니다: {error}"
+    gcs_connection_failed: "GCS 연결에 실패했습니다: {error}"
+    gcs_bucket_not_found: "GCS 버킷을 찾을 수 없거나 접근 권한이 없습니다: {bucket_name}, 에러: {error}"
+    bigquery_connection_failed: "BigQuery 연결에 실패했습니다: {error}"
+    bigquery_insert_failed: "BigQuery 데이터 적재 실패: {table_id}, 에러: {error}"
+    transfer_failed: "파일 전송 실패: {file_name}, 에러: {error}"
+
+    # LLM 및 서비스 에러 메시지 (기존 errors.yml 통합)
+    llm_http_error: "{service_name} 서버 오류 HTTP {code}: {detail}"
+    llm_connection_error: "{service_name} 연결 실패 (서버 미동작 또는 네트워크 장애): {detail}"
+    llm_unexpected_error: "{service_name} 연동 중 예기치 않은 오류 발생: {detail}"
+    llm_missing_result: "{service_name} 응답 내 'result' 필드가 누락되어 있습니다."
+    runner_http_error: "HTTP {code}: {detail}"
+    runner_connection_error: "Could not connect to API: {detail}"
+
+  CRITICAL:
+    client_init_failed: "{client_name} 클라이언트 초기화 중 치명적 오류가 발생하여 프로그램을 종료합니다: {error}"
+    fail_fast_config_missing: "[FATAL][Fail-Fast] 필수 설정값이 누락되어 프로그램을 즉시 종료합니다: '{path}'{desc_info}. 설정 파일({config_file})에 이 설정값을 반드시 정의하십시오."

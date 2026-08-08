@@ -1,16 +1,43 @@
-# 작성일: 2026-06-18
+# 작성일: 2026-08-08
 # 설계자: 김유상
 # 설계자 소속: 경포씨엔씨
 # 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
 
-"""앱과 스크립트의 로깅 설정을 표준화하는 프로젝트 로깅 모듈입니다."""
+"""앱과 스크립트의 표준 로깅 및 1줄 단일 행 평탄화 기능을 제공하는 공용 로깅 모듈입니다."""
 
 from __future__ import annotations
 
 import logging
+from logging import Logger
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+__all__ = ["SingleLineFlattenFormatter", "ProjectLogger", "Logger", "get_log_msg"]
+
+
+def get_log_msg(level: str, code: str, default: str = "", **kwargs: Any) -> str:
+    """
+    logging_messages.yml 설정 파일에 정의된 로그 레벨(level)별 메시지 코드(code)에 해당하는 
+    템플릿 문장을 조회하고, 전달된 키워드 인자(**kwargs)를 포맷팅하여 반환합니다.
+
+    :param level: 로그 레벨 명칭 ('INFO', 'WARNING', 'ERROR', 'CRITICAL')
+    :param code: 로그 메시지 코드 (예: 'transfer_completed', 'ecs_connection_failed')
+    :param default: 템플릿 미존재 시 사용할 기본 문자열 (옵션)
+    :param kwargs: 템플릿 치환에 필요한 가변 키워드 인자
+    :return: 포맷팅 완성된 로그 메시지 문자열
+    """
+    from agent_common.config_loader import setting
+    level_str = str(level).strip().upper()
+    template = setting(f"logging_messages.{level_str}.{code}")
+    if not template or not isinstance(template, str):
+        template = default or code
+    if kwargs:
+        try:
+            return template.format(**kwargs)
+        except Exception:
+            return str(template)
+    return str(template)
 
 
 class SingleLineFlattenFormatter(logging.Formatter):
@@ -84,8 +111,11 @@ class ProjectLogger:
         """
         level_name = str(setting("logging.level", "INFO")).upper()
         level = getattr(logging, level_name, logging.INFO)
-        log_format = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d %(funcName)s()] %(message)s"
-        formatter = SingleLineFlattenFormatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
+        default_fmt = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d %(funcName)s()] %(message)s"
+        default_datefmt = "%Y-%m-%d %H:%M:%S"
+        log_format = str(setting("logging.format", default_fmt))
+        datefmt = str(setting("logging.datefmt", default_datefmt))
+        formatter = SingleLineFlattenFormatter(log_format, datefmt=datefmt)
 
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
@@ -96,7 +126,6 @@ class ProjectLogger:
             from datetime import datetime
 
             # 설정 값에 포함된 날짜 포맷팅 지시자(예: %Y, %m, %d)를 오늘 날짜로 포맷팅하여 동적 경로를 구성한다.
-            # 도메인 의미: 설정 파일의 표기 형식과 런타임에 실제 생성되는 파일 구조 간의 논리적 일치성을 보장
             today = datetime.now()
             dynamic_log_path = Path(today.strftime(str(log_file)))
             log_path = project_path(dynamic_log_path)
@@ -136,10 +165,7 @@ class ProjectLogger:
         status_code: int | None = None,
         exc: Exception | None = None,
     ) -> None:
-        """HTTP 요청 처리 시간과 성공/실패 여부를 일관된 포맷으로 로그에 남긴다.
-
-        도메인 의미: 인라인 중복되던 요청 소요 시간 계산 및 로그 포맷을 일괄 수행하여 로깅의 일관성 보장.
-        """
+        """HTTP 요청 처리 시간과 성공/실패 여부를 일관된 포맷으로 로그에 남긴다."""
         from time import perf_counter
 
         elapsed_ms = (perf_counter() - start_time) * 1000

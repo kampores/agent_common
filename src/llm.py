@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import re
 from typing import Any
@@ -16,12 +15,10 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from agent_common.config_loader import project_path, setting
+from agent_common.logger import ProjectLogger
 
 # 로컬 GGUF 모델들의 캐시 딕셔너리. 파일 경로를 키로 하고 Llama 객체를 값으로 갖는다.
 _LOCAL_LLMS: dict[str, Any] = {}
-
-# 로깅 객체 생성
-logger = logging.getLogger("agent_common.llm")
 
 
 class LlmInferenceError(Exception):
@@ -115,6 +112,7 @@ class LlmClient:
         """
         self.last_generated_by = None
         self.purpose = purpose or "sql_generator"
+        self.logger = ProjectLogger.get_logger(f"agent_common.{self.__class__.__name__}")
 
         if model_name:
             self.model_name = model_name

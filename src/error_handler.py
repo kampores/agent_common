@@ -7,12 +7,13 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-logger = logging.getLogger("agent_common.error_handler")
+from agent_common.logger import ProjectLogger
+
+logger = ProjectLogger.get_logger("agent_common.ErrorHandler")
 
 
 class ErrorHandler:

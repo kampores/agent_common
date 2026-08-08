@@ -9,13 +9,14 @@
 """
 
 from agent_common.clients import BigQueryClient, EcsClient, GcsClient
+from agent_common.config_loader import ConfigLoader
 from agent_common.llm import LlmClient, LlmInferenceError
 
 __all__ = [
+    "ConfigLoader",
     "LlmClient",
     "LlmInferenceError",
     "EcsClient",
     "GcsClient",
     "BigQueryClient",
 ]
-

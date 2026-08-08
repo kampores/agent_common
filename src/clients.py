@@ -10,7 +10,6 @@ Dell ECS(S3), Google Cloud Storage(GCS), Google Cloud BigQuery(BQ) 등
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, Generator
 
@@ -22,6 +21,7 @@ from google.oauth2 import service_account
 
 from agent_common.error_handler import ErrorHandler
 from agent_common.config_loader import setting
+from agent_common.logger import ProjectLogger, get_log_msg
 
 
 class EcsClient:
@@ -35,8 +35,7 @@ class EcsClient:
         access_key: str,
         secret_key: str,
         bucket_name: str,
-        logger: logging.Logger,
-        error_messages: Dict[str, str],
+        error_messages: Dict[str, str] | None = None,
         timeout_seconds: int | None = None,
     ):
         # endpoint_url: Dell ECS API 서버 주소 (예: http://10.39.79.21:9020)
@@ -47,10 +46,10 @@ class EcsClient:
         self.secret_key: str = secret_key
         # bucket_name: 조회의 대상이 되는 ECS 버킷명
         self.bucket_name: str = bucket_name
-        # logger: 프로그램 전체 로깅을 담당하는 로거 인스턴스
-        self.logger: logging.Logger = logger
+        # logger: ProjectLogger 표준 로거 동적 적용 (패키지 소속 명시)
+        self.logger = ProjectLogger.get_logger(f"agent_common.{self.__class__.__name__}")
         # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
-        self.error_messages: Dict[str, str] = error_messages
+        self.error_messages: Dict[str, str] = error_messages or setting("error_messages", {})
         # timeout_seconds: 필수 설정값 조회 (누락 시 소스코드 상수로 fallback하지 않고 Fail-Fast 수행)
         resolved_timeout = (
             timeout_seconds
@@ -132,6 +131,69 @@ class EcsClient:
         except Exception:
             return None
 
+    def transfer_to_gcs(
+        self,
+        gcs_client: GcsClient,
+        ecs_key: str,
+        gcs_blob_name: str,
+        size: int,
+        error_messages: Dict[str, str] | None = None
+    ) -> bool:
+        """
+        단일 파일에 대해 GCS 존재 여부 및 용량을 사전 검사하여, 동일 용량 파일 존재 시 복사를 건너뛰고(Skip),
+        신규 파일이거나 용량이 다른 경우 ECS 스트림을 열고 GCS로 실시간 전송하며,
+        구간별 통계 시간 및 단일 행 표준 로깅을 공통 처리합니다.
+
+        :param gcs_client: 목적지 GCS 클라이언트 인스턴스
+        :param ecs_key: 소스 ECS 객체 키 경로
+        :param gcs_blob_name: 목적지 GCS 블롭 경로명
+        :param size: 파일 바이트 크기
+        :param error_messages: 템플릿 에러 메시지 딕셔너리 (옵션)
+        :return: 전송 성공 또는 Skip 시 True, 실패 시 False
+        """
+        import time
+        total_start = time.time()
+        context_info = f"[ECS_Key={ecs_key} GCS_Blob={gcs_blob_name} Size={size}]"
+        err_msgs = error_messages or self.error_messages or {}
+
+        try:
+            # 1. GCS 목적지의 기존 파일 존재 여부 및 바이트 크기 조회
+            check_start = time.time()
+            existing_size = gcs_client.get_blob_size(gcs_blob_name)
+            check_elapsed = time.time() - check_start
+
+            # 이미 GCS에 존재하고 용량이 동일한 경우 복사 건너뛰기
+            if existing_size is not None and existing_size == size:
+                msg = get_log_msg("INFO", "transfer_skipped", file_name=ecs_key)
+                self.logger.info(
+                    f"{msg} [CheckTime={check_elapsed:.2f}s Status=Skipped] {context_info}"
+                )
+                return True
+
+            # 2. ECS S3 StreamingBody 스트림 객체 생성 시간 측정
+            ecs_start = time.time()
+            stream = self.get_object_stream(ecs_key)
+            ecs_stream_time = time.time() - ecs_start
+
+            # 3. GCS 업로드 스트림 시간 측정
+            gcs_start = time.time()
+            gcs_client.upload_stream(stream, gcs_blob_name, size)
+            gcs_upload_time = time.time() - gcs_start
+
+            total_elapsed = time.time() - total_start
+            msg = get_log_msg("INFO", "transfer_completed", file_name=ecs_key, size_bytes=size)
+            self.logger.info(
+                f"{msg} [TotalElapsed={total_elapsed:.2f}s CheckTime={check_elapsed:.2f}s ECSStreamTime={ecs_stream_time:.2f}s GCSUploadTime={gcs_upload_time:.2f}s] {context_info}"
+            )
+            return True
+        except Exception as e:
+            total_elapsed = time.time() - total_start
+            msg = get_log_msg("ERROR", "transfer_failed", file_name=ecs_key, error=str(e))
+            self.logger.error(
+                f"{msg} [TotalElapsed={total_elapsed:.2f}s] {context_info}"
+            )
+            return False
+
 
 class GcsClient:
     """
@@ -142,18 +204,17 @@ class GcsClient:
         self,
         bucket_name: str,
         credentials_path: str,
-        logger: logging.Logger,
-        error_messages: Dict[str, str],
+        error_messages: Dict[str, str] | None = None,
         timeout_seconds: int | None = None,
     ):
         # bucket_name: 대상 GCS 버킷명
         self.bucket_name: str = bucket_name
         # credentials_path: GCP 서비스 계정 키 JSON 경로 (비어있으면 기본 Application Default Credentials 사용)
         self.credentials_path: str = credentials_path
-        # logger: 프로그램 전체 로깅을 담당하는 로거 인스턴스
-        self.logger: logging.Logger = logger
+        # logger: ProjectLogger 표준 로거 동적 적용 (패키지 소속 명시)
+        self.logger = ProjectLogger.get_logger(f"agent_common.{self.__class__.__name__}")
         # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
-        self.error_messages: Dict[str, str] = error_messages
+        self.error_messages: Dict[str, str] = error_messages or setting("error_messages", {})
         # timeout_seconds: 필수 설정값 조회 (누락 시 소스코드 상수로 fallback하지 않고 Fail-Fast 수행)
         resolved_timeout = (
             timeout_seconds
@@ -242,8 +303,7 @@ class BigQueryClient:
         dataset_id: str,
         table_id: str,
         credentials_path: str,
-        logger: logging.Logger,
-        error_messages: Dict[str, str],
+        error_messages: Dict[str, str] | None = None,
         timeout_seconds: int | None = None,
         ignore_unknown_values: bool | None = None,
     ):
@@ -253,12 +313,12 @@ class BigQueryClient:
         self.dataset_id: str = dataset_id
         # table_id: BigQuery 테이블 ID
         self.table_id: str = table_id
-        # credentials_path: GCP 서비스 계정 키 JSON 경로
+        # credentials_path: GCP 서비스 계정 키 JSON 경로 (비어있으면 기본 ADC 사용)
         self.credentials_path: str = credentials_path
-        # logger: 프로그램 전체 로깅을 담당하는 로거 인스턴스
-        self.logger: logging.Logger = logger
+        # logger: ProjectLogger 표준 로거 동적 적용 (패키지 소속 명시)
+        self.logger = ProjectLogger.get_logger(f"agent_common.{self.__class__.__name__}")
         # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
-        self.error_messages: Dict[str, str] = error_messages
+        self.error_messages: Dict[str, str] = error_messages or setting("error_messages", {})
         # timeout_seconds: 필수 설정값 조회 (누락 시 소스코드 상수로 fallback하지 않고 Fail-Fast 수행)
         resolved_timeout = (
             timeout_seconds
