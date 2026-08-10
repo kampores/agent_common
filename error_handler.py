@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 
 from agent_common.logger import ProjectLogger
 
-logger = ProjectLogger.get_logger("agent_common.ErrorHandler")
+logger = ProjectLogger("agent_common.ErrorHandler")
 
 
 class ErrorHandler:

@@ -15,13 +15,12 @@ from typing import Any, Dict, Generator
 
 import boto3
 from botocore.client import Config as BotoConfig
-from google.cloud import storage
-from google.cloud import bigquery
+from google.cloud import storage, bigquery
 from google.oauth2 import service_account
 
 from agent_common.error_handler import ErrorHandler
-from agent_common.config_loader import setting
-from agent_common.logger import ProjectLogger, get_log_msg
+from agent_common.config_loader import ConfigLoader
+from agent_common.logger import ProjectLogger
 
 
 class EcsClient:
@@ -35,10 +34,9 @@ class EcsClient:
         access_key: str,
         secret_key: str,
         bucket_name: str,
-        error_messages: Dict[str, str] | None = None,
         timeout_seconds: int | None = None,
     ):
-        # endpoint_url: Dell ECS API 서버 주소 (예: http://10.39.79.21:9020)
+        # endpoint_url: Dell ECS API 서버 주소 (예: http://xxx.yyy.zzz.uuu:0000)
         self.endpoint_url: str = endpoint_url
         # access_key: S3 연결에 사용하는 인증 키 ID
         self.access_key: str = access_key
@@ -46,27 +44,31 @@ class EcsClient:
         self.secret_key: str = secret_key
         # bucket_name: 조회의 대상이 되는 ECS 버킷명
         self.bucket_name: str = bucket_name
-        # logger: ProjectLogger 표준 로거 동적 적용 (패키지 소속 명시)
-        self.logger = ProjectLogger.get_logger(f"agent_common.{self.__class__.__name__}")
-        # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
-        self.error_messages: Dict[str, str] = error_messages or setting("error_messages", {})
-        # timeout_seconds: 필수 설정값 조회 (누락 시 소스코드 상수로 fallback하지 않고 Fail-Fast 수행)
+        # logger: _logger 백킹 필드 초기화
+        self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
+        self.config_loader: ConfigLoader = ConfigLoader()
+        # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
         resolved_timeout = (
             timeout_seconds
             if timeout_seconds is not None
-            else (setting("transfer.timeout_seconds") or setting("timeout_seconds"))
+            else self.config_loader.require_setting("transfer.timeout_seconds")
         )
-        if not resolved_timeout or str(resolved_timeout).strip() == "":
-            msg = self.error_messages.get(
-                "missing_required_config", "필수 설정 정보가 누락되었습니다: {key}"
-            ).format(key="timeout_seconds")
-            self.logger.critical(msg)
-            raise ValueError(msg)
-
         self.timeout_seconds: int = int(resolved_timeout)
         # client: boto3 s3 클라이언트 인스턴스
         self.client: Any = None
         self._connect()
+
+    @property
+    def logger(self) -> ProjectLogger:
+        """ProjectLogger 인스턴스 지연 초기화 프로퍼티 (AttributeError 100% 방지)"""
+        if getattr(self, "_logger", None) is None:
+            self._logger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        return self._logger
+
+    @logger.setter
+    def logger(self, val: ProjectLogger) -> None:
+        self._logger = val
 
     def _connect(self):
         """
@@ -88,10 +90,7 @@ class EcsClient:
         except Exception as e:
             # 공용 에러 핸들러 네트워크 예외 기록 수행
             ErrorHandler.handle_network_error(e, f"Dell ECS 연결 ({self.endpoint_url})")
-            msg = self.error_messages.get(
-                "ecs_connection_failed", "Dell ECS 연결에 실패했습니다: {error}"
-            ).format(error=str(e))
-            raise ConnectionError(msg) from e
+            raise ConnectionError(self.logger.error("connection_failed", service_name="Dell ECS", error=str(e))) from e
 
     def list_objects(self, prefix: str = "") -> Generator[Dict[str, Any], None, None]:
         """
@@ -105,11 +104,7 @@ class EcsClient:
                     for obj in page["Contents"]:
                         yield obj
         except Exception as e:
-            msg = self.error_messages.get(
-                "ecs_list_failed", "ECS 오브젝트 목록 조회에 실패했습니다: {error}"
-            ).format(error=str(e))
-            self.logger.error(msg)
-            raise RuntimeError(msg) from e
+            raise RuntimeError(self.logger.error("list_failed", storage_type="ECS", error=str(e))) from e
 
     def get_object_stream(self, key: str) -> Any:
         """
@@ -119,7 +114,7 @@ class EcsClient:
             response = self.client.get_object(Bucket=self.bucket_name, Key=key)
             return response["Body"]
         except Exception as e:
-            raise RuntimeError(f"ECS 파일 스트림 획득 실패: {key}, 에러: {str(e)}") from e
+            raise RuntimeError(self.logger.error("transfer_failed", file_name=key, error=str(e))) from e
 
     def get_object_size(self, key: str) -> int | None:
         """
@@ -137,7 +132,6 @@ class EcsClient:
         ecs_key: str,
         gcs_blob_name: str,
         size: int,
-        error_messages: Dict[str, str] | None = None
     ) -> bool:
         """
         단일 파일에 대해 GCS 존재 여부 및 용량을 사전 검사하여, 동일 용량 파일 존재 시 복사를 건너뛰고(Skip),
@@ -148,13 +142,11 @@ class EcsClient:
         :param ecs_key: 소스 ECS 객체 키 경로
         :param gcs_blob_name: 목적지 GCS 블롭 경로명
         :param size: 파일 바이트 크기
-        :param error_messages: 템플릿 에러 메시지 딕셔너리 (옵션)
         :return: 전송 성공 또는 Skip 시 True, 실패 시 False
         """
         import time
         total_start = time.time()
         context_info = f"[ECS_Key={ecs_key} GCS_Blob={gcs_blob_name} Size={size}]"
-        err_msgs = error_messages or self.error_messages or {}
 
         try:
             # 1. GCS 목적지의 기존 파일 존재 여부 및 바이트 크기 조회
@@ -164,9 +156,12 @@ class EcsClient:
 
             # 이미 GCS에 존재하고 용량이 동일한 경우 복사 건너뛰기
             if existing_size is not None and existing_size == size:
-                msg = get_log_msg("INFO", "transfer_skipped", file_name=ecs_key)
+                self.logger.info("transfer_skipped", file_name=ecs_key, dst_type="GCS")
                 self.logger.info(
-                    f"{msg} [CheckTime={check_elapsed:.2f}s Status=Skipped] {context_info}"
+                    "elapsed_time",
+                    action_name="GCS 파일 검사",
+                    details=f"[CheckTime={check_elapsed:.2f}s Status=Skipped]",
+                    context_info=context_info,
                 )
                 return True
 
@@ -181,16 +176,22 @@ class EcsClient:
             gcs_upload_time = time.time() - gcs_start
 
             total_elapsed = time.time() - total_start
-            msg = get_log_msg("INFO", "transfer_completed", file_name=ecs_key, size_bytes=size)
+            self.logger.info("transfer_completed", file_name=ecs_key, size_bytes=size)
             self.logger.info(
-                f"{msg} [TotalElapsed={total_elapsed:.2f}s CheckTime={check_elapsed:.2f}s ECSStreamTime={ecs_stream_time:.2f}s GCSUploadTime={gcs_upload_time:.2f}s] {context_info}"
+                "elapsed_time",
+                action_name="GCS 파일 전송",
+                details=f"[TotalElapsed={total_elapsed:.2f}s CheckTime={check_elapsed:.2f}s ECSStreamTime={ecs_stream_time:.2f}s GCSUploadTime={gcs_upload_time:.2f}s]",
+                context_info=context_info,
             )
             return True
         except Exception as e:
             total_elapsed = time.time() - total_start
-            msg = get_log_msg("ERROR", "transfer_failed", file_name=ecs_key, error=str(e))
+            self.logger.error("transfer_failed", file_name=ecs_key, error=str(e))
             self.logger.error(
-                f"{msg} [TotalElapsed={total_elapsed:.2f}s] {context_info}"
+                "elapsed_time",
+                action_name="GCS 파일 전송 오류",
+                details=f"[TotalElapsed={total_elapsed:.2f}s]",
+                context_info=context_info,
             )
             return False
 
@@ -204,30 +205,29 @@ class GcsClient:
         self,
         bucket_name: str,
         credentials_path: str,
-        error_messages: Dict[str, str] | None = None,
         timeout_seconds: int | None = None,
     ):
+        # logger: _logger 백킹 필드 초기화
+        self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        self.config_loader: ConfigLoader = ConfigLoader()
+        
+        # [Fail-Fast] bucket_name 검증
+        if not bucket_name or not str(bucket_name).strip():
+            searched_str = ", ".join([f"'{p}' [{'존재함' if ex else '없음'}]" for p, ex in self.config_loader.SEARCHED_CANDIDATES])
+            err_msg = f"[FATAL][Fail-Fast] GCS 버킷명('gcs.bucket_name')이 설정 파일(config.yml)에 지정되지 않았거나 빈 값입니다. (탐색한 전체 후보 경로 목록: {searched_str})"
+            self.logger.critical(err_msg)
+            raise ValueError(err_msg)
+
         # bucket_name: 대상 GCS 버킷명
-        self.bucket_name: str = bucket_name
-        # credentials_path: GCP 서비스 계정 키 JSON 경로 (비어있으면 기본 Application Default Credentials 사용)
-        self.credentials_path: str = credentials_path
-        # logger: ProjectLogger 표준 로거 동적 적용 (패키지 소속 명시)
-        self.logger = ProjectLogger.get_logger(f"agent_common.{self.__class__.__name__}")
-        # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
-        self.error_messages: Dict[str, str] = error_messages or setting("error_messages", {})
-        # timeout_seconds: 필수 설정값 조회 (누락 시 소스코드 상수로 fallback하지 않고 Fail-Fast 수행)
+        self.bucket_name: str = str(bucket_name).strip()
+        # credentials_path: GCP 서비스 계정 키 JSON 경로
+        self.credentials_path: str = credentials_path if credentials_path is not None else ""
+        # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
         resolved_timeout = (
             timeout_seconds
             if timeout_seconds is not None
-            else (setting("transfer.timeout_seconds") or setting("timeout_seconds"))
+            else self.config_loader.require_setting("transfer.timeout_seconds")
         )
-        if not resolved_timeout or str(resolved_timeout).strip() == "":
-            msg = self.error_messages.get(
-                "missing_required_config", "필수 설정 정보가 누락되었습니다: {key}"
-            ).format(key="timeout_seconds")
-            self.logger.critical(msg)
-            raise ValueError(msg)
-
         self.timeout_seconds: int = int(resolved_timeout)
         # client: google-cloud-storage 클라이언트 인스턴스
         self.client: Any = None
@@ -235,16 +235,32 @@ class GcsClient:
         self.bucket: Any = None
         self._connect()
 
+    @property
+    def logger(self) -> ProjectLogger:
+        """ProjectLogger 인스턴스 지연 초기화 프로퍼티 (AttributeError 100% 방지)"""
+        if getattr(self, "_logger", None) is None:
+            self._logger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        return self._logger
+
+    @logger.setter
+    def logger(self, val: ProjectLogger) -> None:
+        self._logger = val
+
     def _connect(self):
         """
         Google Cloud Storage 클라이언트를 초기화하고 해당 버킷의 연결/접근 권한 상태를 검증합니다.
         """
         try:
             if self.credentials_path and self.credentials_path.strip() != "":
-                if not Path(self.credentials_path).exists():
-                    raise FileNotFoundError(f"인증키 파일을 찾을 수 없습니다: {self.credentials_path}")
+                cred_path = Path(self.credentials_path)
+                if not cred_path.is_absolute():
+                    cred_path = self.config_loader.project_path(cred_path)
+                if not cred_path.exists():
+                    raise FileNotFoundError(
+                        f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path}')"
+                    )
                 credentials = service_account.Credentials.from_service_account_file(
-                    self.credentials_path
+                    str(cred_path)
                 )
                 self.client = storage.Client(credentials=credentials)
             else:
@@ -255,10 +271,7 @@ class GcsClient:
         except Exception as e:
             # 공용 에러 핸들러 네트워크 예외 기록 수행
             ErrorHandler.handle_network_error(e, f"GCS 버킷 연결 ({self.bucket_name})")
-            msg = self.error_messages.get(
-                "gcs_connection_failed", "GCS 연결에 실패했습니다: {error}"
-            ).format(error=str(e))
-            raise ConnectionError(msg) from e
+            raise ConnectionError(self.logger.error("connection_failed", service_name="GCS", error=str(e))) from e
 
     def get_blob_size(self, destination_blob_name: str) -> int | None:
         """GCS 목적지 blob의 존재 여부 및 바이트 크기(bytes)를 조회한다.
@@ -275,7 +288,7 @@ class GcsClient:
                 return blob.size
             return None
         except Exception as e:
-            self.logger.warning("GCS blob 메타데이터 조회 중 오류 발생 (%s): %s", destination_blob_name, e)
+            self.logger.warning("storage_meta_error", storage_type="GCS", target_name=destination_blob_name, error=str(e))
             return None
 
     def upload_stream(self, stream: Any, destination_blob_name: str, size: int, timeout: int | None = None):
@@ -288,7 +301,7 @@ class GcsClient:
             # size 인수를 반드시 제공하며 지정된 timeout 내 업로드를 완료하도록 처리
             blob.upload_from_file(stream, size=size, timeout=upload_timeout)
         except Exception as e:
-            raise RuntimeError(f"GCS 업로드 실패: {destination_blob_name}, 에러: {str(e)}") from e
+            raise RuntimeError(self.logger.error("transfer_failed", file_name=destination_blob_name, error=str(e))) from e
 
 
 
@@ -303,7 +316,6 @@ class BigQueryClient:
         dataset_id: str,
         table_id: str,
         credentials_path: str,
-        error_messages: Dict[str, str] | None = None,
         timeout_seconds: int | None = None,
         ignore_unknown_values: bool | None = None,
     ):
@@ -315,29 +327,22 @@ class BigQueryClient:
         self.table_id: str = table_id
         # credentials_path: GCP 서비스 계정 키 JSON 경로 (비어있으면 기본 ADC 사용)
         self.credentials_path: str = credentials_path
-        # logger: ProjectLogger 표준 로거 동적 적용 (패키지 소속 명시)
-        self.logger = ProjectLogger.get_logger(f"agent_common.{self.__class__.__name__}")
-        # error_messages: 설정에서 인계된 다국어/템플릿 메시지 맵
-        self.error_messages: Dict[str, str] = error_messages or setting("error_messages", {})
-        # timeout_seconds: 필수 설정값 조회 (누락 시 소스코드 상수로 fallback하지 않고 Fail-Fast 수행)
+        # logger: _logger 백킹 필드 초기화
+        self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
+        self.config_loader: ConfigLoader = ConfigLoader()
+        # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
         resolved_timeout = (
             timeout_seconds
             if timeout_seconds is not None
-            else (setting("transfer.timeout_seconds") or setting("timeout_seconds"))
+            else self.config_loader.require_setting("transfer.timeout_seconds")
         )
-        if not resolved_timeout or str(resolved_timeout).strip() == "":
-            msg = self.error_messages.get(
-                "missing_required_config", "필수 설정 정보가 누락되었습니다: {key}"
-            ).format(key="timeout_seconds")
-            self.logger.critical(msg)
-            raise ValueError(msg)
-
         self.timeout_seconds: int = int(resolved_timeout)
-        # ignore_unknown_values: 미정의 JSON 키 무시/건너뛰기 여부 (config.yml에서 동적 로드)
+        # ignore_unknown_values: 옵션 설정값 조회 (기본값: True)
         self.ignore_unknown_values: bool = (
             ignore_unknown_values
             if ignore_unknown_values is not None
-            else bool(setting("bigquery.ignore_unknown_values", True))
+            else bool(self.config_loader.setting("bigquery.ignore_unknown_values", True))
         )
         # _use_streaming_only: load_table_from_json 권한 문제 등으로 실패 시 즉시 스트리밍 전용 모드로 전환 플래그
         self._use_streaming_only: bool = False
@@ -345,20 +350,34 @@ class BigQueryClient:
         self.client: Any = None
         self._connect()
 
+    @property
+    def logger(self) -> ProjectLogger:
+        """ProjectLogger 인스턴스 지연 초기화 프로퍼티 (AttributeError 100% 방지)"""
+        if getattr(self, "_logger", None) is None:
+            self._logger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        return self._logger
+
+    @logger.setter
+    def logger(self, val: ProjectLogger) -> None:
+        self._logger = val
+
     def _connect(self):
         """
         Google Cloud BigQuery 클라이언트를 초기화하고 연결 및 테이블 스키마 상태를 검증합니다.
         """
         try:
             if self.credentials_path and self.credentials_path.strip() != "":
-                if not Path(self.credentials_path).exists():
-                    raise FileNotFoundError(f"인증키 파일을 찾을 수 없습니다: {self.credentials_path}")
+                cred_path = Path(self.credentials_path)
+                if not cred_path.is_absolute():
+                    cred_path = self.config_loader.project_path(cred_path)
+                if not cred_path.exists():
+                    raise FileNotFoundError(
+                        f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path}')"
+                    )
                 credentials = service_account.Credentials.from_service_account_file(
-                    self.credentials_path
+                    str(cred_path)
                 )
-                self.client = bigquery.Client(
-                    project=self.project_id, credentials=credentials
-                )
+                self.client = bigquery.Client(credentials=credentials, project=self.project_id)
             else:
                 self.client = bigquery.Client(project=self.project_id)
             
@@ -367,14 +386,11 @@ class BigQueryClient:
             try:
                 self.table_obj = self.client.get_table(table_ref)
             except Exception as table_err:
-                self.logger.warning("BigQuery 테이블 객체 조회 실패 (기본 문자열 레퍼런스로 대체): %s", table_err)
+                self.logger.warning("table_fetch_failed", service_name="BigQuery", fallback_ref=table_ref, error=str(table_err))
                 self.table_obj = table_ref
         except Exception as e:
             ErrorHandler.handle_network_error(e, f"BigQuery 연결 (Project: {self.project_id})")
-            msg = self.error_messages.get(
-                "bigquery_connection_failed", "BigQuery 연결에 실패했습니다: {error}"
-            ).format(error=str(e))
-            raise ConnectionError(msg) from e
+            raise ConnectionError(self.logger.error("connection_failed", service_name="BigQuery", error=str(e))) from e
 
     def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None):
         """
@@ -428,9 +444,10 @@ class BigQueryClient:
                         sub_err_list.append(f"[Loc={loc}] {msg_str}")
                 detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
                 self.logger.warning(
-                    "BigQuery load_table_from_json 배치 적재 실패 (최초 1회 발생하여 이후 요청부터는 insert_rows_json 스트리밍 전용 모드로 자동 전환됩니다): %s%s",
-                    clean_err,
-                    detailed_info,
+                    "permission_fallback_applied",
+                    service_name="BigQuery",
+                    action_name="load_table_from_json 배치 적재",
+                    fallback_mode="insert_rows_json 스트리밍 전용",
                 )
 
         # 2. 예외 발생 시 fallback: insert_rows_json (Streaming Insert) 시도
@@ -454,11 +471,7 @@ class BigQueryClient:
                 raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_err_msg}")
         except Exception as e:
             clean_insert_err = str(e).replace("\n", " ").replace("\r", " ")
-            msg = self.error_messages.get(
-                "bigquery_insert_failed",
-                "BigQuery 데이터 적재 실패: {table_id}, 에러: {error}",
-            ).format(table_id=self.table_id, error=clean_insert_err)
-            raise RuntimeError(msg) from e
+            raise RuntimeError(self.logger.error("insert_failed", service_name="BigQuery", target_name=self.table_id, error=clean_insert_err)) from e
 
     def get_existing_keys(self, field_name: str = "recvPath") -> set[str]:
         """
@@ -474,6 +487,5 @@ class BigQueryClient:
             results = query_job.result()
             return {str(row[field_name]) for row in results if row[field_name] is not None}
         except Exception as e:
-            self.logger.warning("BigQuery 기존 적재 키 조회 중 오류 발생 (초기 적재이거나 컬럼 미존재 가능): %s", e)
+            self.logger.warning("existing_keys_fetch_failed", service_name="BigQuery", error=str(e))
             return set()
-

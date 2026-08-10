@@ -79,6 +79,114 @@ pip install whls/agent_common-0.2.3-py3-none-any.whl
 
 ## 📋 버전 변경 이력 (Changelog)
 
+### v0.3.27 (2026-08-10)
+- **`logging_messages.yml` 내 `json_process_error` 템플릿 기본 패키지 내 탑재**:
+  - `agent_common/config/logging_messages.yml` 내 `json_process_error` 로그 포맷 템플릿(`"게시판 JSON 메타데이터 {stage} 실패: [JSON_Key={json_key}], 에러: {error}"`) 탑재로 템플릿 미인식 예외 방지
+
+### v0.3.26 (2026-08-10)
+- **`ConfigLoader` 로드 파일별 키 수집 트레이서(`_loaded_files_summary`) 및 `.yaml` 확장자 수집 지원 강화**:
+  - `config_dir` 디렉터리 내 실제로 파싱하여 읽어들인 파일별 경로명과 각 파일 내부 최상위 키(`loaded_files: [config.yml:['ecs', 'gcs', ...]]`)를 추적하여 로그에 직관적으로 명시
+  - `.yml` 뿐만 아니라 `.yaml` 확장자 파일까지 자동 수집 대상 포함
+
+### v0.3.25 (2026-08-10)
+- **`ConfigLoader` 클래스 메소드 몽키패칭 결함 제거 및 인스턴스 격리화 완료**:
+  - 기존 `ConfigLoader` 클래스 메소드가 모듈 로드 시점의 `_default_loader` 싱글톤으로 강제 몽키패칭되어 모듈 로드 초기 빈 캐시가 인스턴스 전체에 고정되던 결함 전면 수정
+  - 인스턴스 단위 독립 캐시(`_cached_settings`) 전환으로 동적 `config.yml` 읽기 및 설정값 파싱의 100% 신뢰성 확보
+
+### v0.3.24 (2026-08-10)
+- **`ConfigLoader._find_project_root` 탐색 엔진 3중 안전 강화 (심볼릭 링크 및 메인 스크립트 위치 자동 추적)**:
+  - 심볼릭 링크(`link`) 미해제 원본 경로 및 `resolve()` 해제 경로 이중 수집
+  - `sys.argv[0]`(실행 스크립트 예: `app/ecs_to_gcs.py`)의 상위 디렉터리(`app/..` = 프로젝트 루트) 우선 추적을 통해 어느 폴더 위치나 배포 환경에서도 `config/config.yml`을 100% 탐지하도록 보정
+
+### v0.3.23 (2026-08-10)
+- **`ConfigLoader` 및 클라이언트 오류 로그 내 전체 탐색 후보 경로 목록(`SEARCHED_CANDIDATES`) 직관적 출력 지원**:
+  - Fail-Fast 작동 및 설정값 누락 시 `ConfigLoader`가 디스크 상에서 추적하고 체크한 모든 후보 `config/config.yml` 경로 목록과 실제 파일 존재 여부(`[존재함]` / `[없음]`)를 단일 행 로그로 명확히 출력하도록 디버깅 직관성 획기적 강화
+
+### v0.3.22 (2026-08-10)
+- **`EcsClient`, `GcsClient`, `BigQueryClient` 내 `logger` 지연 프로퍼티(Lazy Property) 적용**:
+  - 클라이언트 객체 생성 초기화(`__init__`) 중 예외 발생 시 `AttributeError: 'GcsClient' object has no attribute 'logger'` 가 발생하는 방어적 결함 100% 원천 차단
+  - `@property logger` getter/setter 백킹 필드를 적용하여 초기화 시점과 관계없이 언제나 안전한 `ProjectLogger` 인스턴스 참조 보장
+
+### v0.3.21 (2026-08-10)
+- **`agent_common` 플랫 레이아웃(Flat Layout) 전환 및 `package-dir = {"agent_common" = "."}` 지정**:
+  - `src/` 중복 폴더 구조를 전면 제거하고 `agent_common/` 루트 폴더 기반 플랫 레이아웃으로 개편
+  - `agent_common/config/logging_messages.yml` 파일이 패키지 루트 디렉터리에 직접 위치하면서 `package-dir = {"agent_common" = "."}` 설정만으로 Wheel (`.whl`) 빌드 시 사전 데이터가 100% 깔끔하게 포함되도록 완전 단일화
+
+### v0.3.20 (2026-08-10)
+- **`logging_messages.yml` 패키지 데이터 번들링 및 Wheel 배포 누락 문제 근본 해결**:
+  - 기존 `agent_common/config/logging_messages.yml`이 `src/` 외부에 위치하여 Wheel (`.whl`) 빌드 시 패키지 배포 파일에서 누락되었던 문제 해결
+  - `agent_common/src/config/logging_messages.yml` 패키지 내부 배치 및 `pyproject.toml` 내 `package-data` 빌드 설정 지정을 통해 폐쇄망 환경 배포 시 템플릿 사전 파일이 100% 동봉되도록 개편
+
+### v0.3.19 (2026-08-10)
+- **`ProjectLogger.get_log_msg` SafeDict 적용 및 단순 딕셔너리 키 이름 출력 방지**:
+  - `logging_messages.yml` 미등록 코드 호출 시 단순 YAML 내부 키(`fail_fast_config_missing` 등)만 덩그러니 출력되던 현상을 정제된 기본 오류 안내 문구로 치환하도록 개선
+  - 포맷팅 인자(`kwargs`) 누락 시에도 `SafeDict`를 적용하여 `KeyError` 없이 안전 포맷팅 보장
+
+### v0.3.18 (2026-08-10)
+- **`ConfigLoader.require_setting` Fail-Fast 로그 내 절대 파일 경로 및 실체 존재 여부 추적 강화**:
+  - `require_setting` 실패 시 단순 파일명만 출력하는 대신 탐색한 실제 절대 경로 및 파일 존재 여부(`[파일 존재함]` / `[파일 없음]`)를 로그 및 `sys.stderr`에 명확히 기록하여 디버깅 직관성 향상
+
+### v0.3.17 (2026-08-10)
+- **`ConfigLoader.ROOT` 동적 루트 디렉터리 탐색(`_find_project_root`) 기능 구현**:
+  - 하위 폴더(예: `app/`, `scripts/`)에서 스크립트 실행 시 `os.getcwd()`를 그대로 사용하여 `config/` 디렉터리를 찾지 못하고 `fail_fast_config_missing` 오류가 발생하는 문제를 해결하기 위해, 상위 디렉터리를 자동 추적하여 `config/config.yml`이 위치한 메인 프로젝트 루트 경로를 감지하도록 보정
+
+### v0.3.16 (2026-08-10)
+- **`ConfigLoader.require_setting` 주요 키 설명 사전(`DEFAULT_KEY_DESCRIPTIONS`) 구축 및 자동 안내 기능 추가**:
+  - `require_setting(key)` 단일 인자 호출 시에도 누락된 설정의 한글 설명(`desc_info`)이 로그 및 CLI에 자동으로 결합 출력되도록 개선
+
+### v0.3.15 (2026-08-10)
+- **`ProjectLogger.get_log_msg` 템플릿 포맷팅 안전성 강화 및 Fail-Fast 키 상세 정보 유실 방지**:
+  - `kwargs` 내 포함된 중괄호(`{ }`)로 인한 `KeyError`/`ValueError` 시 템플릿 문자열이 미치환된 채 출력되는 원인 해결 (자동 중괄호 이스케이프 지원)
+  - 템플릿 포맷팅 예외 또는 미등록 코드 반환 시 `kwargs` 상세 파라미터(`path`, `desc_info`, `config_file` 등)가 유실되지 않도록 1줄 상세 정보 결합 보존 지원
+
+### v0.3.14 (2026-08-10)
+- **룰 평가 및 템플릿 처리 로깅 템플릿 사전(`logging_messages.yml`) 신설 및 표준 로깅 전면 적용**:
+  - `logging_messages.yml` 내 `rule` 섹션 (`rule_eval_success`, `rule_eval_failed`, `rule_not_found`) 신설
+  - `app/rule_evaluator.py` 내 하드코딩된 로그 출력을 `ProjectLogger` 템플릿 코드 호출 방식으로 전면 개편
+
+### v0.3.13 (2026-08-10)
+- **`ConfigLoader` 설정 디렉터리 접근자/설정자(`config_dir_get`, `config_dir_set`) 도입 및 `ProjectLogger` 설정 로더 바인딩 개편**:
+  - `ConfigLoader` 클래스에 `config_dir_get()` (Getter) 및 `config_dir_set(config_dir)` (Setter) 메소드와 `@property`(`config_dir`)를 추가하여 자바 스타일 객체지향 캡슐화 구현
+  - `ProjectLogger.__init__` 및 `configure()`에서 `ConfigLoader` 인스턴스를 매번 새로 생성하는 대신 기본 생성 후 `self.config_loader.config_dir_set(config_dir)` 메소드를 통해 설정 디렉터리를 세팅하도록 개선
+
+### v0.3.12 (2026-08-10)
+- **`ProjectLogger` 표준 로깅 메서드(`info`, `warning`, `error`, `critical`, `debug`, `exception`) 사전 템플릿 통합 개편**:
+  - 기존 `logger.log_msg("LEVEL", "code", **kwargs)` 방식의 번거로운 첫 번째 인자 지정 방식을 개편
+  - 파이썬 표준 로깅 메서드(`logger.info("code", **kwargs)`, `logger.error("code", **kwargs)` 등)가 사전 템플릿 코드 자동 조회 및 포맷팅된 메시지 반환(`str`)을 지원하도록 통합
+  - 예외 발생 시 `raise ConnectionError(logger.error("code", **kwargs))` 형태로 1줄 깔끔 로깅 + 예외 객체 생성이 가능하도록 개선
+
+### v0.3.11 (2026-08-09)
+- **`ProjectLogger` 정석 Adapter 패턴 및 2줄 분리 로깅 구조 전면 적용**:
+  - `ProjectLogger(name)` 클래스를 생성자 직접 호출 가능한 Logger Adapter 패턴으로 전면 리팩토링 및 `self.logger.log_msg(...)` 지원
+  - `ProjectLogger.get_logger(...)` 팩토리 호출 대신 직관적인 `ProjectLogger(...)` 생성자 직접 호출 구조로 전 프로젝트 표준화
+  - `logging_messages.yml` 내 `performance.elapsed_time` 템플릿 신설 및 **[1줄: 작업 수행 결과]**, **[2줄: 범용 작업 소요시간]** 2줄 분리 로깅 구조 적용
+
+### v0.3.10 (2026-08-09)
+- **`api_missing_result` $\rightarrow$ `api_missing_field` 동적 필드명 파라미터화**:
+  - 특정 필드명(`result`) 하드코딩 문구를 동적 `{field_name}` 파라미터형 범용 키(`api_missing_field`)로 전환하여 API별 응답 필드(예: `choices[0].message.content`, `content`, `data`) 파싱 오류를 유연하게 로깅
+
+### v0.3.9 (2026-08-09)
+- **`agent_common/src/llm.py` 표준 로깅 개편**:
+  - `LlmClient` 소스코드 내 하드코딩된 로깅/예외 문구를 `get_log_msg` 표준 사전 메시지(`api_call_started`, `api_disabled`, `api_key_missing`, `api_call_success`, `api_http_error`, `api_connection_error`, `api_missing_result`)로 전면 개편
+
+### v0.3.8 (2026-08-09)
+- **`ERROR: service:` 영역 레거시 키 정제 및 범용 HTTP/REST API 템플릿화**:
+  - 레거시 특정 명칭(`llm_`, `runner_`) 키들을 정제하여 범용 HTTP/REST API 서비스 키(`api_http_error`, `api_connection_error`, `api_unexpected_error`, `api_missing_result`)로 일원화
+
+### v0.3.7 (2026-08-09)
+- **`storage_meta_error` 에러 영역 이동 및 `get_log_msg` 레벨 전역 유연화**:
+  - `storage_meta_error` 템플릿을 본질에 맞춰 `WARNING` $\rightarrow$ `ERROR: storage:` 섹션으로 이동
+  - `get_log_msg` 탐색 로직을 전역 레벨 다중 검색 구조로 확장하여, 호출 측 도메인 상황에 맞게 `WARNING` 또는 `ERROR` 레벨로 자유롭게 호출 가능하도록 지원
+
+### v0.3.6 (2026-08-09)
+- **로깅 메시지 사전 중분류(Sub-category) 계층화 및 `get_log_msg` 탐색 자동화**:
+  - `logging_messages.yml` 사전 내 메시지들을 도메인 중분류(`lifecycle`, `storage`, `fallback`, `permission`, `config`, `service`, `system`) 그룹으로 구조화
+  - `get_log_msg` 헬퍼 함수 개편으로 기존 직속 레벨 키 탐색 실패 시 하위 중분류 카테고리 딕셔너리를 자동 재귀 검색하도록 지원
+
+### v0.3.5 (2026-08-09)
+- **로깅 템플릿 사전(`agent_common/config/logging_messages.yml`) 소스코드 호출 가이드 및 주석 강화**:
+  - 개발자가 타 서비스 개발 시 템플릿 키를 손쉽게 활용할 수 있도록 모듈 가이드 헤더 및 각 키별 Python `get_log_msg("LEVEL", "code", **kwargs)` 사용 예시 주석 추가
+
 ### v0.3.4 (2026-08-08)
 - **시스템 전역 범용 로그 메시지 템플릿 사전(`agent_common/config/logging_messages.yml`) 이관 및 확장**:
   - 특정 스토리지/도메인 명칭(ECS 등)이 하드코딩되지 않도록 파라미터형 범용 템플릿(`client_init_failed`, `program_started`, `program_finished`, `sync_started`, `sync_completed`, `folder_searching`, `no_target_files`, `targets_detected`, `fallback_applied`, `regex_compile_error`)으로 정제하여 공용 패키지로 이관 반영
