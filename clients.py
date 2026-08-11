@@ -426,7 +426,7 @@ class BigQueryClient:
             errors = self.client.insert_rows_json(
                 table_target,
                 rows_to_insert,
-                ignore_unknown_values=skip_unknown,
+:                ignore_unknown_values=skip_unknown,
                 timeout=insert_timeout,
             )
             if errors:
