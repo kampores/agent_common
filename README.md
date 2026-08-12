@@ -79,6 +79,14 @@ pip install whls/agent_common-0.2.3-py3-none-any.whl
 
 ## 📋 버전 변경 이력 (Changelog)
 
+### v0.3.30 (2026-08-12)
+- **BigQueryClient 적재 메서드 명시적 분리 (load_table_from_json_data / insert_rows_json_data)**:
+  - load_table_from_json 전용 적재 메서드(load_table_from_json_data)와 insert_rows_json 전용 적재 메서드(insert_rows_json_data)로 개별 분리하여 명확한 적재 방식 선택 지원.
+
+### v0.3.29 (2026-08-12)
+- **로그 멀티라인(Multi-line) 포매팅 전환 및 단일행 출력 제약 해제**:
+  - 현대적 로그 수집기의 다중 행 처리 지원에 맞춰 SingleLineFlattenFormatter에서 강제 단일행 평탄화(flattening)를 제거하고 Multi-line Traceback 및 로그 메시지 원형 보존 지원.
+
 ### v0.3.27 (2026-08-10)
 - **`logging_messages.yml` 내 `json_process_error` 템플릿 기본 패키지 내 탑재**:
   - `agent_common/config/logging_messages.yml` 내 `json_process_error` 로그 포맷 템플릿(`"게시판 JSON 메타데이터 {stage} 실패: [JSON_Key={json_key}], 에러: {error}"`) 탑재로 템플릿 미인식 예외 방지

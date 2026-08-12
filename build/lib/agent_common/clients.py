@@ -59,17 +59,6 @@ class EcsClient:
         self.client: Any = None
         self._connect()
 
-    @property
-    def logger(self) -> ProjectLogger:
-        """ProjectLogger 인스턴스 지연 초기화 프로퍼티 (AttributeError 100% 방지)"""
-        if getattr(self, "_logger", None) is None:
-            self._logger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
-        return self._logger
-
-    @logger.setter
-    def logger(self, val: ProjectLogger) -> None:
-        self._logger = val
-
     def _connect(self):
         """
         boto3 S3 클라이언트를 사용하여 Dell ECS 접속을 초기화하고 연결을 검증합니다.
@@ -207,21 +196,14 @@ class GcsClient:
         credentials_path: str,
         timeout_seconds: int | None = None,
     ):
-        # logger: _logger 백킹 필드 초기화
-        self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
-        self.config_loader: ConfigLoader = ConfigLoader()
-        
-        # [Fail-Fast] bucket_name 검증
-        if not bucket_name or not str(bucket_name).strip():
-            searched_str = ", ".join([f"'{p}' [{'존재함' if ex else '없음'}]" for p, ex in self.config_loader.SEARCHED_CANDIDATES])
-            err_msg = f"[FATAL][Fail-Fast] GCS 버킷명('gcs.bucket_name')이 설정 파일(config.yml)에 지정되지 않았거나 빈 값입니다. (탐색한 전체 후보 경로 목록: {searched_str})"
-            self.logger.critical(err_msg)
-            raise ValueError(err_msg)
-
         # bucket_name: 대상 GCS 버킷명
         self.bucket_name: str = str(bucket_name).strip()
         # credentials_path: GCP 서비스 계정 키 JSON 경로
         self.credentials_path: str = credentials_path if credentials_path is not None else ""
+        # logger: _logger 백킹 필드 초기화
+        self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
+        self.config_loader: ConfigLoader = ConfigLoader()
         # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
         resolved_timeout = (
             timeout_seconds
@@ -234,17 +216,6 @@ class GcsClient:
         # bucket: 연결 완료된 GCS Bucket 객체
         self.bucket: Any = None
         self._connect()
-
-    @property
-    def logger(self) -> ProjectLogger:
-        """ProjectLogger 인스턴스 지연 초기화 프로퍼티 (AttributeError 100% 방지)"""
-        if getattr(self, "_logger", None) is None:
-            self._logger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
-        return self._logger
-
-    @logger.setter
-    def logger(self, val: ProjectLogger) -> None:
-        self._logger = val
 
     def _connect(self):
         """
@@ -392,11 +363,13 @@ class BigQueryClient:
             ErrorHandler.handle_network_error(e, f"BigQuery 연결 (Project: {self.project_id})")
             raise ConnectionError(self.logger.error("connection_failed", service_name="BigQuery", error=str(e))) from e
 
-    def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None):
+    def load_table_from_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
         """
-        JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
-        1차적으로 load_table_from_json(배치 로드 Job)을 시도하며, 실패 시 fallback으로 insert_rows_json(스트리밍 로드)을 수행합니다.
-        한 번 배치 로드가 실패하면 이후 호출부터는 insert_rows_json 전용 모드로 전환됩니다.
+        self.client.load_table_from_json(배치 로드 Job)만을 사용하여 JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
+
+        :param json_data: 적재할 단일 dict 또는 dict 리스트
+        :param timeout: 작업 제한 시간(초)
+        :param ignore_unknown_values: 미정의 필드 무시 여부
         """
         insert_timeout = timeout if timeout is not None else self.timeout_seconds
         skip_unknown = (
@@ -414,43 +387,57 @@ class BigQueryClient:
         else:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
-        # 1. load_table_from_json (Batch Load Job) 우선 시도 (스트리밍 전용 모드가 아닐 때만)
-        if not self._use_streaming_only:
-            try:
-                job_config = bigquery.LoadJobConfig(
-                    source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-                    write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
-                    ignore_unknown_values=skip_unknown,
-                )
-                if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):
-                    job_config.schema = self.table_obj.schema
+        try:
+            job_config = bigquery.LoadJobConfig(
+                source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+                write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+                ignore_unknown_values=skip_unknown,
+            )
+            if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):
+                job_config.schema = self.table_obj.schema
 
-                load_job = self.client.load_table_from_json(
-                    rows_to_insert,
-                    table_target,
-                    job_config=job_config,
-                    timeout=insert_timeout,
-                )
-                load_job.result(timeout=insert_timeout)
-                return
-            except Exception as load_err:
-                self._use_streaming_only = True
-                clean_err = str(load_err).replace("\n", " ").replace("\r", " ")
-                sub_err_list = []
-                if hasattr(load_err, "errors") and getattr(load_err, "errors"):
-                    for s_err in getattr(load_err, "errors"):
-                        loc = s_err.get("location", "unknown_field") if isinstance(s_err, dict) else "unknown"
-                        msg_str = s_err.get("message", str(s_err)) if isinstance(s_err, dict) else str(s_err)
-                        sub_err_list.append(f"[Loc={loc}] {msg_str}")
-                detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
-                self.logger.warning(
-                    "permission_fallback_applied",
-                    service_name="BigQuery",
-                    action_name="load_table_from_json 배치 적재",
-                    fallback_mode="insert_rows_json 스트리밍 전용",
-                )
+            load_job = self.client.load_table_from_json(
+                rows_to_insert,
+                table_target,
+                job_config=job_config,
+                timeout=insert_timeout,
+            )
+            load_job.result(timeout=insert_timeout)
+        except Exception as load_err:
+            sub_err_list = []
+            if hasattr(load_err, "errors") and getattr(load_err, "errors"):
+                for s_err in getattr(load_err, "errors"):
+                    loc = s_err.get("location", "unknown_field") if isinstance(s_err, dict) else "unknown"
+                    msg_str = s_err.get("message", str(s_err)) if isinstance(s_err, dict) else str(s_err)
+                    sub_err_list.append(f"[Loc={loc}] {msg_str}")
+            detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
+            clean_err = str(load_err) + detailed_info
+            raise RuntimeError(self.logger.error("load_table_from_json_failed", service_name="BigQuery", target_name=self.table_id, error=clean_err)) from load_err
 
-        # 2. 예외 발생 시 fallback: insert_rows_json (Streaming Insert) 시도
+    def insert_rows_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
+        """
+        self.client.insert_rows_json(스트리밍 적재 API)만을 사용하여 JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
+
+        :param json_data: 적재할 단일 dict 또는 dict 리스트
+        :param timeout: 작업 제한 시간(초)
+        :param ignore_unknown_values: 미정의 필드 무시 여부
+        """
+        insert_timeout = timeout if timeout is not None else self.timeout_seconds
+        skip_unknown = (
+            ignore_unknown_values
+            if ignore_unknown_values is not None
+            else self.ignore_unknown_values
+        )
+        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        table_target = self.table_obj if getattr(self, "table_obj", None) else table_ref
+
+        if isinstance(json_data, dict):
+            rows_to_insert = [json_data]
+        elif isinstance(json_data, list):
+            rows_to_insert = json_data
+        else:
+            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
+
         try:
             errors = self.client.insert_rows_json(
                 table_target,
@@ -470,8 +457,15 @@ class BigQueryClient:
                 combined_err_msg = " | ".join(err_details) if err_details else str(errors)
                 raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_err_msg}")
         except Exception as e:
-            clean_insert_err = str(e).replace("\n", " ").replace("\r", " ")
+            clean_insert_err = str(e)
             raise RuntimeError(self.logger.error("insert_failed", service_name="BigQuery", target_name=self.table_id, error=clean_insert_err)) from e
+
+    def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
+        """
+        JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
+        기본적으로 self.client.load_table_from_json(배치 로드) 방식을 호출합니다.
+        """
+        return self.load_table_from_json_data(json_data, timeout=timeout, ignore_unknown_values=ignore_unknown_values)
 
     def get_existing_keys(self, field_name: str = "recvPath") -> set[str]:
         """

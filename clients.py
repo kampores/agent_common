@@ -363,11 +363,13 @@ class BigQueryClient:
             ErrorHandler.handle_network_error(e, f"BigQuery 연결 (Project: {self.project_id})")
             raise ConnectionError(self.logger.error("connection_failed", service_name="BigQuery", error=str(e))) from e
 
-    def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None):
+    def load_table_from_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
         """
-        JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
-        1차적으로 load_table_from_json(배치 로드 Job)을 시도하며, 실패 시 fallback으로 insert_rows_json(스트리밍 로드)을 수행합니다.
-        한 번 배치 로드가 실패하면 이후 호출부터는 insert_rows_json 전용 모드로 전환됩니다.
+        self.client.load_table_from_json(배치 로드 Job)만을 사용하여 JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
+
+        :param json_data: 적재할 단일 dict 또는 dict 리스트
+        :param timeout: 작업 제한 시간(초)
+        :param ignore_unknown_values: 미정의 필드 무시 여부
         """
         insert_timeout = timeout if timeout is not None else self.timeout_seconds
         skip_unknown = (
@@ -385,48 +387,62 @@ class BigQueryClient:
         else:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
-        # 1. load_table_from_json (Batch Load Job) 우선 시도 (스트리밍 전용 모드가 아닐 때만)
-        if not self._use_streaming_only:
-            try:
-                job_config = bigquery.LoadJobConfig(
-                    source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-                    write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
-                    ignore_unknown_values=skip_unknown,
-                )
-                if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):
-                    job_config.schema = self.table_obj.schema
+        try:
+            job_config = bigquery.LoadJobConfig(
+                source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+                write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+                ignore_unknown_values=skip_unknown,
+            )
+            if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):
+                job_config.schema = self.table_obj.schema
 
-                load_job = self.client.load_table_from_json(
-                    rows_to_insert,
-                    table_target,
-                    job_config=job_config,
-                    timeout=insert_timeout,
-                )
-                load_job.result(timeout=insert_timeout)
-                return
-            except Exception as load_err:
-                self._use_streaming_only = True
-                clean_err = str(load_err).replace("\n", " ").replace("\r", " ")
-                sub_err_list = []
-                if hasattr(load_err, "errors") and getattr(load_err, "errors"):
-                    for s_err in getattr(load_err, "errors"):
-                        loc = s_err.get("location", "unknown_field") if isinstance(s_err, dict) else "unknown"
-                        msg_str = s_err.get("message", str(s_err)) if isinstance(s_err, dict) else str(s_err)
-                        sub_err_list.append(f"[Loc={loc}] {msg_str}")
-                detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
-                self.logger.warning(
-                    "permission_fallback_applied",
-                    service_name="BigQuery",
-                    action_name="load_table_from_json 배치 적재",
-                    fallback_mode="insert_rows_json 스트리밍 전용",
-                )
+            load_job = self.client.load_table_from_json(
+                rows_to_insert,
+                table_target,
+                job_config=job_config,
+                timeout=insert_timeout,
+            )
+            load_job.result(timeout=insert_timeout)
+        except Exception as load_err:
+            sub_err_list = []
+            if hasattr(load_err, "errors") and getattr(load_err, "errors"):
+                for s_err in getattr(load_err, "errors"):
+                    loc = s_err.get("location", "unknown_field") if isinstance(s_err, dict) else "unknown"
+                    msg_str = s_err.get("message", str(s_err)) if isinstance(s_err, dict) else str(s_err)
+                    sub_err_list.append(f"[Loc={loc}] {msg_str}")
+            detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
+            clean_err = str(load_err) + detailed_info
+            raise RuntimeError(self.logger.error("load_table_from_json_failed", service_name="BigQuery", target_name=self.table_id, error=clean_err)) from load_err
 
-        # 2. 예외 발생 시 fallback: insert_rows_json (Streaming Insert) 시도
+    def insert_rows_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
+        """
+        self.client.insert_rows_json(스트리밍 적재 API)만을 사용하여 JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
+
+        :param json_data: 적재할 단일 dict 또는 dict 리스트
+        :param timeout: 작업 제한 시간(초)
+        :param ignore_unknown_values: 미정의 필드 무시 여부
+        """
+        insert_timeout = timeout if timeout is not None else self.timeout_seconds
+        skip_unknown = (
+            ignore_unknown_values
+            if ignore_unknown_values is not None
+            else self.ignore_unknown_values
+        )
+        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        table_target = self.table_obj if getattr(self, "table_obj", None) else table_ref
+
+        if isinstance(json_data, dict):
+            rows_to_insert = [json_data]
+        elif isinstance(json_data, list):
+            rows_to_insert = json_data
+        else:
+            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
+
         try:
             errors = self.client.insert_rows_json(
                 table_target,
                 rows_to_insert,
-:                ignore_unknown_values=skip_unknown,
+                ignore_unknown_values=skip_unknown,
                 timeout=insert_timeout,
             )
             if errors:
@@ -441,8 +457,15 @@ class BigQueryClient:
                 combined_err_msg = " | ".join(err_details) if err_details else str(errors)
                 raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_err_msg}")
         except Exception as e:
-            clean_insert_err = str(e).replace("\n", " ").replace("\r", " ")
+            clean_insert_err = str(e)
             raise RuntimeError(self.logger.error("insert_failed", service_name="BigQuery", target_name=self.table_id, error=clean_insert_err)) from e
+
+    def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
+        """
+        JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
+        기본적으로 self.client.load_table_from_json(배치 로드) 방식을 호출합니다.
+        """
+        return self.load_table_from_json_data(json_data, timeout=timeout, ignore_unknown_values=ignore_unknown_values)
 
     def get_existing_keys(self, field_name: str = "recvPath") -> set[str]:
         """

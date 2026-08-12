@@ -176,8 +176,7 @@ class ConfigLoader:
         self, 
         path: str, 
         message: str = "", 
-        config_file: str = "config.yml",
-        **kwargs: Any
+        config_file: str = "config.yml"
     ) -> Any:
         """
         [Fail-Fast 정책 준수]
@@ -199,8 +198,7 @@ class ConfigLoader:
 
         if current is None or (isinstance(current, str) and not current.strip()):
             desc_info = f" ({message})" if message else ""
-            cfg_arg = kwargs.get("config_files") or config_file
-            cfg_name = cfg_arg.strip() if (cfg_arg and isinstance(cfg_arg, str)) else "config.yml"
+            cfg_name = config_file.strip() if (config_file and isinstance(config_file, str)) else "config.yml"
             
             # 탐색 대상 설정 파일의 절대 경로 및 실체 존재 여부를 명확히 추적
             if Path(cfg_name).is_absolute():

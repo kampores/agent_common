@@ -33,6 +33,8 @@ logging_messages:
       # 예시: logger.info(get_log_msg("INFO", "sync_completed", sync_type="BigQuery", success_count=100, failure_count=0, total_files=100))
       sync_completed: "{sync_type} 동기화 작업 종료: 성공(또는 건너뜀) {success_count}개, 실패 {failure_count}개 / 총 {total_files}개"
 
+      transfer_limit_applied: "GCS 복사 제한 개수(Limit)가 적용되었습니다: [최대 제한 수={max_limit}개 / 추출된 전체 수={total_extracted}개]"
+
       # 예시: logger.info(get_log_msg("INFO", "run_started", lodin_dstlc_cd="01", target_date="20260804", target_folder="kbdrive"))
       run_started: "전송 작업 시작: 구분코드={lodin_dstlc_cd}, 대상일자={target_date}, 대상폴더={target_folder}"
 
