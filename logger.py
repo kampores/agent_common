@@ -117,11 +117,25 @@ class ProjectLogger:
         handlers: list[logging.Handler] = [console_handler]
 
         log_file = loader.setting("logging.file", default_log_file)
-        if log_file:
+        out_file = loader.setting("logging.out_file")
+        debug_file = loader.setting("logging.debug_file")
+
+        # 설정된 logging.level 기반 파일 저장 경로 결정
+        # logging.level이 ERROR 이상(ERROR, CRITICAL)인 경우 out_file 경로 사용
+        # logging.level이 WARNING 이하(DEBUG, INFO, WARNING)인 경우 debug_file 경로 사용
+        target_log_file: str | None = None
+        if level >= logging.ERROR and out_file:
+            target_log_file = out_file
+        elif level <= logging.WARNING and debug_file:
+            target_log_file = debug_file
+        elif log_file:
+            target_log_file = log_file
+
+        if target_log_file:
             from datetime import datetime
 
             today = datetime.now()
-            dynamic_log_path = Path(today.strftime(str(log_file)))
+            dynamic_log_path = Path(today.strftime(str(target_log_file)))
             log_path = loader.project_path(dynamic_log_path)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.FileHandler(log_path, encoding="utf-8")

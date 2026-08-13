@@ -79,6 +79,12 @@ pip install whls/agent_common-0.2.3-py3-none-any.whl
 
 ## 📋 버전 변경 이력 (Changelog)
 
+### v0.3.33 (2026-08-13)
+- **`ProjectLogger.configure` 로그 레벨 조건별 저장 경로 (`out_file` / `debug_file`) 및 년/월/일 폴더 분리 로직 반영**:
+  - `logging.level` 설정이 `ERROR` 이상일 경우 `out_file` (`logs/link/out/%Y/%m/%d/out.log`) 경로에 저장.
+  - `logging.level` 설정이 `WARNING` 이하일 경우 `debug_file` (`logs/link/debug/%Y/%m/%d/debug.log`) 경로에 저장.
+  - `today.strftime(...)`을 이용해 년/월/일(`%Y/%m/%d`) 디렉터리가 동적으로 자동 생성되도록 구현.
+
 ### v0.3.32 (2026-08-12)
 - **`logging_messages.yml` 내 `load_table_from_json_failed` 예시 주석 추가**:
   - `ERROR.db.load_table_from_json_failed` 템플릿 항목 상단에 사용법 예시 코드 주석 추가.
