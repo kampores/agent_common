@@ -45,7 +45,7 @@ class EcsClient:
         # bucket_name: 조회의 대상이 되는 ECS 버킷명
         self.bucket_name: str = bucket_name
         # logger: _logger 백킹 필드 초기화
-        self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        self.logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
         self.config_loader: ConfigLoader = ConfigLoader()
         # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
