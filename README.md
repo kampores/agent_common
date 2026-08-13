@@ -79,6 +79,15 @@ pip install whls/agent_common-0.2.3-py3-none-any.whl
 
 ## 📋 버전 변경 이력 (Changelog)
 
+### v0.3.32 (2026-08-12)
+- **`logging_messages.yml` 내 `load_table_from_json_failed` 예시 주석 추가**:
+  - `ERROR.db.load_table_from_json_failed` 템플릿 항목 상단에 사용법 예시 코드 주석 추가.
+
+### v0.3.31 (2026-08-12)
+- **BigQueryClient.load_table_from_json_data 예외 발생 시 상세 Traceback 로깅 추가**:
+  - `load_table_from_json_data`의 `except Exception` 블록에 `self.logger.exception` 호출을 추가하여 배치 적재 실패 시 try: 블록 내부의 상세 예외 및 Traceback 정보가 로그에 출력되도록 개선.
+  - `logging_messages.yml` 내 `load_table_from_json_failed` 메시지 템플릿 추가.
+
 ### v0.3.30 (2026-08-12)
 - **BigQueryClient 적재 메서드 명시적 분리 (load_table_from_json_data / insert_rows_json_data)**:
   - load_table_from_json 전용 적재 메서드(load_table_from_json_data)와 insert_rows_json 전용 적재 메서드(insert_rows_json_data)로 개별 분리하여 명확한 적재 방식 선택 지원.

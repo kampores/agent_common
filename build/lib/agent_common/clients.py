@@ -412,7 +412,20 @@ class BigQueryClient:
                     sub_err_list.append(f"[Loc={loc}] {msg_str}")
             detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
             clean_err = str(load_err) + detailed_info
-            raise RuntimeError(self.logger.error("load_table_from_json_failed", service_name="BigQuery", target_name=self.table_id, error=clean_err)) from load_err
+            self.logger.exception(
+                "load_table_from_json_failed",
+                service_name="BigQuery",
+                target_name=self.table_id,
+                error=clean_err,
+            )
+            raise RuntimeError(
+                self.logger.error(
+                    "load_table_from_json_failed",
+                    service_name="BigQuery",
+                    target_name=self.table_id,
+                    error=clean_err,
+                )
+            ) from load_err
 
     def insert_rows_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
         """

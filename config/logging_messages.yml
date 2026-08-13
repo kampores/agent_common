@@ -131,6 +131,9 @@ logging_messages:
       # 예시: logger.error(get_log_msg("ERROR", "insert_failed", service_name="Oracle", target_name="TB_SAMPLE", error="Invalid schema"))
       insert_failed: "{service_name} 데이터 적재 실패: {target_name}, 에러: {error}"
 
+      # 예시: logger.exception("load_table_from_json_failed", service_name="BigQuery", target_name="TB_SAMPLE", error="Invalid schema")
+      load_table_from_json_failed: "{service_name} JSON 테이블 적재 실패: {target_name}, 에러: {error}"
+
     # --- [스토리지 연결, 메타데이터 및 파일 전송 오류] ---
     storage:
       # 예시: logger.error(get_log_msg("ERROR", "connection_failed", service_name="Dell ECS", error="Connection timed out"))
