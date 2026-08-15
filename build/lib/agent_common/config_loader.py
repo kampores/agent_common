@@ -21,6 +21,81 @@ if TYPE_CHECKING:
 import yaml
 
 
+class ReadOnlyConfig:
+    """YAML 설정 딕셔너리를 감싸서 점 표기법(Dot-notation, 속성 접근) 및 불변성(Read-Only)을 제공하는 설정 래퍼 클래스입니다.
+
+    도메인 의미: config.ecs.endpoint_url, config.transfer.max_workers 형태로
+    설정값을 직관적으로 조회할 수 있으며, 런타임에 설정값이 임의로 변조되는 것을 방지합니다.
+    """
+
+    def __init__(self, data: dict[str, Any] | Any) -> None:
+        """딕셔너리 데이터를 기반으로 ReadOnlyConfig 인스턴스를 초기화합니다."""
+        object.__setattr__(self, "_data", data if isinstance(data, dict) else {})
+
+    def __getattr__(self, key: str) -> Any:
+        """점 표기법(속성)으로 설정값을 조회하며 하위 딕셔너리는 ReadOnlyConfig로 자동 래핑합니다."""
+        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        if key not in data:
+            raise AttributeError(f"config.yml에 정의되지 않은 설정 항목입니다: '{key}'")
+        val = data[key]
+        if isinstance(val, dict):
+            return ReadOnlyConfig(val)
+        if isinstance(val, list):
+            return [ReadOnlyConfig(item) if isinstance(item, dict) else item for item in val]
+        return val
+
+    def __getitem__(self, key: str) -> Any:
+        """딕셔너리 키 인덱싱 표기법(config['ecs'])으로 조회합니다."""
+        return self.__getattr__(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """키에 해당하는 설정값을 반환하며, 미존재 시 default 값을 반환합니다."""
+        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        if key not in data:
+            return default
+        val = data[key]
+        if isinstance(val, dict):
+            return ReadOnlyConfig(val)
+        if isinstance(val, list):
+            return [ReadOnlyConfig(item) if isinstance(item, dict) else item for item in val]
+        return val
+
+    def __contains__(self, key: str) -> bool:
+        """설정 키 존재 여부(in 연산자)를 확인합니다."""
+        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        return key in data
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        """설정값 임의 수정을 차단합니다 (불변성 유지)."""
+        raise TypeError("config 설정값은 런타임에 수정할 수 없습니다 (Read-Only).")
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """설정값 임의 수정을 차단합니다 (불변성 유지)."""
+        raise TypeError("config 설정값은 런타임에 수정할 수 없습니다 (Read-Only).")
+
+    def __delattr__(self, key: str) -> None:
+        """설정값 임의 삭제를 차단합니다 (불변성 유지)."""
+        raise TypeError("config 설정값은 런타임에 삭제할 수 없습니다 (Read-Only).")
+
+    def __delitem__(self, key: str) -> None:
+        """설정값 임의 삭제를 차단합니다 (불변성 유지)."""
+        raise TypeError("config 설정값은 런타임에 삭제할 수 없습니다 (Read-Only).")
+
+    def to_dict(self) -> dict[str, Any]:
+        """내부 원본 딕셔너리를 반환합니다."""
+        return object.__getattribute__(self, "_data")
+
+    def __repr__(self) -> str:
+        """객체 문자열 표현을 반환합니다."""
+        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        return f"ReadOnlyConfig({data!r})"
+
+    def __str__(self) -> str:
+        """객체 문자열 표현을 반환합니다."""
+        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        return str(data)
+
+
 class ConfigLoader:
     """설정 파일(.yml)을 로컬 및 원격 통합 경로에서 동적으로 읽어들이고 병합하는 설정 로더 클래스입니다.
 
@@ -253,6 +328,12 @@ class ConfigLoader:
             else:
                 target[key] = value
 
+    @property
+    def config(self) -> ReadOnlyConfig:
+        """현재 병합된 전체 설정을 읽기 전용 점 표기법(Dot-notation) 객체로 반환합니다 (Getter)."""
+        return ReadOnlyConfig(self.get_settings())
+
+
 
 # 전역 기본 싱글톤 인스턴스 생성
 _default_loader = ConfigLoader()
@@ -268,3 +349,7 @@ require_setting = _default_loader.require_setting
 project_path = _default_loader.project_path
 config_dir_get = _default_loader.config_dir_get
 config_dir_set = _default_loader.config_dir_set
+
+# 전역에서 바로 import 하여 점 표기법(config.ecs.endpoint_url)으로 쓸 수 있는 읽기 전용 설정 객체
+config: ReadOnlyConfig = _default_loader.config
+

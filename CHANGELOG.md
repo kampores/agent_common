@@ -1,5 +1,23 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.36 (2026-08-15)
+- **점 표기법(Dot-notation) 기반 읽기 전용 설정 객체 `ReadOnlyConfig` 및 `config` 싱글톤 제공**:
+  - `ReadOnlyConfig` 클래스를 추가하여 `config.ecs.endpoint_url`, `config.transfer.max_workers` 형태로 YAML 설정 계층에 직접 속성(Attribute)으로 접근할 수 있도록 지원.
+  - 런타임에 설정값이 임의로 변경되지 않도록 불변(Read-Only) 방어 로직 (`__setattr__`, `__setitem__` 예외 발생) 적용.
+  - `agent_common` 및 `agent_common.config_loader`에서 전역 `config` 객체를 직접 임포트하여 클래스 `__init__`의 불필요한 멤버 변수 바인딩 없이 코드 어디서든 즉시 사용할 수 있도록 개선.
+
+
+### v0.3.35 (2026-08-15)
+- **`BigQueryClient.load_table_from_json_data` 내 `write_disposition` 파라미터 지원 추가**:
+  - `write_disposition` 매개변수를 추가하여 BigQuery 배치 적재 시 `WRITE_TRUNCATE` (전체 덮어쓰기) 또는 `WRITE_APPEND` (추가 적재) 옵션을 동적으로 적용할 수 있도록 확장.
+
+### v0.3.34 (2026-08-14)
+- **`ProjectLogger.configure` 동적 `{app_name}` 치환 및 ISO 8601 `T` 구분자 년월일시분초(`%Y%m%dT%H%M%S`) 포맷 지원**:
+  - `ProjectLogger.configure`에 `app_name` 매개변수를 추가하고 지정되지 않은 경우 `sys.argv[0]`의 파이썬 스크립트명(stem, 예: `ecs_to_gcs`, `ecs_to_bigquery`)을 기본 프로그램명으로 자동 사용하도록 구현.
+  - 로그 파일명 포맷의 `{app_name}` 템플릿 치환 지원.
+  - `config.yml` 내 `out_file` 및 `debug_file` 경로 설정의 날짜/시간 포맷을 ISO 8601 `T` 구분자 기반 년월일시분초(`%Y%m%dT%H%M%S`)로 변경하여 단어 공백과의 경계 명확화 및 가독성 향상.
+
+
 ### v0.3.33 (2026-08-13)
 - **`ProjectLogger.configure` 로그 레벨 조건별 저장 경로 (`out_file` / `debug_file`) 및 년/월/일 폴더 분리 로직 반영**:
   - `logging.level` 설정이 `ERROR` 이상일 경우 `out_file` (`logs/link/out/%Y/%m/%d/out.log`) 경로에 저장.

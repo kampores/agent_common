@@ -45,7 +45,7 @@ class EcsClient:
         # bucket_name: 조회의 대상이 되는 ECS 버킷명
         self.bucket_name: str = bucket_name
         # logger: _logger 백킹 필드 초기화
-        self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        self.logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
         self.config_loader: ConfigLoader = ConfigLoader()
         # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
@@ -363,13 +363,14 @@ class BigQueryClient:
             ErrorHandler.handle_network_error(e, f"BigQuery 연결 (Project: {self.project_id})")
             raise ConnectionError(self.logger.error("connection_failed", service_name="BigQuery", error=str(e))) from e
 
-    def load_table_from_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
+    def load_table_from_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None, write_disposition: str | None = None) -> None:
         """
         self.client.load_table_from_json(배치 로드 Job)만을 사용하여 JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
 
         :param json_data: 적재할 단일 dict 또는 dict 리스트
         :param timeout: 작업 제한 시간(초)
         :param ignore_unknown_values: 미정의 필드 무시 여부
+        :param write_disposition: BigQuery 쓰기 옵션 ('WRITE_TRUNCATE', 'WRITE_APPEND', 'WRITE_EMPTY' 등)
         """
         insert_timeout = timeout if timeout is not None else self.timeout_seconds
         skip_unknown = (
@@ -388,9 +389,10 @@ class BigQueryClient:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
         try:
+            write_disp = write_disposition if write_disposition else bigquery.WriteDisposition.WRITE_APPEND
             job_config = bigquery.LoadJobConfig(
                 source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-                write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+                write_disposition=write_disp,
                 ignore_unknown_values=skip_unknown,
             )
             if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):

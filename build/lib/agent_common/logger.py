@@ -96,9 +96,14 @@ class ProjectLogger:
         cls,
         config_dir: str | Path | None = None,
         default_log_file: str = "logs/app.log",
+        app_name: str | None = None,
     ) -> None:
         """설정 파일(logging.yml 등)을 기반으로 전체 로깅 환경을 일괄 초기화합니다."""
+        import sys
         from agent_common.config_loader import ConfigLoader
+
+        if not app_name:
+            app_name = Path(sys.argv[0]).stem if sys.argv and sys.argv[0] else "app"
 
         loader = ConfigLoader(config_dir=config_dir)
         log_level_str = loader.setting("logging.level", "INFO")
@@ -135,7 +140,10 @@ class ProjectLogger:
             from datetime import datetime
 
             today = datetime.now()
-            dynamic_log_path = Path(today.strftime(str(target_log_file)))
+            target_log_str = str(target_log_file)
+            if "{app_name}" in target_log_str:
+                target_log_str = target_log_str.format(app_name=app_name)
+            dynamic_log_path = Path(today.strftime(target_log_str))
             log_path = loader.project_path(dynamic_log_path)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.FileHandler(log_path, encoding="utf-8")
