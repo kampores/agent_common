@@ -10,8 +10,10 @@ Dell ECS(S3), Google Cloud Storage(GCS), Google Cloud BigQuery(BQ) 등
 
 from __future__ import annotations
 
+import time
+import json
 from pathlib import Path
-from typing import Any, Dict, Generator
+from typing import Any, Dict, Generator, List, Optional
 
 import boto3
 from botocore.client import Config as BotoConfig
@@ -498,3 +500,178 @@ class BigQueryClient:
         except Exception as e:
             self.logger.warning("existing_keys_fetch_failed", service_name="BigQuery", error=str(e))
             return set()
+
+    def merge_table_from_json_data(
+        self,
+        json_data: Any,
+        pk_key: str = "asstId",
+        preserve_columns: Optional[List[str]] = None,
+        chunk_size: int = 500,
+        timeout: int | None = None,
+    ) -> None:
+        """
+        임시 테이블 생성 권한 없이 UNNEST(JSON_QUERY_ARRAY(@json_payload)) 쿼리 파라미터를 사용하여
+        BigQuery 타겟 테이블에 인라인 MERGE INTO(Upsert)를 수행합니다.
+
+        기존에 존재하는 행(PK 기준)은 UPDATE(preserve_columns 제외)하고, 존재하지 않는 행은 INSERT합니다.
+
+        :param json_data: 병합 적재할 단일 dict 또는 dict 리스트
+        :param pk_key: 테이블 병합 매칭 기준이 되는 기본키(Primary Key) 컬럼명 (기본값: 'asstId')
+        :param preserve_columns: UPDATE 시 덮어쓰지 않고 최초 값을 보존할 컬럼명 리스트 (예: 최초 생성일시 등)
+        :param chunk_size: 쿼리 파라미터 크기 제한을 고려한 청크 분할 단위 (기본값: 500)
+        :param timeout: 쿼리 실행 타임아웃 제한 시간(초)
+        :raises RuntimeError: MERGE 쿼리 실행 실패 시 발생
+        """
+        if not json_data:
+            return
+
+        if isinstance(json_data, dict):
+            rows = [json_data]
+        elif isinstance(json_data, list):
+            rows = json_data
+        else:
+            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
+
+        if not rows:
+            return
+
+        merge_timeout = timeout if timeout is not None else self.timeout_seconds
+        target_table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        preserve_cols = set(preserve_columns or ["bqCretnHMS", "orignDocCretnHMS"])
+        preserve_cols.add(pk_key)
+
+        sample_row = rows[0]
+        cols = list(sample_row.keys())
+
+        # 1. UPDATE 대상 컬럼 구성
+        update_cols = [c for c in cols if c not in preserve_cols]
+        update_set_clause = ",\n        ".join([f"T.{c} = S.{c}" for c in update_cols])
+
+        # 2. INSERT 대상 컬럼 및 값 매핑
+        insert_cols_str = ", ".join(cols)
+        insert_vals_str = ", ".join([f"S.{c}" for c in cols])
+
+        # 3. UNNEST SELECT 절 캐스팅 생성
+        select_expressions = []
+        for col in cols:
+            if col in ("bqCretnHMS", "bqAmndHMS", "orignDocCretnHMS", "orignDocAmndHMS"):
+                expr = f"TIMESTAMP(JSON_VALUE(item, '$.{col}')) AS {col}"
+            elif col in ("orignDocSizeVal", "size", "bytes"):
+                expr = f"SAFE_CAST(JSON_VALUE(item, '$.{col}') AS INT64) AS {col}"
+            elif col in ("orignExpanMeta", "meta", "metadata", "extra"):
+                expr = f"PARSE_JSON(JSON_QUERY(item, '$.{col}')) AS {col}"
+            else:
+                expr = f"STRING(JSON_VALUE(item, '$.{col}')) AS {col}"
+            select_expressions.append(expr)
+        unnest_select_clause = ",\n      ".join(select_expressions)
+
+        # 4. 삭제 상태(09) 데이터는 신규 INSERT를 방어하는 조건절 구성
+        not_matched_condition = "AND (S.asstStusCd != '09' OR S.asstStusCd IS NULL)" if "asstStusCd" in cols else ""
+
+        merge_sql_template = f"""
+MERGE `{target_table_ref}` T
+USING (
+    SELECT
+      {unnest_select_clause}
+    FROM UNNEST(JSON_QUERY_ARRAY(@json_payload)) AS item
+) S
+ON T.{pk_key} = S.{pk_key}
+WHEN MATCHED THEN
+  UPDATE SET
+    {update_set_clause}
+WHEN NOT MATCHED {not_matched_condition} THEN
+  INSERT ({insert_cols_str})
+  VALUES ({insert_vals_str})
+"""
+
+        total_rows = len(rows)
+        total_chunks = (total_rows + chunk_size - 1) // chunk_size
+
+        self.logger.info(
+            "bq_inline_merge_started",
+            target_table=target_table_ref,
+            total_rows=total_rows,
+            chunk_size=chunk_size,
+            total_chunks=total_chunks,
+            pk_key=pk_key,
+        )
+
+        try:
+            for chunk_idx in range(total_chunks):
+                start_i = chunk_idx * chunk_size
+                end_i = min(start_i + chunk_size, total_rows)
+                chunk_rows = rows[start_i:end_i]
+
+                json_payload_str = json.dumps(chunk_rows, ensure_ascii=False, default=str)
+                job_config = bigquery.QueryJobConfig(
+                    query_parameters=[
+                        bigquery.ScalarQueryParameter("json_payload", "STRING", json_payload_str)
+                    ]
+                )
+
+                chunk_start = time.time()
+                query_job = self.client.query(
+                    merge_sql_template,
+                    job_config=job_config,
+                    timeout=merge_timeout
+                )
+                query_job.result(timeout=merge_timeout)
+                chunk_elapsed = time.time() - chunk_start
+
+                self.logger.info(
+                    "bq_inline_merge_chunk_completed",
+                    chunk_index=f"{chunk_idx + 1}/{total_chunks}",
+                    processed_rows=len(chunk_rows),
+                    elapsed_time=f"{chunk_elapsed:.2f}s",
+                )
+
+            # 5. 원문이 삭제(asstStusCd == '09')된 경우, 종속된 하위 첨부파일(hrkOriginDocFileId)도 연쇄 비활성화 처리
+            deleted_parent_ids = [
+                str(r.get(pk_key)).strip()
+                for r in rows
+                if str(r.get("asstStusCd", "")).strip() == "09"
+                and str(r.get("fileRoleCd", "")).strip() in ("01", "origin")
+                and r.get(pk_key)
+            ]
+            if deleted_parent_ids and "hrkOriginDocFileId" in cols:
+                cascade_update_sql = f"""
+UPDATE `{target_table_ref}`
+SET asstStusCd = '09', bqAmndHMS = CURRENT_TIMESTAMP()
+WHERE hrkOriginDocFileId IN UNNEST(@parent_ids)
+  AND (asstStusCd != '09' OR asstStusCd IS NULL)
+"""
+                cascade_job_config = bigquery.QueryJobConfig(
+                    query_parameters=[
+                        bigquery.ArrayQueryParameter("parent_ids", "STRING", deleted_parent_ids)
+                    ]
+                )
+                cascade_job = self.client.query(
+                    cascade_update_sql,
+                    job_config=cascade_job_config,
+                    timeout=merge_timeout
+                )
+                cascade_job.result(timeout=merge_timeout)
+                self.logger.info(
+                    "bq_cascade_attach_deleted",
+                    target_table=target_table_ref,
+                    deleted_parent_count=len(deleted_parent_ids),
+                )
+
+            self.logger.info("bq_inline_merge_all_completed", target_table=target_table_ref, total_rows=total_rows)
+        except Exception as merge_err:
+            clean_err = str(merge_err)
+            self.logger.exception(
+                "merge_failed",
+                service_name="BigQuery",
+                target_name=self.table_id,
+                error=clean_err,
+            )
+            raise RuntimeError(
+                self.logger.error(
+                    "merge_failed",
+                    service_name="BigQuery",
+                    target_name=self.table_id,
+                    error=clean_err,
+                )
+            ) from merge_err
+

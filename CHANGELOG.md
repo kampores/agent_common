@@ -1,5 +1,149 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.66 (2026-08-17)
+- **`schemas/` 디렉터리 내 YAML 설정 자동 탐색 및 병합 지원**:
+  - `ConfigLoader.get_settings`에서 `schemas/**/*.yml` 파일도 자동으로 탐색하여 `config` 계층 구조에 병합하도록 확장.
+  - 빅쿼리 테이블 룰 및 코드 정의 파일(`table_column_code.yml`, `table_rules.yml`, `TCTBIIG01_constraint.sql`, `TCTBIIG01_schema.json`)의 `schemas/bigquery/` 배치 지원.
+
+### v0.3.65 (2026-08-17)
+- **`db_load_*` 배치/단건 적재 재시도 및 실패 로깅 템플릿 범용화**:
+  - `db_load_retry`, `db_load_max_retries_exceeded_fallback`, `db_load_max_retries_exceeded`, `db_streaming_fallback_failed` 템플릿을 `agent_common`으로 이관.
+  - 프로젝트 루트의 `bq_load_*` 레거시 키 5종 정리 완료.
+
+### v0.3.64 (2026-08-17)
+- **`db_merge_load_failed` 및 `storage_client_init_failed` 범용 통합**:
+  - `bq_merge_load_failed`를 `db_merge_load_failed`(`{service_name} 병합(MERGE) 적재 최종 실패: ...`)로 대체하여 `agent_common`에 등록.
+  - `gcs_client_init_failed`를 `storage_client_init_failed`(`{storage_type} 클라이언트 초기화 실패: ...`)로 일원화.
+
+### v0.3.63 (2026-08-17)
+- **DB 로깅 템플릿 내 `{service_name}` 플레이스홀더 표준화 및 호출부 동기화**:
+  - `agent_common/config/logging_messages.yml`의 `db` 관련 모든 메시지(`db_inline_merge_*`, `db_bulk_load_*`, `db_load_*`, `db_transfer_skipped`)에 다중 DB 식별용 `{service_name}` 플레이스홀더 적용.
+  - `clients.py` 및 메인 파이프라인에서 `service_name="BigQuery"` 전달 구조로 완전 동기화.
+
+### v0.3.62 (2026-08-17)
+- **`db_bulk_load_*` 대량 적재 범용 로깅 템플릿 추가 및 `agent_common` 승격**:
+  - `db_bulk_load_started`, `db_bulk_load_completed`, `db_bulk_streaming_fallback_success`, `db_bulk_load_retry`, `db_bulk_load_max_retries_exceeded_fallback`, `db_bulk_load_skipped_no_data`, `db_bulk_load_failed`, `db_bulk_streaming_fallback_failed` 템플릿을 `agent_common`으로 이관.
+  - `app/ecs_to_bigquery.py` 및 `app/ecs_to_gcsbigquery_merge.py`의 벌크 적재 로깅 호출을 범용 표준 키로 일괄 변경.
+
+### v0.3.61 (2026-08-17)
+- **`client_initialized` 범용 초기화 로깅 템플릿 통합 및 `agent_common` 승격**:
+  - `bq_client_initialized`, `bq_gcs_client_initialized`를 범용 템플릿인 `client_initialized`(`{client_name} 클라이언트가 성공적으로 초기화되었습니다.`)로 단일 통합.
+  - `app/ecs_to_gcsbigquery_merge.py` 및 `app/ecs_to_bigquery.py`의 클라이언트 초기화 로깅을 `client_initialized`로 통일.
+
+### v0.3.60 (2026-08-17)
+- **`db_transfer_skipped` 범용 로깅 메시지 템플릿 추가 및 도메인 메시지 이관**:
+  - `agent_common/config/logging_messages.yml`의 `INFO.db` 섹션에 `db_transfer_skipped` 템플릿 등록.
+  - `app/ecs_to_bigquery.py`의 사전 적재 건너뜀 로깅을 `db_transfer_skipped`로 통일.
+
+### v0.3.59 (2026-08-17)
+- **`clients.py` AGENTS.md 1.8 타입 접미사(Type-Suffix) 및 2. Docstring 규격 전면 일치화**:
+  - `merge_table_from_json_data`의 파라미터 및 내부 모든 변수(`_str`, `_int`, `_list`, `_dict`, `_set`, `_float`)에 엄격한 타입 접미사 적용.
+  - `:return: None`, `:raises ValueError`, `:raises RuntimeError` 등 한글 표준 독스트링 규격 보강.
+
+### v0.3.58 (2026-08-17)
+- **DB 테이블 병합 예외 로깅 키 명확화 (`merge_failed` ➔ `db_table_merge_failed`)**:
+  - 모호했던 `merge_failed`를 데이터베이스 테이블 병합 실패임을 직관적으로 식별할 수 있도록 `db_table_merge_failed`로 수정 및 `clients.py`와 동기화.
+
+### v0.3.57 (2026-08-17)
+- **`clients.py` 내 `merge_table_from_json_data` 중복 정의 및 독스트링 오탈자 수정**:
+  - 함수 교체 과정에서 잔존했던 중복 `def` 헤더 및 독스트링 따옴표 블록을 온전하게 정리.
+
+### v0.3.56 (2026-08-17)
+- **`BigQueryClient.merge_table_from_json_data` 내 도메인 컬럼/상수 하드코딩 완전 제거 (순수 범용화)**:
+  - `asstStusCd`, `'09'`, `hrkOriginDocFileId`, `fileRoleCd`, `bqAmndHMS` 등 비즈니스 특정 컬럼 및 상수 하드코딩을 100% 제거.
+  - Python 데이터 타입(dict/list -> JSON, int -> INT64, float -> FLOAT64, bool -> BOOL) 자동 추론 및 `column_types`, `not_matched_condition`, `post_queries` 주입 파라미터 구조로 완전 일반화.
+  - 비즈니스 도메인 로직(자산 삭제 방어 및 첨부파일 연쇄 비활성화)은 `app/ecs_to_gcsbigquery_merge.py`에서 `config` 기반으로 전달하도록 리팩토링.
+
+### v0.3.55 (2026-08-17)
+- **`agent_common` 로깅 메시지 키 접두사 전면 범용화 (`db_`, `storage_`)**:
+  - `bq_inline_merge_*` ➔ `db_inline_merge_*`, `ecs_folder_search_*` ➔ `folder_search_*` 등 키 이름 자체의 벤더 종속성을 제거하고 완전한 범용 표준 키로 통일.
+
+### v0.3.54 (2026-08-17)
+- **`agent_common` 공통 로깅 메시지 템플릿 범용화 및 도메인 메시지 분리**:
+  - `agent_common/config/logging_messages.yml` 내의 메시지를 특정 도메인에 종속되지 않는 범용적 표준 표현으로 전면 일반화(Generalization).
+  - 프로젝트 도메인 고유 메시지는 프로젝트 루트 `config/logging_messages.yml`로 명확히 분리 및 계층화.
+
+### v0.3.53 (2026-08-17)
+- **`logging_messages.yml` 전수 조사 및 누락 템플릿 일괄 등록**:
+  - `BigQueryClient.merge_table_from_json_data` (`bq_inline_merge_started`, `bq_inline_merge_chunk_completed`, `bq_cascade_attach_deleted`, `bq_inline_merge_all_completed`, `merge_failed`) 등 BigQuery MERGE 관련 메시지 등록.
+  - ECS 폴더 탐색, 파일 추출, 룰/스키마 동적 로드 실패 등 전역 누락 메시지 템플릿 100% 등록 완료.
+
+### v0.3.52 (2026-08-17)
+- **`ConfigLoader._find_project_root` 내 `sys.argv[0]` 예외 명시화**:
+  - 모듈 임포트 시점 특수 CLI/REPL 환경의 경로 해석 실패를 안전하게 방어하도록 `(ValueError, OSError)` 명시 및 방어 목적 주석 보강.
+
+### v0.3.51 (2026-08-17)
+- **`clients.py` 내 모든 `except` 블록 예외 로깅 `logger.exception` 전면 통일**:
+  - `EcsClient`, `GcsClient`, `BigQueryClient`의 연결, 파일 전송, 메타데이터 조회, 테이블 적재 실패 등 모든 `except` 블록에서 스택 트레이스 보존을 위해 `logger.exception`으로 전면 통일.
+
+### v0.3.50 (2026-08-17)
+- **`ConfigLoader` 예외 블록 `self.logger.exception` 적용**:
+  - `ensure_config_file` 내 파일 생성 및 자동 보정 실패 시, AGENTS.md 1.9.3 규칙에 따라 스택 트레이스 정보를 온전히 보존하도록 `logger.exception`으로 일원화.
+
+### v0.3.49 (2026-08-16)
+- **`logging_messages.yml` 내 `config` 파일 자동생성/자동보정 메시지 템플릿 추가**:
+  - `config_file_auto_created` (INFO): 설정 파일 미존재 시 기본 템플릿 신규 자동 생성 완료 안내 메시지 등록.
+  - `config_file_auto_repaired` (INFO): 설정 파일 내 누락 키 자동 보정(Self-healing) 완료 안내 메시지 등록.
+  - `config_auto_create_failed` (WARNING): 설정 파일 자동 생성 실패 경고 메시지 등록.
+  - `config_auto_repair_failed` (WARNING): 설정 파일 자동 보정 실패 경고 메시지 등록.
+
+### v0.3.48 (2026-08-16)
+- **`ConfigLoader` 내 시간 생성 로직 `DateTimeUtils.get_now_formatted`로 통합**:
+  - `ensure_config_file`에서 헤더 및 자동 복구 주석 생성 시 사용하던 `time.strftime` 하드코딩을 `DateTimeUtils.get_now_formatted()`로 교체하여 전사 일시 규격 100% 일원화.
+
+### v0.3.47 (2026-08-16)
+- **`DateTimeUtils` 전사 공통 날짜/시간 표준 규격 유틸리티 추가**:
+  - `get_today_yyyymmdd()`: `YYYYMMDD` (8자리) 당일자 반환.
+  - `get_now_formatted()`: `YYYY-MM-DD HH:MM:SS` 표준 일시 반환.
+  - `get_now_compact()`: `YYYYMMDDHHMMSS` (14자리) 압축 일시 반환.
+
+### v0.3.46 (2026-08-16)
+- **`BigQueryClient.format_timestamp` BigQuery 표준 타임스탬프 포맷팅 공통 메서드 추가**:
+  - 다양한 형태의 원천 날짜/시간 문자열(`YYYYMMDD`, `YYYYMMDDHHMMSS`, ISO8601 등)을 BigQuery 표준 `YYYY-MM-DD HH:MM:SS` 문자열로 안전하게 변환하는 공통 메서드 제공.
+
+### v0.3.45 (2026-08-16)
+- **`BigQueryClient.merge_table_from_json_data` 삭제 건(09) INSERT 방어 및 하위 첨부파일 연쇄 비활성화(Cascading Update) 기능 추가**:
+  - 기존 데이터 미존재 시 `asstStusCd == '09'`인 데이터의 불필요한 신규 INSERT 방어 (`WHEN NOT MATCHED AND S.asstStusCd != '09'`).
+  - 삭제된 상위 원문(`fileRoleCd == '01'` & `asstStusCd == '09'`)의 ID를 추출하여 종속된 하위 첨부파일(`hrkOriginDocFileId IN UNNEST(@parent_ids)`)을 함께 `09` 및 현재시간 `bqAmndHMS`로 일괄 갱신.
+
+### v0.3.44 (2026-08-16)
+- **`clients.py` 상단 누락된 `time`, `json`, `List`, `Optional` import 보강**:
+  - `merge_table_from_json_data` 메서드에서 참조하는 표준 라이브러리 및 타입 힌트 임포트 누락 수정.
+
+### v0.3.43 (2026-08-16)
+- **`BigQueryClient.merge_table_from_json_data` 범용 MERGE INTO (Upsert) 메서드 추가**:
+  - 임시 테이블 생성 권한(`CREATE TABLE`) 없이 DML 권한만으로 작동하는 `UNNEST(JSON_QUERY_ARRAY(@json_payload))` 기반 인라인 MERGE 로직을 `BigQueryClient` 공용 라이브러리로 이관.
+  - PK 매칭(`pk_key`), 최초 생성일시 보존(`preserve_columns`), 청크 분할(`chunk_size`) 기능 지원.
+
+### v0.3.42 (2026-08-16)
+- **`require_setting` 및 `ConfigLoader` 전체 메서드 파라미터 docstring(`:param`, `:return`) 복원 및 보강**:
+  - `require_setting`, `setting`, `project_path`, `_load_yaml_mapping`, `_deep_merge` 등 모든 클래스 메서드에 AGENTS.md 규칙 2.3에 따른 상세 파라미터 및 반환값 설명을 한국어 docstring으로 완벽 복원.
+
+### v0.3.41 (2026-08-16)
+- **`ensure_config_file` 누락 키 자동 추가 주석을 인라인(Inline) 형태로 간결화**:
+  - 누락 키 자동 보정 시 파일 상단에 큰 주석 블록을 만드는 대신, 자동 추가된 각 키 라인 끝에 ` # [자동 추가: YYYY-MM-DD HH:MM:SS]` 인라인 주석을 부착하여 번잡함 제거 및 가독성 극대화.
+  - `default_agent_common.yml`의 `templates.config_repair_inline_comment` 템플릿 사용.
+
+### v0.3.40 (2026-08-16)
+- **`ensure_config_file` 누락 키 자동 보정 시 상단 보정 이력 안내 주석(REPAIRED NOTICE) 블록 추가**:
+  - 기존 설정 파일에 누락된 키가 발견되어 자동 보정될 때, 자동으로 추가된 설정 항목명(`repaired_keys`) 및 보정일시를 상단 주석 헤더로 기록하도록 개선.
+  - 보정 안내 문구 템플릿(`templates.config_repair_header`)을 `default_agent_common.yml`에 분리하여 No Hardcoding 규칙 1.1 준수.
+
+### v0.3.39 (2026-08-16)
+- **`default_agent_common.yml` 내 `templates.config_notice_header` 템플릿 분리 (No Hardcoding 규칙 1.1 준수)**:
+  - 소스 코드 내 하드코딩되어 있던 안내 주석 텍스트를 `agent_common/config/default_agent_common.yml`의 `templates.config_notice_header`로 완전히 분리.
+  - `ConfigLoader.ensure_config_file`에서 해당 템플릿 설정을 동적으로 로드하여 포매팅하도록 리팩토링.
+
+### v0.3.38 (2026-08-16)
+- **`ensure_config_file` 자동 생성 시 상단 안내 주석(NOTICE) 블록 추가**:
+  - `config.yml` 파일이 존재하지 않아 자동 생성될 때 최상단에 사람이 쉽게 인지할 수 있는 안내 문구(자동 생성 목적, 접속 정보 수정 또는 기존 파일 대체 안내, 생성일시)를 헤더 주석으로 기록하도록 개선.
+
+### v0.3.37 (2026-08-16)
+- **도메인별 설정 스키마 등록(`register_schema`) 및 자가 치유(`ensure_config_file`) 지원**:
+  - 개별 프로그램에서 요구하는 기본 설정 스키마를 동적으로 등록(`register_schema`)하여 공통 설정과 결합할 수 있도록 지원.
+  - `config.yml` 파일이 없으면 기본 템플릿으로 자동 생성하고, 기존 파일에 누락된 키가 있으면 기본값으로 자동 보정(Auto-repair)하는 `ensure_config_file` 함수 제공.
+  - 설정 키의 무결성을 보장하여 애플리케이션 전반에서 `.get()` 방어 코드를 배제하고 순수 점 표기법(`config.xxx.yyy`)만으로 안전하게 접근할 수 있도록 환경 제공.
+
 ### v0.3.36 (2026-08-15)
 - **점 표기법(Dot-notation) 기반 읽기 전용 설정 객체 `ReadOnlyConfig` 및 `config` 싱글톤 제공**:
   - `ReadOnlyConfig` 클래스를 추가하여 `config.ecs.endpoint_url`, `config.transfer.max_workers` 형태로 YAML 설정 계층에 직접 속성(Attribute)으로 접근할 수 있도록 지원.

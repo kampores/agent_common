@@ -10,8 +10,11 @@ Dell ECS(S3), Google Cloud Storage(GCS), Google Cloud BigQuery(BQ) 등
 
 from __future__ import annotations
 
+import re
+import time
+import json
 from pathlib import Path
-from typing import Any, Dict, Generator
+from typing import Any, Dict, Generator, List, Optional
 
 import boto3
 from botocore.client import Config as BotoConfig
@@ -79,7 +82,7 @@ class EcsClient:
         except Exception as e:
             # 공용 에러 핸들러 네트워크 예외 기록 수행
             ErrorHandler.handle_network_error(e, f"Dell ECS 연결 ({self.endpoint_url})")
-            raise ConnectionError(self.logger.error("connection_failed", service_name="Dell ECS", error=str(e))) from e
+            raise ConnectionError(self.logger.exception("connection_failed", service_name="Dell ECS", error=str(e))) from e
 
     def list_objects(self, prefix: str = "") -> Generator[Dict[str, Any], None, None]:
         """
@@ -93,7 +96,7 @@ class EcsClient:
                     for obj in page["Contents"]:
                         yield obj
         except Exception as e:
-            raise RuntimeError(self.logger.error("list_failed", storage_type="ECS", error=str(e))) from e
+            raise RuntimeError(self.logger.exception("list_failed", storage_type="ECS", error=str(e))) from e
 
     def get_object_stream(self, key: str) -> Any:
         """
@@ -103,7 +106,7 @@ class EcsClient:
             response = self.client.get_object(Bucket=self.bucket_name, Key=key)
             return response["Body"]
         except Exception as e:
-            raise RuntimeError(self.logger.error("transfer_failed", file_name=key, error=str(e))) from e
+            raise RuntimeError(self.logger.exception("transfer_failed", file_name=key, error=str(e))) from e
 
     def get_object_size(self, key: str) -> int | None:
         """
@@ -175,7 +178,7 @@ class EcsClient:
             return True
         except Exception as e:
             total_elapsed = time.time() - total_start
-            self.logger.error("transfer_failed", file_name=ecs_key, error=str(e))
+            self.logger.exception("transfer_failed", file_name=ecs_key, error=str(e))
             self.logger.error(
                 "elapsed_time",
                 action_name="GCS 파일 전송 오류",
@@ -242,7 +245,7 @@ class GcsClient:
         except Exception as e:
             # 공용 에러 핸들러 네트워크 예외 기록 수행
             ErrorHandler.handle_network_error(e, f"GCS 버킷 연결 ({self.bucket_name})")
-            raise ConnectionError(self.logger.error("connection_failed", service_name="GCS", error=str(e))) from e
+            raise ConnectionError(self.logger.exception("connection_failed", service_name="GCS", error=str(e))) from e
 
     def get_blob_size(self, destination_blob_name: str) -> int | None:
         """GCS 목적지 blob의 존재 여부 및 바이트 크기(bytes)를 조회한다.
@@ -259,7 +262,7 @@ class GcsClient:
                 return blob.size
             return None
         except Exception as e:
-            self.logger.warning("storage_meta_error", storage_type="GCS", target_name=destination_blob_name, error=str(e))
+            self.logger.exception("storage_meta_error", storage_type="GCS", target_name=destination_blob_name, error=str(e))
             return None
 
     def upload_stream(self, stream: Any, destination_blob_name: str, size: int, timeout: int | None = None):
@@ -272,7 +275,7 @@ class GcsClient:
             # size 인수를 반드시 제공하며 지정된 timeout 내 업로드를 완료하도록 처리
             blob.upload_from_file(stream, size=size, timeout=upload_timeout)
         except Exception as e:
-            raise RuntimeError(self.logger.error("transfer_failed", file_name=destination_blob_name, error=str(e))) from e
+            raise RuntimeError(self.logger.exception("transfer_failed", file_name=destination_blob_name, error=str(e))) from e
 
 
 
@@ -357,11 +360,11 @@ class BigQueryClient:
             try:
                 self.table_obj = self.client.get_table(table_ref)
             except Exception as table_err:
-                self.logger.warning("table_fetch_failed", service_name="BigQuery", fallback_ref=table_ref, error=str(table_err))
+                self.logger.exception("table_fetch_failed", service_name="BigQuery", fallback_ref=table_ref, error=str(table_err))
                 self.table_obj = table_ref
         except Exception as e:
             ErrorHandler.handle_network_error(e, f"BigQuery 연결 (Project: {self.project_id})")
-            raise ConnectionError(self.logger.error("connection_failed", service_name="BigQuery", error=str(e))) from e
+            raise ConnectionError(self.logger.exception("connection_failed", service_name="BigQuery", error=str(e))) from e
 
     def load_table_from_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None, write_disposition: str | None = None) -> None:
         """
@@ -473,7 +476,7 @@ class BigQueryClient:
                 raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_err_msg}")
         except Exception as e:
             clean_insert_err = str(e)
-            raise RuntimeError(self.logger.error("insert_failed", service_name="BigQuery", target_name=self.table_id, error=clean_insert_err)) from e
+            raise RuntimeError(self.logger.exception("insert_failed", service_name="BigQuery", target_name=self.table_id, error=clean_insert_err)) from e
 
     def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
         """
@@ -496,5 +499,219 @@ class BigQueryClient:
             results = query_job.result()
             return {str(row[field_name]) for row in results if row[field_name] is not None}
         except Exception as e:
-            self.logger.warning("existing_keys_fetch_failed", service_name="BigQuery", error=str(e))
+            self.logger.exception("existing_keys_fetch_failed", service_name="BigQuery", error=str(e))
             return set()
+
+    def merge_table_from_json_data(
+        self,
+        json_data_any: Any,
+        pk_key_str: str = "id",
+        preserve_columns_list: list[str] | None = None,
+        column_types_dict: dict[str, str] | None = None,
+        not_matched_condition_str: str | None = None,
+        post_queries_list: list[dict[str, Any]] | None = None,
+        chunk_size_int: int = 500,
+        timeout_int: int | None = None,
+    ) -> None:
+        """
+        BigQuery 타겟 테이블에 인라인 MERGE INTO(Upsert)를 수행합니다 (순수 범용 메서드).
+
+        기존에 존재하는 행(PK 기준)은 UPDATE(preserve_columns 제외)하고, 존재하지 않는 행은 INSERT합니다.
+
+        :param json_data_any: 병합 적재할 단일 dict 또는 dict 리스트
+        :param pk_key_str: 테이블 병합 매칭 기준이 되는 기본키(Primary Key) 컬럼명 (기본값: 'id')
+        :param preserve_columns_list: UPDATE 시 덮어쓰지 않고 최초 값을 보존할 컬럼명 리스트 (예: 최초 생성일시 등)
+        :param column_types_dict: 컬럼별 명시적 SQL 타입 매핑 딕셔너리 (예: {"size": "INT64", "meta": "JSON"}). 미지정 시 데이터 타입 기반 자동 추론
+        :param not_matched_condition_str: WHEN NOT MATCHED 절에 추가할 조건식 (예: "AND S.status != 'DELETED'")
+        :param post_queries_list: MERGE 완료 후 실행할 후속 쿼리 목록 ([{"sql": "UPDATE ...", "params": [...]}, ...])
+        :param chunk_size_int: 쿼리 파라미터 크기 제한을 고려한 청크 분할 단위 (기본값: 500)
+        :param timeout_int: 쿼리 실행 타임아웃 제한 시간(초)
+        :return: None
+        :raises ValueError: 지원하지 않는 입력 데이터 타입일 경우 발생
+        :raises RuntimeError: MERGE 쿼리 실행 실패 시 발생
+        """
+        if not json_data_any:
+            return
+
+        if isinstance(json_data_any, dict):
+            rows_list: list[dict[str, Any]] = [json_data_any]
+        elif isinstance(json_data_any, list):
+            rows_list = json_data_any
+        else:
+            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data_any)}")
+
+        if not rows_list:
+            return
+
+        merge_timeout_int: int = timeout_int if timeout_int is not None else self.timeout_seconds
+        target_table_ref_str: str = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        preserve_cols_set: set[str] = set(preserve_columns_list or [])
+        preserve_cols_set.add(pk_key_str)
+
+        sample_row_dict: dict[str, Any] = rows_list[0]
+        cols_list: list[str] = list(sample_row_dict.keys())
+        explicit_types_dict: dict[str, str] = column_types_dict or {}
+
+        # 1. UPDATE 대상 컬럼 구성
+        update_cols_list: list[str] = [c for c in cols_list if c not in preserve_cols_set]
+        update_set_clause_str: str = ",\n        ".join([f"T.{c} = S.{c}" for c in update_cols_list])
+
+        # 2. INSERT 대상 컬럼 및 값 매핑
+        insert_cols_str: str = ", ".join(cols_list)
+        insert_vals_str: str = ", ".join([f"S.{c}" for c in cols_list])
+
+        # 3. UNNEST SELECT 절 캐스팅 동적 생성 (명시적 타입 또는 파이썬 데이터 타입 기반 자동 추론)
+        select_expressions_list: list[str] = []
+        for col_str in cols_list:
+            val_any = sample_row_dict.get(col_str)
+            if col_str in explicit_types_dict:
+                sql_type_str: str = explicit_types_dict[col_str].upper()
+                if sql_type_str in ("JSON", "RECORD", "STRUCT"):
+                    expr_str: str = f"PARSE_JSON(JSON_QUERY(item, '$.{col_str}')) AS {col_str}"
+                elif sql_type_str.startswith("TIMESTAMP"):
+                    expr_str = f"TIMESTAMP(JSON_VALUE(item, '$.{col_str}')) AS {col_str}"
+                elif sql_type_str.startswith("INT") or sql_type_str.startswith("NUMERIC") or sql_type_str.startswith("FLOAT"):
+                    expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS {sql_type_str}) AS {col_str}"
+                elif sql_type_str.startswith("BOOL"):
+                    expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS BOOL) AS {col_str}"
+                else:
+                    expr_str = f"STRING(JSON_VALUE(item, '$.{col_str}')) AS {col_str}"
+            elif isinstance(val_any, (dict, list)):
+                expr_str = f"PARSE_JSON(JSON_QUERY(item, '$.{col_str}')) AS {col_str}"
+            elif isinstance(val_any, bool):
+                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS BOOL) AS {col_str}"
+            elif isinstance(val_any, int) and not isinstance(val_any, bool):
+                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS INT64) AS {col_str}"
+            elif isinstance(val_any, float):
+                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS FLOAT64) AS {col_str}"
+            else:
+                expr_str = f"STRING(JSON_VALUE(item, '$.{col_str}')) AS {col_str}"
+            select_expressions_list.append(expr_str)
+        unnest_select_clause_str: str = ",\n      ".join(select_expressions_list)
+
+        # 4. 신규 INSERT 방어 조건절 구성 (호출자 주입식)
+        not_matched_clause_str: str = f"WHEN NOT MATCHED {not_matched_condition_str} THEN" if not_matched_condition_str else "WHEN NOT MATCHED THEN"
+
+        merge_sql_template_str: str = f"""
+MERGE `{target_table_ref_str}` T
+USING (
+    SELECT
+      {unnest_select_clause_str}
+    FROM UNNEST(JSON_QUERY_ARRAY(@json_payload)) AS item
+) S
+ON T.{pk_key_str} = S.{pk_key_str}
+WHEN MATCHED THEN
+  UPDATE SET
+    {update_set_clause_str}
+{not_matched_clause_str}
+  INSERT ({insert_cols_str})
+  VALUES ({insert_vals_str})
+"""
+
+        total_rows_int: int = len(rows_list)
+        total_chunks_int: int = (total_rows_int + chunk_size_int - 1) // chunk_size_int
+
+        self.logger.info(
+            "db_inline_merge_started",
+            service_name="BigQuery",
+            target_table=target_table_ref_str,
+            total_rows=total_rows_int,
+            chunk_size=chunk_size_int,
+            total_chunks=total_chunks_int,
+            pk_key=pk_key_str,
+        )
+
+        try:
+            for chunk_idx_int in range(total_chunks_int):
+                start_idx_int: int = chunk_idx_int * chunk_size_int
+                end_idx_int: int = min(start_idx_int + chunk_size_int, total_rows_int)
+                chunk_rows_list: list[dict[str, Any]] = rows_list[start_idx_int:end_idx_int]
+
+                json_payload_str: str = json.dumps(chunk_rows_list, ensure_ascii=False, default=str)
+                job_config = bigquery.QueryJobConfig(
+                    query_parameters=[
+                        bigquery.ScalarQueryParameter("json_payload", "STRING", json_payload_str)
+                    ]
+                )
+
+                chunk_start_float: float = time.time()
+                query_job = self.client.query(
+                    merge_sql_template_str,
+                    job_config=job_config,
+                    timeout=merge_timeout_int
+                )
+                query_job.result(timeout=merge_timeout_int)
+                chunk_elapsed_float: float = time.time() - chunk_start_float
+
+                self.logger.info(
+                    "db_inline_merge_chunk_completed",
+                    service_name="BigQuery",
+                    chunk_index=f"{chunk_idx_int + 1}/{total_chunks_int}",
+                    processed_rows=len(chunk_rows_list),
+                    elapsed_time=f"{chunk_elapsed_float:.2f}s",
+                )
+
+            # 5. 후속 쿼리(연쇄 업데이트 등)가 주입된 경우 동적 실행
+            if post_queries_list:
+                for p_idx_int, p_item_dict in enumerate(post_queries_list):
+                    p_sql_str: str = p_item_dict.get("sql", "")
+                    p_params_list = p_item_dict.get("params") or []
+                    if p_sql_str:
+                        p_job_config = bigquery.QueryJobConfig(query_parameters=p_params_list) if p_params_list else None
+                        p_job = self.client.query(p_sql_str, job_config=p_job_config, timeout=merge_timeout_int)
+                        p_job.result(timeout=merge_timeout_int)
+
+            self.logger.info("db_inline_merge_all_completed", service_name="BigQuery", target_table=target_table_ref_str, total_rows=total_rows_int)
+        except Exception as merge_err:
+            clean_err_str: str = str(merge_err)
+            raise RuntimeError(
+                self.logger.exception(
+                    "db_table_merge_failed",
+                    service_name="BigQuery",
+                    target_name=self.table_id,
+                    error=clean_err_str,
+                )
+            ) from merge_err
+
+    def format_timestamp(self, val_any: Any) -> Optional[str]:
+        """
+        다양한 원천 날짜/시간 문자열(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 타임스탬프(YYYY-MM-DD HH:MM:SS) 포맷으로 변환합니다.
+
+        :param val_any: 변환 대상 날짜/시간 데이터 (str, datetime, int 등)
+        :return: BigQuery 표준 타임스탬프 문자열 (변환 실패 시 None 반환)
+        """
+        if val_any is None:
+            return None
+        val_str = str(val_any).strip()
+        if not val_str or val_str.lower() in ("none", "null", "{}") or "{" in val_str:
+            return None
+
+        # 1. YYYY-MM-DD HH:MM:SS (또는 T 구분자)
+        match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2})", val_str)
+        if match_obj:
+            return match_obj.group(1).replace("T", " ").replace("/", "-")
+
+        # 2. YYYY-MM-DD HH:MM
+        match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2})", val_str)
+        if match_obj:
+            return f"{match_obj.group(1).replace('T', ' ').replace('/', '-')}:00"
+
+        # 3. YYYY-MM-DD
+        match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2})", val_str)
+        if match_obj:
+            return f"{match_obj.group(1).replace('/', '-')} 00:00:00"
+
+        # 4. YYYYMMDDHHMMSS (14자리 숫자)
+        match_obj = re.search(r"(\d{14})", val_str)
+        if match_obj:
+            num_str = match_obj.group(1)
+            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} {num_str[8:10]}:{num_str[10:12]}:{num_str[12:14]}"
+
+        # 5. YYYYMMDD (8자리 숫자)
+        match_obj = re.search(r"(\d{8})", val_str)
+        if match_obj:
+            num_str = match_obj.group(1)
+            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} 00:00:00"
+
+        return None
+

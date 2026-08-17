@@ -3,7 +3,7 @@
 # 설계자 소속: 경포씨엔씨
 # 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
 
-# 시스템 전역 표준 로그 메시지 템플릿 사전
+# 시스템 전역 표준 범용 로그 메시지 템플릿 사전 (agent_common 범용)
 # 
 # [Python 소스코드 내 사용 가이드]
 #   from agent_common.logger import ProjectLogger, get_log_msg
@@ -15,169 +15,282 @@ logging_messages:
   DEBUG:
     # --- [스토리지 디버그 탐색] ---
     storage:
-      # 예시: logger.debug(get_log_msg("DEBUG", "targets_detected", target_type="[DEBUG 옵션] GCS 전수", total_files=10, max_workers=4))
+      # 예시: logger.debug("targets_detected", target_type="스토리지 전수", total_files=10, max_workers=4)
       targets_detected: "{target_type} 대상 감지: 총 {total_files}개 파일 [MaxWorkers={max_workers}]"
 
   INFO:
     # --- [프로그램 실행 및 동기화 생명주기] ---
     lifecycle:
-      # 예시: logger.info(get_log_msg("INFO", "program_started", program_name="파일 이관", folder_msg=" [Folder=PAK]", date_msg=" [Date=20260804]"))
+      # 예시: logger.info("program_started", program_name="파일 이관", folder_msg=" [Folder=PAK]", date_msg=" [Date=20260804]")
       program_started: "{program_name} 프로그램을 가동합니다.{folder_msg}{date_msg}"
 
-      # 예시: logger.info(get_log_msg("INFO", "program_finished", program_name="파일 이관"))
+      # 예시: logger.info("client_initialized", client_name="Google Cloud BigQuery")
+      client_initialized: "{client_name} 클라이언트가 성공적으로 초기화되었습니다."
+
+      # 예시: logger.info("program_finished", program_name="파일 이관")
       program_finished: "{program_name} 프로그램 수행이 완료되었습니다."
 
-      # 예시: logger.info(get_log_msg("INFO", "sync_started", sync_type="BigQuery", src_type="ECS Bucket", src_name="my-bucket", dst_type="BQ Table", dst_name="proj.ds.tbl", context="[Mode=Realtime]"))
+      # 예시: logger.info("sync_started", sync_type="데이터베이스", src_type="스토리지", src_name="my-bucket", dst_type="테이블", dst_name="proj.ds.tbl", context="[Mode=Realtime]")
       sync_started: "{sync_type} 동기화 작업 시작: {src_type} '{src_name}' -> {dst_type} '{dst_name}' {context}"
 
-      # 예시: logger.info(get_log_msg("INFO", "sync_completed", sync_type="BigQuery", success_count=100, failure_count=0, total_files=100))
+      # 예시: logger.info("sync_completed", sync_type="데이터베이스", success_count=100, failure_count=0, total_files=100)
       sync_completed: "{sync_type} 동기화 작업 종료: 성공(또는 건너뜀) {success_count}개, 실패 {failure_count}개 / 총 {total_files}개"
 
-      transfer_limit_applied: "GCS 복사 제한 개수(Limit)가 적용되었습니다: [최대 제한 수={max_limit}개 / 추출된 전체 수={total_extracted}개]"
+      transfer_limit_applied: "파일 복사 제한 개수(Limit)가 적용되었습니다: [최대 제한 수={max_limit}개 / 추출된 전체 수={total_extracted}개]"
 
-      # 예시: logger.info(get_log_msg("INFO", "run_started", lodin_dstlc_cd="01", target_date="20260804", target_folder="kbdrive"))
+      # 예시: logger.info("run_started", lodin_dstlc_cd="01", target_date="20260804", target_folder="data")
       run_started: "전송 작업 시작: 구분코드={lodin_dstlc_cd}, 대상일자={target_date}, 대상폴더={target_folder}"
 
-      # 예시: logger.info(get_log_msg("INFO", "run_finished", total_count=100, success_count=98, skip_count=2, fail_count=0, total_elapsed=12.34))
+      # 예시: logger.info("run_finished", total_count=100, success_count=98, skip_count=2, fail_count=0, total_elapsed=12.34)
       run_finished: "전송 작업 완료: 총 처리={total_count}건, 성공={success_count}건, 건너뜀={skip_count}건, 실패={fail_count}건, 총소요시간={total_elapsed:.2f}초"
 
-    # --- [스토리지 탐색 및 파일 전송] ---
+    # --- [데이터베이스 및 테이블 적재 범용] ---
+    db:
+      # 예시: logger.info("db_inline_merge_started", service_name="BigQuery", target_table="proj.ds.tbl", total_rows=100, chunk_size=500, total_chunks=1, pk_key="id")
+      db_inline_merge_started: "{service_name} 인라인 병합(MERGE) 적재 시작: 대상테이블={target_table}, 총 {total_rows}개 행 [청크크기={chunk_size} / 총청크수={total_chunks} / PK={pk_key}]"
+
+      # 예시: logger.info("db_inline_merge_chunk_completed", service_name="BigQuery", chunk_index="1/1", processed_rows=100, elapsed_time="1.20s")
+      db_inline_merge_chunk_completed: "{service_name} 인라인 병합(MERGE) 청크 처리 완료: [청크={chunk_index}, 처리건수={processed_rows}개, 소요시간={elapsed_time}]"
+
+      # 예시: logger.info("db_inline_merge_all_completed", service_name="BigQuery", target_table="proj.ds.tbl", total_rows=100)
+      db_inline_merge_all_completed: "{service_name} 인라인 병합(MERGE) 전체 완료: 대상테이블={target_table}, 총 {total_rows}개 행"
+
+      # 예시: logger.info("db_existing_keys_loaded", service_name="BigQuery", total_count=1000)
+      db_existing_keys_loaded: "{service_name} 기존 적재 키 조회 완료: 총 {total_count}개 키 캐싱"
+
+      # 예시: logger.info("db_load_completed", service_name="BigQuery", total_rows=100, elapsed_time="1.20s", mode="INLINE_MERGE")
+      db_load_completed: "{service_name} 적재 완료 [Mode={mode}]: 총 {total_rows}개 행, 소요시간={elapsed_time}"
+
+      # 예시: logger.info("db_transfer_skipped", service_name="BigQuery", target_key="sample.json", context_info="[Table=tbl]")
+      db_transfer_skipped: "이미 {service_name}에 적재된 데이터입니다. 적재를 건너뜁니다 (Skip): {target_key} {context_info}"
+
+      # 예시: logger.info("db_bulk_load_started", service_name="BigQuery", total_rows=100, write_disposition="WRITE_TRUNCATE", lodin_dstlc_cd="01")
+      db_bulk_load_started: "{service_name} 대량(Bulk) 적재 시작: 총 {total_rows}개 행 [Option={write_disposition} / LoadType={lodin_dstlc_cd}]"
+
+      # 예시: logger.info("db_bulk_load_completed", service_name="BigQuery", total_rows=100, elapsed_time="1.20s")
+      db_bulk_load_completed: "{service_name} 대량(Bulk) 적재 완료: 총 {total_rows}개 행 [소요시간={elapsed_time}]"
+
+      # 예시: logger.info("db_bulk_streaming_fallback_success", service_name="BigQuery", total_rows=100)
+      db_bulk_streaming_fallback_success: "{service_name} 대량(Bulk) 적재 실패 후 스트리밍 Fallback 적재 성공: 총 {total_rows}개 행"
+
+    # --- [스토리지 탐색 및 파일 전송 범용] ---
     storage:
-      # 예시: logger.info(get_log_msg("INFO", "folder_searching", storage_type="ECS", target_info=" (게시판 JSON 메타데이터)", search_prefix="kbdrive/"))
+      # 예시: logger.info("folder_search_started", search_prefix="folder/")
+      folder_search_started: "대상 폴더 탐색 시작: {search_prefix}"
+
+      # 예시: logger.info("folder_search_completed", search_prefix="folder/", count=50)
+      folder_search_completed: "대상 폴더 탐색 완료: {search_prefix}, 발견 파일 수: {count}개"
+
+      # 예시: logger.info("folder_searching", storage_type="스토리지", target_info="", search_prefix="folder/")
       folder_searching: "{storage_type} 폴더 탐색 중{target_info}: {search_prefix}"
 
-      # 예시: logger.info(get_log_msg("INFO", "no_target_files", target_type="BigQuery 적재 대상 JSON"))
+      # 예시: logger.info("no_target_files", target_type="적재 대상")
       no_target_files: "{target_type} 대상 파일이 없습니다."
 
-      # 예시: logger.info(get_log_msg("INFO", "targets_detected", target_type="BigQuery 적재", total_files=50, max_workers=4))
+      # 예시: logger.info("targets_detected", target_type="적재", total_files=50, max_workers=4)
       targets_detected: "{target_type} 대상 감지: 총 {total_files}개 파일 [MaxWorkers={max_workers}]"
 
-      # 예시: logger.info(get_log_msg("INFO", "transfer_completed", file_name="sample.pdf", size_bytes=102400))
+      # 예시: logger.info("transfer_completed", file_name="sample.pdf", size_bytes=102400)
       transfer_completed: "파일 전송 완료: {file_name}, 크기: {size_bytes} bytes"
 
-      # 예시: logger.info(get_log_msg("INFO", "transfer_skipped", file_name="sample.pdf", dst_type="GCS"))
-      transfer_skipped: "동일 용량 파일이 {dst_type}에 존재하여 복사를 건너뜁니다: {file_name}"
+      # 예시: logger.info("transfer_skipped", file_name="sample.pdf", dst_type="스토리지")
+      transfer_skipped: "동일 파일이 {dst_type}에 존재하여 복사를 건너뜁니다: {file_name}"
 
     # --- [성능 및 작업 소요시간 연동] ---
     performance:
-      # 예시: logger.info(get_log_msg("INFO", "elapsed_time", action_name="GCS 파일 전송", details="[TotalElapsed=1.20s CheckTime=0.10s]", context_info="[ECS_Key=...]"))
+      # 예시: logger.info("elapsed_time", action_name="파일 전송", details="[TotalElapsed=1.20s]", context_info="[Key=...]")
       elapsed_time: "작업 소요시간 [{action_name}]: {details} {context_info}"
 
     # --- [외부 서비스 및 HTTP API 연동] ---
     service:
-      # 예시: logger.info(get_log_msg("INFO", "api_call_started", service_name="외부 LLM API", purpose="sql_generator", model_name="openai_gpt4o"))
+      # 예시: logger.info("api_call_started", service_name="외부 API", purpose="processor", model_name="gpt4")
       api_call_started: "{service_name} 호출 시작 [Purpose={purpose}, Model={model_name}]"
 
-      # 예시: logger.info(get_log_msg("INFO", "api_call_success", service_name="외부 LLM API", detail="SELECT 1"))
+      # 예시: logger.info("api_call_success", service_name="외부 API", detail="OK")
       api_call_success: "{service_name} 응답 수집 성공: {detail}"
+
+    # --- [설정 파일 관리 및 자동 보정] ---
+    config:
+      # 예시: logger.info("config_file_auto_created", file_path="config/config.yml")
+      config_file_auto_created: "설정 파일이 존재하지 않아 기본 템플릿으로 자동 생성되었습니다: {file_path}"
+
+      # 예시: logger.info("config_file_auto_repaired", file_path="config/config.yml", repaired_keys="...")
+      config_file_auto_repaired: "설정 파일 내 누락된 항목이 자동 보정(Self-healing)되었습니다: {file_path} [보정항목={repaired_keys}]"
 
     # --- [룰 평가 및 템플릿 처리] ---
     rule:
-      # 예시: logger.info("rule_eval_success", col_name="asstId", folder_val="bizplatform/contentinfo", tmpl="{contentInfo.seq}", res="12345", json_info="")
+      # 예시: logger.info("rule_eval_success", col_name="field", folder_val="common", tmpl="{seq}", res="123", json_info="")
       rule_eval_success: "템플릿 평가 성공{json_info}: [Col={col_name} Folder={folder_val} Tmpl='{tmpl}' Result='{res}']"
 
   WARNING:
+    # --- [설정 파일 관리 경고] ---
+    config:
+      # 예시: logger.warning("config_auto_create_failed", file_path="config/config.yml", error="Permission denied")
+      config_auto_create_failed: "설정 파일 자동 생성 중 오류가 발생했습니다: {file_path}, 에러: {error}"
+
+      # 예시: logger.warning("config_auto_repair_failed", file_path="config/config.yml", error="Permission denied")
+      config_auto_repair_failed: "설정 파일 자동 보정 중 오류가 발생했습니다: {file_path}, 에러: {error}"
+
     # --- [대체(Fallback) 및 복구 처리] ---
     fallback:
-      # 예시: logger.warning(get_log_msg("WARNING", "fallback_applied", target_name="PDF 후보 파일", fallback_key="default.pdf", key="sample.json"))
+      # 예시: logger.warning("fallback_applied", target_name="후보 파일", fallback_key="default.pdf", key="sample.json")
       fallback_applied: "{target_name}을(를) 찾을 수 없어 기본 키({fallback_key})로 대체(Fallback) 적용합니다. [Key={key}]"
 
     # --- [룰 평가 및 템플릿 처리 경고] ---
     rule:
-      # 예시: logger.warning("rule_eval_failed", col_name="asstId", folder_val="bizplatform/contentinfo", tmpl="{contentInfo.seq}", res="{contentInfo.seq}", default_fallback="", context_keys="...", json_info="")
+      # 예시: logger.warning("rule_eval_failed", col_name="field", folder_val="common", tmpl="{seq}", res="{seq}", default_fallback="", context_keys="...", json_info="")
       rule_eval_failed: "템플릿 평가 실패 또는 미치환 플레이스홀더 반환{json_info}: [Col={col_name} Folder={folder_val} Tmpl='{tmpl}' Res='{res}' Fallback='{default_fallback}' ContextKeys={context_keys}]"
 
-      # 예시: logger.warning("rule_not_found", col_name="asstId", target_rule="TCTBIIG01", rules_filepath="config/table_rules.yml", loaded_keys="...")
-      rule_not_found: "테이블 규칙 설정에서 컬럼 규칙 정의를 찾을 수 없습니다: [Col={col_name} TargetRule={target_rule} FilePath={rules_filepath} LoadedKeys={loaded_keys}]"
+      # 예시: logger.warning("rule_not_found", col_name="field", target_rule="RULES", rules_filepath="config/rules.yml", loaded_keys="...")
+      rule_not_found: "규칙 설정에서 항목 정의를 찾을 수 없습니다: [Col={col_name} TargetRule={target_rule} FilePath={rules_filepath} LoadedKeys={loaded_keys}]"
 
     # --- [권한 및 접근 우회 경고] ---
     permission:
-      # 예시: logger.warning(get_log_msg("WARNING", "permission_fallback_applied", service_name="BigQuery", action_name="배치 적재", fallback_mode="스트리밍 전용"))
+      # 예시: logger.warning("permission_fallback_applied", service_name="DB", action_name="배치 적재", fallback_mode="스트리밍 전용")
       permission_fallback_applied: "{service_name} {action_name} 권한 미비로 {fallback_mode} 모드로 전환합니다."
 
     # --- [외부 서비스 및 HTTP API 경고] ---
     service:
-      # 예시: logger.warning(get_log_msg("WARNING", "api_disabled", service_name="외부 LLM API"))
+      # 예시: logger.warning("api_disabled", service_name="외부 API")
       api_disabled: "{service_name} 사용이 비활성화 상태입니다."
 
-      # 예시: logger.warning(get_log_msg("WARNING", "api_key_missing", service_name="외부 LLM API", api_key_env="EXTERNAL_LLM_API_KEY"))
+      # 예시: logger.warning("api_key_missing", service_name="외부 API", api_key_env="API_KEY")
       api_key_missing: "{service_name} API Key가 설정되어 있지 않습니다 [KeyEnv={api_key_env}]"
 
     # --- [데이터베이스 메타데이터 및 적재 경고] ---
     db:
-      # 예시: logger.warning("table_fetch_failed", service_name="Oracle", fallback_ref="TB_SAMPLE", error="Table not found")
+      # 예시: logger.warning("table_fetch_failed", service_name="Database", fallback_ref="TB_SAMPLE", error="Table not found")
       table_fetch_failed: "{service_name} 테이블 객체 조회 실패로 기본 문자열 레퍼런스({fallback_ref})로 대체합니다: {error}"
 
-      # 예시: logger.warning("existing_keys_fetch_failed", service_name="BigQuery", error="Column not found")
-      existing_keys_fetch_failed: "{service_name} 기존 적재 키 조회 중 오류 발생 (초기 적재이거나 컬럼 미존재 가능): {error}"
+      # 예시: logger.warning("existing_keys_fetch_failed", service_name="Database", error="Column not found")
+      existing_keys_fetch_failed: "{service_name} 기존 적재 키 조회 중 오류 발생: {error}"
+
+      # 예시: logger.warning("db_load_skipped_no_data", service_name="BigQuery", reason="적재 대상 없음")
+      db_load_skipped_no_data: "{service_name} 적재를 건너뜁니다: {reason}"
+
+      # 예시: logger.warning("db_load_retry", service_name="BigQuery", attempt=1, max_retries=3, target_key="sample.json", error="Connection reset")
+      db_load_retry: "{service_name} 배치 적재 재시도 수행 중 ({attempt}/{max_retries} 회): [Key={target_key}] 에러: {error}"
+
+      # 예시: logger.warning("db_load_max_retries_exceeded_fallback", service_name="BigQuery", max_retries=3, target_key="sample.json", error="Connection reset")
+      db_load_max_retries_exceeded_fallback: "{service_name} 배치 적재({max_retries}회) 실패로 스트리밍 적재 Fallback 전환 시도: [Key={target_key}] 사유: {error}"
+
+      # 예시: logger.warning("db_bulk_load_retry", service_name="BigQuery", attempt=1, max_retries=3, error="Connection reset")
+      db_bulk_load_retry: "{service_name} 대량(Bulk) 적재 재시도 수행 중 ({attempt}/{max_retries} 회): 에러: {error}"
+
+      # 예시: logger.warning("db_bulk_load_max_retries_exceeded_fallback", service_name="BigQuery", max_retries=3, error="Connection reset")
+      db_bulk_load_max_retries_exceeded_fallback: "{service_name} 대량(Bulk) 적재({max_retries}회) 실패로 스트리밍 Fallback 전환 시도: 사유: {error}"
+
+      # 예시: logger.warning("db_bulk_load_skipped_no_data", service_name="BigQuery", reason="적재 대상 없음")
+      db_bulk_load_skipped_no_data: "{service_name} 대량(Bulk) 적재를 건너뜁니다: {reason}"
 
   ERROR:
     # --- [설정 및 정규식 오류] ---
     config:
-      # 예시: logger.error(get_log_msg("ERROR", "regex_compile_error", path_regex_str=".*\\.json", error="bad character range"))
+      # 예시: logger.error("regex_compile_error", path_regex_str=".*\\.json", error="bad character range")
       regex_compile_error: "경로 매칭 정규식 컴파일 실패: {path_regex_str}, 에러: {error}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "missing_required_config", key="gcs.bucket_name"))
+      # 예시: logger.error("missing_required_config", key="storage.bucket_name")
       missing_required_config: "필수 설정 정보가 누락되었습니다: {key}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "config_file_not_found", path="config/config.yml"))
+      # 예시: logger.error("config_file_not_found", path="config/config.yml")
       config_file_not_found: "설정 파일을 찾을 수 없습니다: {path}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "config_load_failed", error="YAML syntax error at line 5"))
+      # 예시: logger.error("config_load_failed", error="YAML syntax error at line 5")
       config_load_failed: "설정 파일을 불러오는 데 실패했습니다: {error}"
+
+    # --- [룰 및 스키마 로드 오류] ---
+    rule:
+      # 예시: logger.exception("tool_import_failed", tool_name="code.date_check", error="Module not found")
+      tool_import_failed: "동적 룰 유틸리티 모듈/함수({tool_name}) 로드 실패: {error}"
+
+      # 예시: logger.exception("schema_load_failed", namespace="sys", path="schemas/sys/sys.json", error="JSONDecodeError")
+      schema_load_failed: "스키마 명세({namespace}) 파일({path}) 로드 실패: {error}"
+
+      # 예시: logger.exception("tool_eval_error", func_name="code.date_check", error="TypeError")
+      tool_eval_error: "동적 룰 유틸리티 함수 평가 실패 [Tool={func_name}], 에러: {error}"
 
     # --- [데이터베이스 적재 오류] ---
     db:
-      # 예시: logger.error(get_log_msg("ERROR", "insert_failed", service_name="Oracle", target_name="TB_SAMPLE", error="Invalid schema"))
+      # 예시: logger.error("insert_failed", service_name="Database", target_name="TB_SAMPLE", error="Invalid schema")
       insert_failed: "{service_name} 데이터 적재 실패: {target_name}, 에러: {error}"
 
-      # 예시: logger.exception("load_table_from_json_failed", service_name="BigQuery", target_name="TB_SAMPLE", error="Invalid schema")
-      load_table_from_json_failed: "{service_name} JSON 테이블 적재 실패: {target_name}, 에러: {error}"
+      # 예시: logger.exception("load_table_from_json_failed", service_name="Database", target_name="TB_SAMPLE", error="Invalid schema")
+      load_table_from_json_failed: "{service_name} 테이블 적재 실패: {target_name}, 에러: {error}"
+
+      # 예시: logger.exception("db_table_merge_failed", service_name="Database", target_name="TB_SAMPLE", error="Invalid schema")
+      db_table_merge_failed: "{service_name} 테이블({target_name}) MERGE 적재 실패: {error}"
+
+      # 예시: logger.exception("db_merge_load_failed", service_name="BigQuery", total_rows=100, error="Invalid schema")
+      db_merge_load_failed: "{service_name} 병합(MERGE) 적재 최종 실패: 총 {total_rows}개 행, 에러: {error}"
+
+      # 예시: logger.exception("db_load_max_retries_exceeded", service_name="BigQuery", max_retries=3, target_key="sample.json", error="Connection reset")
+      db_load_max_retries_exceeded: "{service_name} 배치 적재 최대 재시도 횟수({max_retries}회) 초과로 최종 실패 처리: [Key={target_key}] 에러: {error}"
+
+      # 예시: logger.exception("db_streaming_fallback_failed", service_name="BigQuery", target_key="sample.json", error="Permission denied")
+      db_streaming_fallback_failed: "{service_name} 스트리밍 적재 Fallback 최종 실패: [Key={target_key}] 에러: {error}"
+
+      # 예시: logger.exception("db_bulk_load_failed", service_name="BigQuery", total_rows=100, error="Invalid schema")
+      db_bulk_load_failed: "{service_name} 대량(Bulk) 적재 최종 실패: 총 {total_rows}개 행, 에러: {error}"
+
+      # 예시: logger.exception("db_bulk_streaming_fallback_failed", service_name="BigQuery", error="Permission denied")
+      db_bulk_streaming_fallback_failed: "{service_name} 대량(Bulk) 스트리밍 Fallback 적재 최종 실패: 에러: {error}"
 
     # --- [스토리지 연결, 메타데이터 및 파일 전송 오류] ---
     storage:
-      # 예시: logger.error(get_log_msg("ERROR", "connection_failed", service_name="Dell ECS", error="Connection timed out"))
+      # 예시: logger.exception("storage_client_init_failed", storage_type="GCS", error="Bucket not found")
+      storage_client_init_failed: "{storage_type} 클라이언트 초기화 실패: {error}"
+
+      # 예시: logger.error("connection_failed", service_name="Storage", error="Connection timed out")
       connection_failed: "{service_name} 연결에 실패했습니다: {error}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "list_failed", storage_type="ECS", error="Access Denied"))
+      # 예시: logger.error("list_failed", storage_type="Storage", error="Access Denied")
       list_failed: "{storage_type} 오브젝트 목록 조회에 실패했습니다: {error}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "bucket_not_found", storage_type="GCS", bucket_name="my-bucket", error="Bucket not found"))
+      # 예시: logger.error("bucket_not_found", storage_type="Storage", bucket_name="my-bucket", error="Bucket not found")
       bucket_not_found: "{storage_type} 버킷을 찾을 수 없거나 접근 권한이 없습니다: {bucket_name}, 에러: {error}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "storage_meta_error", storage_type="GCS", target_name="PAK/newpdf/test.pdf", error="404 Not Found"))
+      # 예시: logger.error("storage_meta_error", storage_type="Storage", target_name="path/file.pdf", error="404 Not Found")
       storage_meta_error: "{storage_type} 메타데이터 조회 중 오류 발생 ({target_name}): {error}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "transfer_failed", file_name="sample.pdf", error="Network dropped"))
+      # 예시: logger.error("transfer_failed", file_name="sample.pdf", error="Network dropped")
       transfer_failed: "파일 전송 실패: {file_name}, 에러: {error}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "json_process_error", stage="디코딩/파싱", json_key="PAK/contentInfo/123.json", error="JSONDecodeError"))
-      json_process_error: "게시판 JSON 메타데이터 {stage} 실패: [JSON_Key={json_key}], 에러: {error}"
+      # 예시: logger.exception("storage_extract_failed", target_file="sample.json", error="KeyError")
+      storage_extract_failed: "스토리지 파일({target_file}) 데이터 추출 및 변환 실패: {error}"
+
+      # 예시: logger.exception("folder_search_error", search_prefix="folder/", error="Access Denied")
+      folder_search_error: "스토리지 폴더 '{search_prefix}' 탐색 중 오류 발생: {error}"
+
+      # 예시: logger.error("json_process_error", stage="디코딩/파싱", json_key="folder/123.json", error="JSONDecodeError")
+      json_process_error: "메타데이터 {stage} 실패: [Key={json_key}], 에러: {error}"
+
+      # 예시: logger.error("source_size_error", source_key="sample.pdf", json_key="sample.json", error="404 Not Found")
+      source_size_error: "원천 파일 크기 조회 실패: [Source_Key={source_key} JSON_Key={json_key}], 에러: {error}"
 
     # --- [외부 서비스 및 HTTP API 연동 오류] ---
     service:
-      # 예시: logger.error(get_log_msg("ERROR", "api_http_error", service_name="OpenAI API", code=500, detail="Internal Server Error"))
+      # 예시: logger.error("api_http_error", service_name="외부 API", code=500, detail="Internal Server Error")
       api_http_error: "{service_name} 서버 오류 HTTP {code}: {detail}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "api_connection_error", service_name="외부 연동 API", detail="Port 8000 unreachable"))
+      # 예시: logger.error("api_connection_error", service_name="외부 연동 API", detail="Port unreachable")
       api_connection_error: "{service_name} 연결 실패 (서버 미동작 또는 네트워크 장애): {detail}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "api_unexpected_error", service_name="SQL Agent", detail="KeyError 'result'"))
+      # 예시: logger.error("api_unexpected_error", service_name="Agent", detail="KeyError")
       api_unexpected_error: "{service_name} 연동 중 예기치 않은 오류 발생: {detail}"
 
-      # 예시: logger.error(get_log_msg("ERROR", "api_missing_field", service_name="SQL Generator", field_name="result"))
+      # 예시: logger.error("api_missing_field", service_name="Generator", field_name="result")
       api_missing_field: "{service_name} 응답 내 '{field_name}' 필드가 누락되어 있습니다."
 
     # --- [권한 거부 오류] ---
     permission:
-      # 예시: logger.error(get_log_msg("ERROR", "permission_denied", resource_type="BigQuery 테이블", resource_name="proj.ds.tbl", error="Access Denied"))
+      # 예시: logger.error("permission_denied", resource_type="테이블", resource_name="proj.ds.tbl", error="Access Denied")
       permission_denied: "{resource_type} 접근/수행 권한이 부족하여 작업이 거부되었습니다: {resource_name}, 에러: {error}"
 
   CRITICAL:
     # --- [시스템 치명적 오류] ---
     system:
-      # 예시: logger.critical(get_log_msg("CRITICAL", "client_init_failed", client_name="Dell ECS", error="Connection refused"))
+      # 예시: logger.critical("client_init_failed", client_name="Storage", error="Connection refused")
       client_init_failed: "{client_name} 클라이언트 초기화 중 치명적 오류가 발생하여 프로그램을 종료합니다: {error}"
 
-      # 예시: logger.critical(get_log_msg("CRITICAL", "fail_fast_config_missing", path="gcs.bucket_name", desc_info=" (버킷명)", config_file="config.yml"))
+      # 예시: logger.critical("fail_fast_config_missing", path="storage.bucket_name", desc_info=" (버킷명)", config_file="config.yml")
       fail_fast_config_missing: "[FATAL][Fail-Fast] 필수 설정값이 누락되어 프로그램을 즉시 종료합니다: '{path}'{desc_info}. 설정 파일({config_file})에 이 설정값을 반드시 정의하십시오."

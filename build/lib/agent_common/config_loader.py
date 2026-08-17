@@ -10,10 +10,12 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
+import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
     from agent_common.logger import ProjectLogger
@@ -100,7 +102,8 @@ class ConfigLoader:
     """설정 파일(.yml)을 로컬 및 원격 통합 경로에서 동적으로 읽어들이고 병합하는 설정 로더 클래스입니다.
 
     도메인 의미: 공통 패키지 및 애플리케이션 프로젝트의 YAML 설정 파일들을 계층적으로 병합(Deep Merge)하며,
-    점 표기법(Dot-notation) 기반의 설정값 조회 및 Fail-Fast 필수 설정 검증(require_setting)을 제공합니다.
+    점 표기법(Dot-notation) 기반의 설정값 조회, 도메인별 스키마 등록 및 자동 보정(Self-healing),
+    Fail-Fast 필수 설정 검증(require_setting)을 제공합니다.
     """
 
     @staticmethod
@@ -158,6 +161,7 @@ class ConfigLoader:
 
         self._config_dir: Path = self.project_path(config_dir) if config_dir else self.ROOT / "config"
         self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        self._registered_schemas: dict[str, Any] = {}
 
     def config_dir_get(self) -> Path:
         """설정 디렉토리 경로를 반환합니다 (Getter)."""
@@ -185,14 +189,105 @@ class ConfigLoader:
         """
         self.config_dir_set(config_dir)
 
+    def register_schema(self, schema_dict: dict[str, Any]) -> None:
+        """개별 프로그램에서 요구하는 도메인 기본 설정 스키마/키 딕셔너리를 등록합니다.
+        
+        등록된 기본값은 config.yml 에 해당 키가 정의되지 않았을 때 fallback 베이스로 자동 적용됩니다.
+        """
+        if isinstance(schema_dict, dict):
+            self._deep_merge(self._registered_schemas, schema_dict)
+            self._cached_settings = None
+
+    def ensure_config_file(self, config_file_name: str = "config.yml", default_schema: Optional[dict[str, Any]] = None) -> Path:
+        """설정 파일의 실체 존재 여부를 검증하고, 미존재 시 기본 스키마 템플릿으로 자동 생성하거나
+        기존 파일 내 누락된 키를 보정(Self-healing)합니다.
+        
+        :param config_file_name: 대상 설정 파일명 (기본값: 'config.yml')
+        :param default_schema: 파일 생성 시 기록할 기본 딕셔너리 스키마 (옵션)
+        :return: 대상 설정 파일의 절대 Path 객체
+        """
+        target_path = self.config_dir / config_file_name
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+
+        merged_defaults = {}
+        if self._registered_schemas:
+            self._deep_merge(merged_defaults, self._registered_schemas)
+        if default_schema and isinstance(default_schema, dict):
+            self._deep_merge(merged_defaults, default_schema)
+
+        if not target_path.exists():
+            # 1. 파일이 아예 없으면 기본 스키마로 파일 신규 생성
+            initial_data = merged_defaults if merged_defaults else {"app": {"name": "app"}}
+            now_dt_str = time.strftime("%Y-%m-%d %H:%M:%S")
+            header_tmpl = self.setting("templates.config_notice_header", "")
+            if header_tmpl:
+                header_comment = header_tmpl.format(config_file_name=config_file_name, now_dt_str=now_dt_str)
+                if not header_comment.endswith("\n"):
+                    header_comment += "\n"
+            else:
+                header_comment = ""
+
+            try:
+                yaml_str = yaml.dump(initial_data, allow_unicode=True, sort_keys=False)
+                with open(target_path, "w", encoding="utf-8") as f:
+                    f.write(header_comment + yaml_str)
+                self.logger.info("config_file_auto_created", file_path=str(target_path))
+            except Exception as e:
+                self.logger.warning("config_auto_create_failed", file_path=str(target_path), error=str(e))
+        else:
+            # 2. 파일이 존재할 경우 누락된 키가 있으면 자동 보정
+            if merged_defaults:
+                try:
+                    current_data = self._load_yaml_mapping(target_path)
+                    repaired_keys: list[str] = []
+                    for k, v in merged_defaults.items():
+                        if k not in current_data:
+                            current_data[k] = v
+                            repaired_keys.append(k)
+                        elif isinstance(v, dict) and isinstance(current_data[k], dict):
+                            for sub_k, sub_v in v.items():
+                                if sub_k not in current_data[k]:
+                                    current_data[k][sub_k] = sub_v
+                                    repaired_keys.append(f"{k}.{sub_k}")
+
+                    if repaired_keys:
+                        now_dt_str = time.strftime("%Y-%m-%d %H:%M:%S")
+                        repair_tmpl = self.setting("templates.config_repair_inline_comment", "# [자동 추가: {now_dt_str}]")
+                        inline_comment = repair_tmpl.format(now_dt_str=now_dt_str)
+
+                        yaml_str = yaml.dump(current_data, allow_unicode=True, sort_keys=False)
+                        lines = yaml_str.splitlines()
+                        repaired_leaf_keys = {k.split(".")[-1] for k in repaired_keys}
+
+                        new_lines = []
+                        for line in lines:
+                            stripped = line.strip()
+                            is_target = False
+                            for lk in repaired_leaf_keys:
+                                if (stripped == f"{lk}:" or stripped.startswith(f"{lk}: ")) and "#" not in stripped:
+                                    is_target = True
+                                    break
+                            if is_target:
+                                new_lines.append(f"{line}  {inline_comment}")
+                            else:
+                                new_lines.append(line)
+
+                        final_yaml_str = "\n".join(new_lines) + "\n"
+                        with open(target_path, "w", encoding="utf-8") as f:
+                            f.write(final_yaml_str)
+                        self.logger.info("config_file_auto_repaired", file_path=str(target_path), repaired_keys=repaired_keys)
+                except Exception as repair_err:
+                    self.logger.warning("config_auto_repair_failed", file_path=str(target_path), error=str(repair_err))
+
+        self._cached_settings = None
+        return target_path
+
     def get_settings(self) -> dict[str, Any]:
         """설정 디렉토리 하위의 모든 YAML 설정 파일을 알파벳 순서로 병합하여 반환한다.
         
-        1차로 agent_common 패키지 내부의 기본 설정을 병합 로드하고,
-        2차로 개별 에이전트 프로젝트의 config 디렉토리 설정들로 오버라이드(Deep Merge)합니다.
-
-        도메인 의미: 병합된 설정에서 proxy, no_proxy 값을 읽어 NO_PROXY 환경 변수로 자동 적용하여,
-        urllib 기반 HTTP 클라이언트가 localhost 및 내부 서비스 접근시 사내 프록시를 우회하도록 한다.
+        1차: agent_common 패키지 내부 기본 설정 (agent_common/config)
+        2차: 등록된 도메인 스키마 기본값 (register_schema)
+        3차: 개별 프로젝트 config 디렉토리의 YAML 파일들 (Deep Merge Override)
         """
         if getattr(self, "_cached_settings", None) is not None:
             return self._cached_settings  # type: ignore
@@ -206,8 +301,12 @@ class ConfigLoader:
             for path in sorted(common_config_dir.glob("*.yml")):
                 mapping = self._load_yaml_mapping(path)
                 self._deep_merge(settings, mapping)
+
+        # 2. 등록된 도메인 스키마 기본값 병합
+        if self._registered_schemas:
+            self._deep_merge(settings, self._registered_schemas)
                 
-        # 2. 호출 프로젝트 고유 설정 로드 및 오버라이드 (.yml 및 .yaml 확장자 모두 탐색)
+        # 3. 호출 프로젝트 고유 설정 로드 및 오버라이드 (.yml 및 .yaml 확장자 모두 탐색)
         if self.config_dir.exists():
             yml_files = sorted(set(list(self.config_dir.glob("*.yml")) + list(self.config_dir.glob("*.yaml"))))
             for path in yml_files:
@@ -217,19 +316,14 @@ class ConfigLoader:
 
         self._loaded_files_summary: str = ", ".join(loaded_files) if loaded_files else "읽어들인 YAML 파일 없음"
 
-        # 3. proxy,no_proxy 설정을 NO_PROXY 환경 변수로 적용한다.
+        # 4. proxy, no_proxy 설정을 NO_PROXY 환경 변수로 적용한다.
         self._apply_no_proxy(settings)
 
         self._cached_settings = settings
         return settings
 
     def _apply_no_proxy(self, settings: dict[str, Any]) -> None:
-        """proxy.no-proxy 설정 값을 NO_PROXY 환경 변수로 적용한다.
-        
-        도메인 의미: urllib.request.urlopen()은 NO_PROXY 환경 변수를 자동 참조하므로,
-        설정 파일에 정의된 우회 대상 호스트를 환경 변수로 주입하면 HTTP 요청 시 프록시를 우회할 수 있다.
-        이미 설정된 NO_PROXY 값이 있으면 기존 값과 병합한다.
-        """
+        """proxy.no-proxy 설정 값을 NO_PROXY 환경 변수로 적용한다."""
         no_proxy_value = settings.get("proxy", {}).get("no_proxy")
         if no_proxy_value:
             existing = os.environ.get("NO_PROXY", "")
@@ -239,7 +333,13 @@ class ConfigLoader:
                 os.environ["NO_PROXY"] = str(no_proxy_value)
 
     def setting(self, path: str, default: Any = None) -> Any:
-        """점 표기법 경로(예: 'api.port')를 사용해 병합된 설정값을 조회한다."""
+        """
+        점 표기법 경로(예: 'api.port', 'transfer.lodin_dstlc_cd')를 사용해 병합된 설정값을 조회합니다.
+
+        :param path: 점 표기법 설정 경로 문자열
+        :param default: 설정값이 없거나 유효하지 않을 때 반환할 기본 fallback 값 (기본값: None)
+        :return: 조회된 설정값 또는 기본값
+        """
         current: Any = self.get_settings()
         for key in path.split("."):
             if not isinstance(current, dict) or key not in current:
@@ -259,7 +359,7 @@ class ConfigLoader:
         설정값이 누락되어 있거나 빈 값인 경우, 명시된 설정 파일명과 함께 오류 메시지를 CLI 및 로그로 출력하고
         프로세스를 즉시 강제 종료(sys.exit(1))하여 빠른 실패(Fail-Fast)를 유도합니다.
 
-        :param path: 점 표기법 설정 경로 (예: 'schema_config.pk_key')
+        :param path: 점 표기법 필수 설정 경로 (예: 'schema_config.pk_key')
         :param message: 설정값 누락 시 추가 안내 설명 메시지 (옵션)
         :param config_file: 해당 설정값이 정의되어야 하는 설정 파일명 (기본값: 'config.yml')
         :return: 설정 파일에 정의된 필수 설정값
@@ -275,7 +375,6 @@ class ConfigLoader:
             desc_info = f" ({message})" if message else ""
             cfg_name = config_file.strip() if (config_file and isinstance(config_file, str)) else "config.yml"
             
-            # 탐색 대상 설정 파일의 절대 경로 및 실체 존재 여부를 명확히 추적
             if Path(cfg_name).is_absolute():
                 target_path = Path(cfg_name)
             else:
@@ -300,7 +399,12 @@ class ConfigLoader:
         return current
 
     def project_path(self, path: str | Path) -> Path:
-        """프로젝트 루트를 기준으로 한 상대 경로를 절대 경로로 변환하여 반환한다."""
+        """
+        프로젝트 루트를 기준으로 한 상대 경로를 절대 경로로 변환하여 반환합니다.
+
+        :param path: 절대 경로 또는 프로젝트 루트 기준 상대 경로
+        :return: 정규화된 절대 Path 객체
+        """
         value = Path(path)
         if value.is_absolute():
             return value
@@ -308,7 +412,12 @@ class ConfigLoader:
 
     @staticmethod
     def _load_yaml_mapping(path: Path) -> dict[str, Any]:
-        """지정된 YAML 파일을 파싱하여 최상위 매핑 딕셔너리로 읽어들인다 (UTF-8 / BOM 지원)."""
+        """
+        지정된 YAML 파일을 파싱하여 최상위 매핑 딕셔너리로 읽어들입니다 (UTF-8 / BOM 지원).
+
+        :param path: 파싱할 대상 YAML 파일 절대 경로
+        :return: 파싱된 딕셔너리 객체
+        """
         try:
             with path.open("r", encoding="utf-8-sig") as handle:
                 settings = yaml.safe_load(handle) or {}
@@ -321,7 +430,12 @@ class ConfigLoader:
 
     @staticmethod
     def _deep_merge(target: dict[str, Any], incoming: dict[str, Any]) -> None:
-        """두 딕셔너리를 재귀적으로 병합하며 중복 키는 덮어쓴다."""
+        """
+        두 딕셔너리를 재귀적으로 병합하며 중복 키는 덮어씁니다 (Deep Merge).
+
+        :param target: 병합 대상 기준 딕셔너리 (인플레이스 수정됨)
+        :param incoming: 덮어쓸 신규 딕셔너리
+        """
         for key, value in incoming.items():
             if isinstance(value, dict) and isinstance(target.get(key), dict):
                 ConfigLoader._deep_merge(target[key], value)
@@ -332,7 +446,6 @@ class ConfigLoader:
     def config(self) -> ReadOnlyConfig:
         """현재 병합된 전체 설정을 읽기 전용 점 표기법(Dot-notation) 객체로 반환합니다 (Getter)."""
         return ReadOnlyConfig(self.get_settings())
-
 
 
 # 전역 기본 싱글톤 인스턴스 생성
@@ -346,10 +459,11 @@ configure = _default_loader.configure
 get_settings = _default_loader.get_settings
 setting = _default_loader.setting
 require_setting = _default_loader.require_setting
+register_schema = _default_loader.register_schema
+ensure_config_file = _default_loader.ensure_config_file
 project_path = _default_loader.project_path
 config_dir_get = _default_loader.config_dir_get
 config_dir_set = _default_loader.config_dir_set
 
 # 전역에서 바로 import 하여 점 표기법(config.ecs.endpoint_url)으로 쓸 수 있는 읽기 전용 설정 객체
 config: ReadOnlyConfig = _default_loader.config
-
