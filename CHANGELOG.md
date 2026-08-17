@@ -1,5 +1,11 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.67 (2026-08-17)
+- **모듈 레벨 레거시 함수 별칭 제거 및 `ConfigLoader` 객체지향 캡슐화 일원화**:
+  - `config_loader.py` 내의 모듈 레벨 전역 함수 별칭(`configure`, `get_settings`, `setting`, `require_setting`, `register_schema`, `ensure_config_file`, `project_path`, `config_dir_get`, `config_dir_set`)을 전면 제거.
+  - `agent_common/__init__.py`의 `__all__`을 `ConfigLoader`, `ReadOnlyConfig`, `config`, `clients`, `DateTimeUtils`, `llm` 핵심 객체로 정돈.
+  - 전역 스키마 등록 및 자가 치유를 `ConfigLoader().register_schema()` / `ConfigLoader().ensure_config_file()` 인스턴스 메서드로 일원화하여 Rule 1.5 준수.
+
 ### v0.3.66 (2026-08-17)
 - **`schemas/` 디렉터리 내 YAML 설정 자동 탐색 및 병합 지원**:
   - `ConfigLoader.get_settings`에서 `schemas/**/*.yml` 파일도 자동으로 탐색하여 `config` 계층 구조에 병합하도록 확장.

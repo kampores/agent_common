@@ -458,15 +458,6 @@ ROOT = ConfigLoader.ROOT
 PACKAGE_DIR = ConfigLoader.PACKAGE_DIR
 CONFIG_DIR = _default_loader.config_dir
 
-configure = _default_loader.configure
-get_settings = _default_loader.get_settings
-setting = _default_loader.setting
-require_setting = _default_loader.require_setting
-register_schema = _default_loader.register_schema
-ensure_config_file = _default_loader.ensure_config_file
-project_path = _default_loader.project_path
-config_dir_get = _default_loader.config_dir_get
-config_dir_set = _default_loader.config_dir_set
-
 # 전역에서 바로 import 하여 점 표기법(config.ecs.endpoint_url)으로 쓸 수 있는 읽기 전용 설정 객체
 config: ReadOnlyConfig = _default_loader.config
+
