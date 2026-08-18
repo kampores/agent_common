@@ -366,28 +366,47 @@ class ConfigLoader:
         :param config_file: 해당 설정값이 정의되어야 하는 설정 파일명 (기본값: 'config.yml')
         :return: 설정 파일에 정의된 필수 설정값
         """
-        current: Any = self.get_settings()
-        for key in path.split("."):
-            if not isinstance(current, dict) or key not in current:
+        cfg_name = str(config_file).strip() if (config_file and isinstance(config_file, str)) else "config.yml"
+        
+        # 1. 파일 경로 정규화 (절대 경로, 프로젝트 루트 기준 경로, config_dir 기준 경로 순차 탐색)
+        if Path(cfg_name).is_absolute():
+            target_path = Path(cfg_name)
+        elif (self.ROOT / cfg_name).exists() or any(p in cfg_name for p in ("/", "\\")):
+            target_path = self.project_path(cfg_name)
+        else:
+            target_path = self.config_dir / cfg_name
+
+        # 2. 대상 데이터 소스 로드 (기본 config.yml 일 경우 get_settings() 캐시 활용, 별도 파일일 경우 직접 로드)
+        if target_path == (self.config_dir / "config.yml") or cfg_name == "config.yml":
+            current: Any = self.get_settings()
+        else:
+            if not target_path.exists():
                 current = None
-                break
-            current = current[key]
+            else:
+                try:
+                    current = self._load_yaml_mapping(target_path)
+                except Exception as read_err:
+                    current = None
+                    message = f"{message} (파일 파싱 오류: {read_err})" if message else f"파일 파싱 오류: {read_err}"
+
+        # 3. 점(.) 표기법 경로 탐색
+        if isinstance(current, dict):
+            for key in path.split("."):
+                if not isinstance(current, dict) or key not in current:
+                    current = None
+                    break
+                current = current[key]
+        else:
+            current = None
 
         if current is None or (isinstance(current, str) and not current.strip()):
             desc_info = f" ({message})" if message else ""
-            cfg_name = config_file.strip() if (config_file and isinstance(config_file, str)) else "config.yml"
-            
-            # 탐색 대상 설정 파일의 절대 경로 및 실체 존재 여부를 명확히 추적
-            if Path(cfg_name).is_absolute():
-                target_path = Path(cfg_name)
-            else:
-                target_path = self.config_dir / cfg_name
             exists_status = "파일 존재함" if target_path.exists() else "파일 없음"
 
             all_settings = self.get_settings()
             loaded_keys = list(all_settings.keys()) if isinstance(all_settings, dict) else []
             files_summary = getattr(self, "_loaded_files_summary", "미조회")
-            full_cfg_info = f"{target_path} [{exists_status}] (config_dir: '{self.config_dir}', 로드된 파일별 키: [{files_summary}], 최종 병합 키: {loaded_keys})"
+            full_cfg_info = f"{target_path} [{exists_status}] (로드된 파일별 키: [{files_summary}], 최종 병합 키: {loaded_keys})"
 
             err_msg = self.logger.critical(
                 "fail_fast_config_missing",

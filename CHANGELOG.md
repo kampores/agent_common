@@ -1,5 +1,15 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.69 (2026-08-18)
+- **`ConfigLoader.require_setting` 다중 경로 및 도메인 룰 파일 탐색 확장**:
+  - `require_setting`이 `config/` 디렉터리뿐만 아니라 `medallion/bronze/facts_rules.yml`, `medallion/gold/table_rules.yml` 등 프로젝트 내 임의의 상대/절대 파일 경로를 직접 지정받아 검증할 수 있도록 지원.
+  - `load_facts_rules`, `load_table_rules`, `load_column_codes`의 중복 파일 검증 로직을 `require_setting`으로 일원화(SRP/DRY 준수).
+
+### v0.3.68 (2026-08-18)
+- **`GcsClient` 로거 및 예외 처리 수정**:
+  - `GcsClient` 초기화 시 `self.logger` 속성을 표준 바인딩하여 `AttributeError` 원천 차단.
+  - 버킷 연결 실패 시 `ConnectionError` 예외 메시지 포맷팅을 명확하게 수정.
+
 ### v0.3.67 (2026-08-17)
 - **모듈 레벨 레거시 함수 별칭 제거 및 `ConfigLoader` 객체지향 캡슐화 일원화**:
   - `config_loader.py` 내의 모듈 레벨 전역 함수 별칭(`configure`, `get_settings`, `setting`, `require_setting`, `register_schema`, `ensure_config_file`, `project_path`, `config_dir_get`, `config_dir_set`)을 전면 제거.

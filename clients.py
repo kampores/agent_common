@@ -203,8 +203,8 @@ class GcsClient:
         self.bucket_name: str = str(bucket_name).strip()
         # credentials_path: GCP 서비스 계정 키 JSON 경로
         self.credentials_path: str = credentials_path if credentials_path is not None else ""
-        # logger: _logger 백킹 필드 초기화
-        self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        # logger: 로거 초기화
+        self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
         self.config_loader: ConfigLoader = ConfigLoader()
         # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
@@ -245,7 +245,8 @@ class GcsClient:
         except Exception as e:
             # 공용 에러 핸들러 네트워크 예외 기록 수행
             ErrorHandler.handle_network_error(e, f"GCS 버킷 연결 ({self.bucket_name})")
-            raise ConnectionError(self.logger.exception("connection_failed", service_name="GCS", error=str(e))) from e
+            self.logger.exception("connection_failed", service_name="GCS", error=str(e))
+            raise ConnectionError(f"GCS 버킷({self.bucket_name}) 연결 실패: {str(e)}") from e
 
     def get_blob_size(self, destination_blob_name: str) -> int | None:
         """GCS 목적지 blob의 존재 여부 및 바이트 크기(bytes)를 조회한다.
