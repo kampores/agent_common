@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent_common"
-version = "0.3.69"
+version = "0.3.70"
 description = "중앙 에이전트 및 하위 SQL 생성 서비스를 위한 공통 로깅/설정 모듈"
 readme = "README.md"
 requires-python = ">=3.10"

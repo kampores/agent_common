@@ -353,7 +353,7 @@ class ConfigLoader:
         self, 
         path: str, 
         message: str = "", 
-        config_file: str = "config.yml"
+        config_file: str | Path | None = None
     ) -> Any:
         """
         [Fail-Fast 정책 준수]
@@ -363,33 +363,32 @@ class ConfigLoader:
 
         :param path: 점 표기법 필수 설정 경로 (예: 'schema_config.pk_key')
         :param message: 설정값 누락 시 추가 안내 설명 메시지 (옵션)
-        :param config_file: 해당 설정값이 정의되어야 하는 설정 파일명 (기본값: 'config.yml')
+        :param config_file: 특정 설정 파일 경로 (미지정 시 기본 config_dir 설정 전체 사용)
         :return: 설정 파일에 정의된 필수 설정값
         """
-        cfg_name = str(config_file).strip() if (config_file and isinstance(config_file, str)) else "config.yml"
-        
-        # 1. 파일 경로 정규화 (절대 경로, 프로젝트 루트 기준 경로, config_dir 기준 경로 순차 탐색)
-        if Path(cfg_name).is_absolute():
-            target_path = Path(cfg_name)
-        elif (self.ROOT / cfg_name).exists() or any(p in cfg_name for p in ("/", "\\")):
-            target_path = self.project_path(cfg_name)
+        # 1. 파일 경로 정규화 및 데이터 로드 격리
+        if config_file is None:
+            target_path = self.config_dir / "config.yml"
+            data: Any = self.get_settings()
+            raw_keys = list(data.keys()) if isinstance(data, dict) else []
         else:
-            target_path = self.config_dir / cfg_name
-
-        # 2. 대상 데이터 소스 로드 (기본 config.yml 일 경우 get_settings() 캐시 활용, 별도 파일일 경우 직접 로드)
-        if target_path == (self.config_dir / "config.yml") or cfg_name == "config.yml":
-            current: Any = self.get_settings()
-        else:
+            cfg_path = Path(config_file)
+            target_path = cfg_path if cfg_path.is_absolute() else self.project_path(cfg_path)
+            
             if not target_path.exists():
-                current = None
+                data = None
+                raw_keys = []
             else:
                 try:
-                    current = self._load_yaml_mapping(target_path)
+                    data = self._load_yaml_mapping(target_path)
+                    raw_keys = list(data.keys()) if isinstance(data, dict) else []
                 except Exception as read_err:
-                    current = None
+                    data = None
+                    raw_keys = []
                     message = f"{message} (파일 파싱 오류: {read_err})" if message else f"파일 파싱 오류: {read_err}"
 
-        # 3. 점(.) 표기법 경로 탐색
+        # 2. 점(.) 표기법 경로 탐색
+        current: Any = data
         if isinstance(current, dict):
             for key in path.split("."):
                 if not isinstance(current, dict) or key not in current:
@@ -399,14 +398,11 @@ class ConfigLoader:
         else:
             current = None
 
+        # 3. 누락 시 Fail-Fast 처리
         if current is None or (isinstance(current, str) and not current.strip()):
             desc_info = f" ({message})" if message else ""
             exists_status = "파일 존재함" if target_path.exists() else "파일 없음"
-
-            all_settings = self.get_settings()
-            loaded_keys = list(all_settings.keys()) if isinstance(all_settings, dict) else []
-            files_summary = getattr(self, "_loaded_files_summary", "미조회")
-            full_cfg_info = f"{target_path} [{exists_status}] (로드된 파일별 키: [{files_summary}], 최종 병합 키: {loaded_keys})"
+            full_cfg_info = f"{target_path} [{exists_status}] (조회된 파일 키: {raw_keys})"
 
             err_msg = self.logger.critical(
                 "fail_fast_config_missing",

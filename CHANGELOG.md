@@ -1,5 +1,10 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.70 (2026-08-18)
+- **`ConfigLoader.require_setting` 하드코딩 제거 및 파일 로드 격리**:
+  - `config_file` 인자 기본값을 `None`으로 변경하여 하드코딩 제거.
+  - 특정 파일 경로 지정 시 `config.yml` 및 `get_settings()` 전역 캐시와 완전히 격리하여 독립 로드 및 검증 수행.
+
 ### v0.3.69 (2026-08-18)
 - **`ConfigLoader.require_setting` 다중 경로 및 도메인 룰 파일 탐색 확장**:
   - `require_setting`이 `config/` 디렉터리뿐만 아니라 `medallion/bronze/facts_rules.yml`, `medallion/gold/table_rules.yml` 등 프로젝트 내 임의의 상대/절대 파일 경로를 직접 지정받아 검증할 수 있도록 지원.
