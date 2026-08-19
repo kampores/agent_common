@@ -479,12 +479,6 @@ class BigQueryClient:
             clean_insert_err = str(e)
             raise RuntimeError(self.logger.exception("insert_failed", service_name="BigQuery", target_name=self.table_id, error=clean_insert_err)) from e
 
-    def insert_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
-        """
-        JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
-        기본적으로 self.client.load_table_from_json(배치 로드) 방식을 호출합니다.
-        """
-        return self.load_table_from_json_data(json_data, timeout=timeout, ignore_unknown_values=ignore_unknown_values)
 
     def get_existing_keys(self, field_name: str = "recvPath") -> set[str]:
         """

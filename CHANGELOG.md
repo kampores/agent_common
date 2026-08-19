@@ -1,5 +1,9 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.71 (2026-08-19)
+- **`BigQueryClient.insert_json_data` 단순 포워딩 래퍼 메서드 제거**:
+  - `load_table_from_json_data`를 단순히 호출만 하는 불필요한 전달(pass-through) 메서드인 `insert_json_data`를 제거하여 명시적인 API 호출(`load_table_from_json_data`, `insert_rows_json_data`, `merge_table_from_json_data`)로 일원화.
+
 ### v0.3.70 (2026-08-18)
 - **`ConfigLoader.require_setting` 하드코딩 제거 및 파일 로드 격리**:
   - `config_file` 인자 기본값을 `None`으로 변경하여 하드코딩 제거.

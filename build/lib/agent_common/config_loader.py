@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from agent_common.logger import ProjectLogger
 
 import yaml
+from agent_common.utils import DateTimeUtils
 
 
 class ReadOnlyConfig:
@@ -125,7 +126,8 @@ class ConfigLoader:
                 for m_path in [raw_main, resolved_main]:
                     m_dir = m_path.parent if m_path.is_file() or not m_path.exists() else m_path
                     candidates.extend([m_dir] + list(m_dir.parents))
-            except Exception:
+            except (ValueError, OSError):
+                # 대화형 REPL, python -c 등 특수 환경에서 유효하지 않은 argv[0] 경로 무시 (1번 cwd로 탐색)
                 pass
 
         # 3. agent_common 패키지 자체 위치 및 상위 위치
@@ -218,7 +220,7 @@ class ConfigLoader:
         if not target_path.exists():
             # 1. 파일이 아예 없으면 기본 스키마로 파일 신규 생성
             initial_data = merged_defaults if merged_defaults else {"app": {"name": "app"}}
-            now_dt_str = time.strftime("%Y-%m-%d %H:%M:%S")
+            now_dt_str = DateTimeUtils.get_now_formatted()
             header_tmpl = self.setting("templates.config_notice_header", "")
             if header_tmpl:
                 header_comment = header_tmpl.format(config_file_name=config_file_name, now_dt_str=now_dt_str)
@@ -233,7 +235,7 @@ class ConfigLoader:
                     f.write(header_comment + yaml_str)
                 self.logger.info("config_file_auto_created", file_path=str(target_path))
             except Exception as e:
-                self.logger.warning("config_auto_create_failed", file_path=str(target_path), error=str(e))
+                self.logger.exception("config_auto_create_failed", file_path=str(target_path), error=str(e))
         else:
             # 2. 파일이 존재할 경우 누락된 키가 있으면 자동 보정
             if merged_defaults:
@@ -251,7 +253,7 @@ class ConfigLoader:
                                     repaired_keys.append(f"{k}.{sub_k}")
 
                     if repaired_keys:
-                        now_dt_str = time.strftime("%Y-%m-%d %H:%M:%S")
+                        now_dt_str = DateTimeUtils.get_now_formatted()
                         repair_tmpl = self.setting("templates.config_repair_inline_comment", "# [자동 추가: {now_dt_str}]")
                         inline_comment = repair_tmpl.format(now_dt_str=now_dt_str)
 
@@ -277,7 +279,7 @@ class ConfigLoader:
                             f.write(final_yaml_str)
                         self.logger.info("config_file_auto_repaired", file_path=str(target_path), repaired_keys=repaired_keys)
                 except Exception as repair_err:
-                    self.logger.warning("config_auto_repair_failed", file_path=str(target_path), error=str(repair_err))
+                    self.logger.exception("config_auto_repair_failed", file_path=str(target_path), error=str(repair_err))
 
         self._cached_settings = None
         return target_path
@@ -351,7 +353,7 @@ class ConfigLoader:
         self, 
         path: str, 
         message: str = "", 
-        config_file: str = "config.yml"
+        config_file: str | Path | None = None
     ) -> Any:
         """
         [Fail-Fast 정책 준수]
@@ -361,30 +363,46 @@ class ConfigLoader:
 
         :param path: 점 표기법 필수 설정 경로 (예: 'schema_config.pk_key')
         :param message: 설정값 누락 시 추가 안내 설명 메시지 (옵션)
-        :param config_file: 해당 설정값이 정의되어야 하는 설정 파일명 (기본값: 'config.yml')
+        :param config_file: 특정 설정 파일 경로 (미지정 시 기본 config_dir 설정 전체 사용)
         :return: 설정 파일에 정의된 필수 설정값
         """
-        current: Any = self.get_settings()
-        for key in path.split("."):
-            if not isinstance(current, dict) or key not in current:
-                current = None
-                break
-            current = current[key]
+        # 1. 파일 경로 정규화 및 데이터 로드 격리
+        if config_file is None:
+            target_path = self.config_dir / "config.yml"
+            data: Any = self.get_settings()
+            raw_keys = list(data.keys()) if isinstance(data, dict) else []
+        else:
+            cfg_path = Path(config_file)
+            target_path = cfg_path if cfg_path.is_absolute() else self.project_path(cfg_path)
+            
+            if not target_path.exists():
+                data = None
+                raw_keys = []
+            else:
+                try:
+                    data = self._load_yaml_mapping(target_path)
+                    raw_keys = list(data.keys()) if isinstance(data, dict) else []
+                except Exception as read_err:
+                    data = None
+                    raw_keys = []
+                    message = f"{message} (파일 파싱 오류: {read_err})" if message else f"파일 파싱 오류: {read_err}"
 
+        # 2. 점(.) 표기법 경로 탐색
+        current: Any = data
+        if isinstance(current, dict):
+            for key in path.split("."):
+                if not isinstance(current, dict) or key not in current:
+                    current = None
+                    break
+                current = current[key]
+        else:
+            current = None
+
+        # 3. 누락 시 Fail-Fast 처리
         if current is None or (isinstance(current, str) and not current.strip()):
             desc_info = f" ({message})" if message else ""
-            cfg_name = config_file.strip() if (config_file and isinstance(config_file, str)) else "config.yml"
-            
-            if Path(cfg_name).is_absolute():
-                target_path = Path(cfg_name)
-            else:
-                target_path = self.config_dir / cfg_name
             exists_status = "파일 존재함" if target_path.exists() else "파일 없음"
-
-            all_settings = self.get_settings()
-            loaded_keys = list(all_settings.keys()) if isinstance(all_settings, dict) else []
-            files_summary = getattr(self, "_loaded_files_summary", "미조회")
-            full_cfg_info = f"{target_path} [{exists_status}] (config_dir: '{self.config_dir}', 로드된 파일별 키: [{files_summary}], 최종 병합 키: {loaded_keys})"
+            full_cfg_info = f"{target_path} [{exists_status}] (조회된 파일 키: {raw_keys})"
 
             err_msg = self.logger.critical(
                 "fail_fast_config_missing",
@@ -455,15 +473,6 @@ ROOT = ConfigLoader.ROOT
 PACKAGE_DIR = ConfigLoader.PACKAGE_DIR
 CONFIG_DIR = _default_loader.config_dir
 
-configure = _default_loader.configure
-get_settings = _default_loader.get_settings
-setting = _default_loader.setting
-require_setting = _default_loader.require_setting
-register_schema = _default_loader.register_schema
-ensure_config_file = _default_loader.ensure_config_file
-project_path = _default_loader.project_path
-config_dir_get = _default_loader.config_dir_get
-config_dir_set = _default_loader.config_dir_set
-
 # 전역에서 바로 import 하여 점 표기법(config.ecs.endpoint_url)으로 쓸 수 있는 읽기 전용 설정 객체
 config: ReadOnlyConfig = _default_loader.config
+
