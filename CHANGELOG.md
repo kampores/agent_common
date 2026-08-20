@@ -1,5 +1,11 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.74 (2026-08-20)
+- **BigQuery TIMESTAMP 타임존 오프셋 설정(`bigquery.timezone_offset`) 및 포맷팅 지원**:
+  - `config.yml` 내 `bigquery.timezone_offset` (기본값: `+09:00`) 설정 항목 추가 및 `BigQueryClient`에 바인딩.
+  - `BigQueryClient.format_timestamp`에서 원천 데이터에 타임존이 없을 경우 `config.yml`의 `timezone_offset`을 자동 부여하고, 기존 타임존 오프셋(`Z`, `+09:00` 등)은 그대로 보존하도록 개선.
+  - `DateTimeUtils.FORMAT_DATETIME_STD` 기본 포맷을 `%Y-%m-%d %H:%M:%S+09:00`로 일원화하여 `{sys.now}` 및 시스템 생성 타임스탬프에 KST 타임존 오프셋 명시.
+
 ### v0.3.73 (2026-08-20)
 - **`ProjectLogger` 실제 호출 원천 위치(파일명, 라인 번호, 함수명) 추적 개선**:
   - `ProjectLogger` 래퍼 메서드(`info`, `warning`, `error`, `critical`, `debug`, `exception`, `log_msg`)에 `stacklevel=2`를 적용하여 어댑터 내부 위치(`logger.py:245 warning()`) 대신 실제 호출한 원천 소스코드 위치(예: `rule_evaluator.py:309 resolve_folder_and_post_dict()`, `ecs_to_bigquery.py:238 main()`)를 정확히 출력하도록 개선.

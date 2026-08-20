@@ -19,7 +19,9 @@ class DateTimeUtils:
     """
 
     FORMAT_DATE_YYYYMMDD: str = "%Y%m%d"
-    FORMAT_DATETIME_STD: str = "%Y-%m-%d %H:%M:%S"
+    FORMAT_DATETIME_STD: str = "%Y-%m-%d %H:%M:%S+09:00"
+    FORMAT_DATETIME_NO_TZ: str = "%Y-%m-%d %H:%M:%S"
+    FORMAT_DATETIME_KST: str = "%Y-%m-%d %H:%M:%S+09:00"
     FORMAT_DATETIME_COMPACT: str = "%Y%m%d%H%M%S"
 
     @classmethod
@@ -34,10 +36,10 @@ class DateTimeUtils:
     @classmethod
     def get_now_formatted(cls, fmt_str: Optional[str] = None) -> str:
         """
-        현재 일시를 표준 형식(기본값: YYYY-MM-DD HH:MM:SS) 문자열로 반환합니다.
+        현재 일시를 표준 형식(기본값: YYYY-MM-DD HH:MM:SS+09:00) 문자열로 반환합니다.
 
-        :param fmt_str: 사용할 strftime 포맷 문자열 (기본값: '%Y-%m-%d %H:%M:%S')
-        :return: 포맷팅된 현재 일시 문자열 (예: '2026-08-16 22:15:00')
+        :param fmt_str: 사용할 strftime 포맷 문자열 (기본값: '%Y-%m-%d %H:%M:%S+09:00')
+        :return: 포맷팅된 현재 일시 문자열 (예: '2026-08-16 22:15:00+09:00')
         """
         target_fmt_str: str = fmt_str or cls.FORMAT_DATETIME_STD
         return time.strftime(target_fmt_str)
