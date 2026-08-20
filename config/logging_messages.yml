@@ -200,6 +200,12 @@ logging_messages:
       # 예시: logger.warning("table_truncate_warning", service_name="BigQuery", table_name="TB_SAMPLE")
       table_truncate_warning: "{service_name} 테이블({table_name})의 기존 모든 데이터가 삭제(TRUNCATE)됩니다. 주의가 필요합니다."
 
+      # 예시: logger.warning("bq_deleted_asst_stus_skipped", asst_id="S01123", asst_stus_cd="09", ecs_key="sushin/123.json")
+      bq_deleted_asst_stus_skipped: "삭제 자산상태코드({asst_stus_cd})로 인해 BigQuery 적재 대상에서 능동적으로 제외(Skip)합니다: [자산ID={asst_id}] [ECS_Key={ecs_key}]"
+
+      # 예시: logger.warning("bq_all_rows_deleted_asst_stus_skipped", ecs_key="sushin/123.json", context_info="...")
+      bq_all_rows_deleted_asst_stus_skipped: "모든 행이 삭제 자산상태코드로 판정되어 BigQuery 적재를 제외(Skip)합니다: [ECS_Key={ecs_key}] {context_info}"
+
   ERROR:
     # --- [설정 및 정규식 오류] ---
     config:

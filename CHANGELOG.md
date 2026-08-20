@@ -1,5 +1,10 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.77 (2026-08-20)
+- **BigQuery 적재 시 삭제 상태 자산(`asstStusCd == '09'`) 능동적 필터링 및 로그 템플릿 추가**:
+  - `logging_messages.yml` 내 `bq_deleted_asst_stus_skipped`, `bq_all_rows_deleted_asst_stus_skipped` 경고 템플릿 등록.
+  - `EcsToBigQueryTransferManager._filter_payload_by_asst_stus` 구현: GCS 실체 검증 이전에 자산상태코드가 `'09'`인 행을 능동적으로 선제 필터링하여 BigQuery 적재 대상에서 제외.
+
 ### v0.3.76 (2026-08-20)
 - **`ProgressTracker` 유틸리티 및 배치 실시간 진행률/최종 요약 리포트 시스템 구축**:
   - `ProgressTracker` 클래스 신설: 실시간 진행률(`[N/Total] (P%)`, 성공/실패/제외 카운트, 경과시간, 전송량) 추적.
