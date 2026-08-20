@@ -1,5 +1,9 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.78 (2026-08-20)
+- **`BigQueryClient` 입력 데이터(JSON dict/list) 정규화 및 분기 로직 간소화**:
+  - `load_table_from_json_data`, `insert_rows_json_data`, `merge_table_from_json_data` 내 중복 `if/elif` 분기 처리를 한 줄 조건식 정규화로 개선하여 가독성 향상.
+
 ### v0.3.77 (2026-08-20)
 - **BigQuery 적재 시 삭제 상태 자산(`asstStusCd == '09'`) 능동적 필터링 및 로그 템플릿 추가**:
   - `logging_messages.yml` 내 `bq_deleted_asst_stus_skipped`, `bq_all_rows_deleted_asst_stus_skipped` 경고 템플릿 등록.

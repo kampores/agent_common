@@ -387,13 +387,8 @@ class BigQueryClient:
             else self.ignore_unknown_values
         )
         table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
-        table_target = self.table_obj if getattr(self, "table_obj", None) else table_ref
-
-        if isinstance(json_data, dict):
-            rows_to_insert = [json_data]
-        elif isinstance(json_data, list):
-            rows_to_insert = json_data
-        else:
+        rows_to_insert = [json_data] if isinstance(json_data, dict) else (json_data if isinstance(json_data, list) else None)
+        if rows_to_insert is None:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
         try:
@@ -454,11 +449,8 @@ class BigQueryClient:
         table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
         table_target = self.table_obj if getattr(self, "table_obj", None) else table_ref
 
-        if isinstance(json_data, dict):
-            rows_to_insert = [json_data]
-        elif isinstance(json_data, list):
-            rows_to_insert = json_data
-        else:
+        rows_to_insert = [json_data] if isinstance(json_data, dict) else (json_data if isinstance(json_data, list) else None)
+        if rows_to_insert is None:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
         try:
@@ -532,11 +524,10 @@ class BigQueryClient:
         if not json_data_any:
             return
 
-        if isinstance(json_data_any, dict):
-            rows_list: list[dict[str, Any]] = [json_data_any]
-        elif isinstance(json_data_any, list):
-            rows_list = json_data_any
-        else:
+        rows_list: list[dict[str, Any]] | None = (
+            [json_data_any] if isinstance(json_data_any, dict) else (json_data_any if isinstance(json_data_any, list) else None)
+        )
+        if rows_list is None:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data_any)}")
 
         if not rows_list:
