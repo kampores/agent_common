@@ -476,6 +476,28 @@ class BigQueryClient:
             raise RuntimeError(self.logger.exception("insert_failed", service_name="BigQuery", target_name=self.table_id, error=clean_insert_err)) from e
 
 
+    def query(self, query_str: str, timeout: int | None = None) -> list[dict[str, Any]]:
+        """
+        임의의 BigQuery SQL 쿼리(예: 공통 코드 테이블 TCTBICM02 SELECT 등)를 실행하고,
+        조회된 결과 행들을 딕셔너리 리스트([dict, ...])로 반환합니다.
+
+        :param query_str: 실행할 SQL 쿼리 문자열
+        :param timeout: 쿼리 타임아웃 제한 시간(초)
+        :return: 딕셔너리 리스트 형태의 쿼리 결과
+        """
+        query_timeout_int: int = timeout if timeout is not None else self.timeout_seconds
+        try:
+            query_job = self.client.query(query_str, timeout=query_timeout_int)
+            results = query_job.result(timeout=query_timeout_int)
+            rows_list: list[dict[str, Any]] = [dict(row.items()) for row in results]
+            return rows_list
+        except Exception as q_err:
+            clean_err_str: str = str(q_err)
+            self.logger.warning("query_execution_failed", service_name="BigQuery", query=query_str, error=clean_err_str)
+            raise RuntimeError(
+                self.logger.error("query_execution_failed", service_name="BigQuery", error=clean_err_str)
+            ) from q_err
+
     def get_existing_keys(self, field_name: str = "recvPath") -> set[str]:
         """
         BigQuery 테이블에서 특정 필드(기본값: recvPath)의 기존 값들을 조회하여 set 구조로 반환합니다.

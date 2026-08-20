@@ -1,5 +1,9 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.79 (2026-08-21)
+- **`BigQueryClient` 범용 SELECT 쿼리 메서드(`query`) 신설**:
+  - 임의의 SQL 쿼리를 실행하여 결과 행들을 `list[dict[str, Any]]` 형태로 반환하는 범용 `query()` 메서드 추가 (공통 코드 테이블 `TCTBICM02` 실시간 조회 등 지원).
+
 ### v0.3.78 (2026-08-20)
 - **`BigQueryClient` 입력 데이터(JSON dict/list) 정규화 및 분기 로직 간소화**:
   - `load_table_from_json_data`, `insert_rows_json_data`, `merge_table_from_json_data` 내 중복 `if/elif` 분기 처리를 한 줄 조건식 정규화로 개선하여 가독성 향상.
