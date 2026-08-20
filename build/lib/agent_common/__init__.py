@@ -9,7 +9,7 @@
 """
 
 from agent_common.clients import BigQueryClient, EcsClient, GcsClient
-from agent_common.utils import DateTimeUtils
+from agent_common.utils import DateTimeUtils, ProgressTracker
 from agent_common.config_loader import (
     ConfigLoader,
     ReadOnlyConfig,
@@ -27,5 +27,6 @@ __all__ = [
     "GcsClient",
     "BigQueryClient",
     "DateTimeUtils",
+    "ProgressTracker",
 ]
 

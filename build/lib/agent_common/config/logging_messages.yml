@@ -44,6 +44,12 @@ logging_messages:
       # 예시: logger.info("run_finished", total_count=100, success_count=98, skip_count=2, fail_count=0, total_elapsed=12.34)
       run_finished: "전송 작업 완료: 총 처리={total_count}건, 성공={success_count}건, 건너뜀={skip_count}건, 실패={fail_count}건, 총소요시간={total_elapsed:.2f}초"
 
+      # 예시: logger.info("operation_cancelled_by_user", reason="사용자 입력으로 WRITE_TRUNCATE 취소")
+      operation_cancelled_by_user: "사용자에 의해 작업이 취소되었습니다: {reason}"
+
+      # 예시: logger.info("progress_update", message="[작업 진행상황] 370 / 1,000 건 (37.0%) ...")
+      progress_update: "{message}"
+
     # --- [데이터베이스 및 테이블 적재 범용] ---
     db:
       # 예시: logger.info("db_inline_merge_started", service_name="BigQuery", target_table="proj.ds.tbl", total_rows=100, chunk_size=500, total_chunks=1, pk_key="id")
@@ -123,6 +129,14 @@ logging_messages:
       rule_eval_success: "템플릿 평가 성공{json_info}: [Col={col_name} Folder={folder_val} Tmpl='{tmpl}' Result='{res}']"
 
   WARNING:
+    # --- [프로그램 생명주기 및 요약 리포트] ---
+    lifecycle:
+      # 예시: logger.warning("progress_milestone", message="[작업 진행상황] 400 / 1,000 건 (40.0%) ...")
+      progress_milestone: "{message}"
+
+      # 예시: logger.warning("execution_summary_report", summary="\n================...")
+      execution_summary_report: "{summary}"
+
     # --- [설정 파일 관리 경고] ---
     config:
       # 예시: logger.warning("config_auto_create_failed", file_path="config/config.yml", error="Permission denied")
@@ -182,6 +196,9 @@ logging_messages:
 
       # 예시: logger.warning("db_bulk_load_skipped_no_data", service_name="BigQuery", reason="적재 대상 없음")
       db_bulk_load_skipped_no_data: "{service_name} 대량(Bulk) 적재를 건너뜁니다: {reason}"
+
+      # 예시: logger.warning("table_truncate_warning", service_name="BigQuery", table_name="TB_SAMPLE")
+      table_truncate_warning: "{service_name} 테이블({table_name})의 기존 모든 데이터가 삭제(TRUNCATE)됩니다. 주의가 필요합니다."
 
   ERROR:
     # --- [설정 및 정규식 오류] ---

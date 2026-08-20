@@ -97,8 +97,15 @@ class ProjectLogger:
         config_dir: str | Path | None = None,
         default_log_file: str = "logs/app.log",
         app_name: str | None = None,
+        file_logging: bool | None = None,
     ) -> None:
-        """설정 파일(logging.yml 등)을 기반으로 전체 로깅 환경을 일괄 초기화합니다."""
+        """설정 파일(logging.yml, config.yml 등)을 기반으로 전체 로깅 환경을 일괄 초기화합니다.
+
+        :param config_dir: 커스텀 설정 디렉토리 경로 (선택)
+        :param default_log_file: 기본 로그 파일 경로 (선택)
+        :param app_name: 애플리케이션 명칭 (로그 파일명 {app_name} 치환용)
+        :param file_logging: 로그 파일 생성 활성화 여부 (True: 파일 저장, False: 콘솔만 출력, None: config.yml logging.file_logging 설정 준용)
+        """
         import sys
         from agent_common.config_loader import ConfigLoader
 
@@ -121,6 +128,13 @@ class ProjectLogger:
         console_handler.setFormatter(formatter)
         handlers: list[logging.Handler] = [console_handler]
 
+        # 로그 파일 생성 활성화 여부 결정 (CLI 파라미터 우선 -> config.yml logging.file_logging -> 기본값 True)
+        file_logging_enabled: bool = (
+            file_logging
+            if file_logging is not None
+            else bool(loader.setting("logging.file_logging", True))
+        )
+
         log_file = loader.setting("logging.file", default_log_file)
         out_file = loader.setting("logging.out_file")
         debug_file = loader.setting("logging.debug_file")
@@ -136,7 +150,7 @@ class ProjectLogger:
         elif log_file:
             target_log_file = log_file
 
-        if target_log_file:
+        if file_logging_enabled and target_log_file:
             from datetime import datetime
 
             today = datetime.now()
@@ -214,72 +228,71 @@ class ProjectLogger:
         **kwargs: Any,
     ) -> str:
         """코드 기반 메시지를 로거에 즉시 기록하고 완성된 메시지를 반환합니다."""
+        stacklevel = kwargs.pop("stacklevel", 2)
         msg = self.get_log_msg(level, code, default=default, **kwargs)
         lvl_name = str(level).strip().upper()
-        if lvl_name == "DEBUG":
-            self.debug(msg)
-        elif lvl_name == "WARNING":
-            self.warning(msg)
-        elif lvl_name == "ERROR":
-            self.error(msg)
-        elif lvl_name == "CRITICAL":
-            self.critical(msg)
-        else:
-            self.info(msg)
+        lvl_num = getattr(logging, lvl_name, logging.INFO)
+        self.logger.log(lvl_num, msg, stacklevel=stacklevel)
         return msg
 
     def info(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """INFO 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel = kwargs.pop("stacklevel", 2)
         if isinstance(msg_or_code, str):
             msg = self.get_log_msg("INFO", msg_or_code, default=default, **kwargs)
-            self.logger.info(msg, *args)
+            self.logger.info(msg, *args, stacklevel=stacklevel)
             return msg
-        self.logger.info(msg_or_code, *args, **kwargs)
+        self.logger.info(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
 
     def warning(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """WARNING 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel = kwargs.pop("stacklevel", 2)
         if isinstance(msg_or_code, str):
             msg = self.get_log_msg("WARNING", msg_or_code, default=default, **kwargs)
-            self.logger.warning(msg, *args)
+            self.logger.warning(msg, *args, stacklevel=stacklevel)
             return msg
-        self.logger.warning(msg_or_code, *args, **kwargs)
+        self.logger.warning(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
 
     def error(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """ERROR 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel = kwargs.pop("stacklevel", 2)
         if isinstance(msg_or_code, str):
             msg = self.get_log_msg("ERROR", msg_or_code, default=default, **kwargs)
-            self.logger.error(msg, *args)
+            self.logger.error(msg, *args, stacklevel=stacklevel)
             return msg
-        self.logger.error(msg_or_code, *args, **kwargs)
+        self.logger.error(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
 
     def critical(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """CRITICAL 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel = kwargs.pop("stacklevel", 2)
         if isinstance(msg_or_code, str):
             msg = self.get_log_msg("CRITICAL", msg_or_code, default=default, **kwargs)
-            self.logger.critical(msg, *args)
+            self.logger.critical(msg, *args, stacklevel=stacklevel)
             return msg
-        self.logger.critical(msg_or_code, *args, **kwargs)
+        self.logger.critical(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
 
     def debug(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """DEBUG 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel = kwargs.pop("stacklevel", 2)
         if isinstance(msg_or_code, str):
             msg = self.get_log_msg("DEBUG", msg_or_code, default=default, **kwargs)
-            self.logger.debug(msg, *args)
+            self.logger.debug(msg, *args, stacklevel=stacklevel)
             return msg
-        self.logger.debug(msg_or_code, *args, **kwargs)
+        self.logger.debug(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
 
     def exception(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """예외 Traceback 정보와 함께 ERROR 레벨로 로그를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel = kwargs.pop("stacklevel", 2)
         if isinstance(msg_or_code, str):
             msg = self.get_log_msg("ERROR", msg_or_code, default=default, **kwargs)
-            self.logger.exception(msg, *args)
+            self.logger.exception(msg, *args, stacklevel=stacklevel)
             return msg
-        self.logger.exception(msg_or_code, *args, **kwargs)
+        self.logger.exception(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
 
     @staticmethod
@@ -301,6 +314,7 @@ class ProjectLogger:
                 method,
                 path,
                 elapsed_ms,
+                stacklevel=2,
             )
         else:
             logger.info(
@@ -309,6 +323,7 @@ class ProjectLogger:
                 path,
                 status_code,
                 elapsed_ms,
+                stacklevel=2,
             )
 
 

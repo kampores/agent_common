@@ -319,6 +319,10 @@ class BigQueryClient:
             if ignore_unknown_values is not None
             else bool(self.config_loader.setting("bigquery.ignore_unknown_values", True))
         )
+        # timezone_offset_str: BigQuery TIMESTAMP 컬럼 적재 시 기본 적용할 타임존 오프셋 (기본값: +09:00)
+        self.timezone_offset_str: str = str(
+            self.config_loader.setting("bigquery.timezone_offset", "+09:00")
+        ).strip()
         # _use_streaming_only: load_table_from_json 권한 문제 등으로 실패 시 즉시 스트리밍 전용 모드로 전환 플래그
         self._use_streaming_only: bool = False
         # client: google-cloud-bigquery 클라이언트 인스턴스
@@ -668,11 +672,13 @@ WHEN MATCHED THEN
                 )
             ) from merge_err
 
-    def format_timestamp(self, val_any: Any) -> Optional[str]:
+    def format_timestamp(self, val_any: Any, default_tz_offset_str: Optional[str] = None) -> Optional[str]:
         """
-        다양한 원천 날짜/시간 문자열(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 타임스탬프(YYYY-MM-DD HH:MM:SS) 포맷으로 변환합니다.
+        다양한 원천 날짜/시간 문자열(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 타임스탬프(YYYY-MM-DD HH:MM:SS{tz}) 포맷으로 변환합니다.
+        원천 데이터에 타임존 오프셋이 명시되어 있지 않은 경우 config.yml의 bigquery.timezone_offset(기본값: '+09:00')을 적용합니다.
 
         :param val_any: 변환 대상 날짜/시간 데이터 (str, datetime, int 등)
+        :param default_tz_offset_str: 타임존 오프셋이 없을 시 적용할 기본 오프셋 (미지정 시 config.yml 설정값 사용)
         :return: BigQuery 표준 타임스탬프 문자열 (변환 실패 시 None 반환)
         """
         if val_any is None:
@@ -681,32 +687,51 @@ WHEN MATCHED THEN
         if not val_str or val_str.lower() in ("none", "null", "{}") or "{" in val_str:
             return None
 
+        applied_tz_offset = default_tz_offset_str if default_tz_offset_str is not None else getattr(self, "timezone_offset_str", "+09:00")
+
+        # 타임존 오프셋 추출 정규식 (+09:00, +0900, -05:00, Z 등)
+        tz_pattern = r"(?P<tz>Z|[+-]\d{2}:?\d{2})$"
+        tz_match = re.search(tz_pattern, val_str)
+        tz_suffix = applied_tz_offset
+        if tz_match:
+            raw_tz = tz_match.group("tz")
+            if raw_tz == "Z":
+                tz_suffix = "Z"
+            elif len(raw_tz) == 5 and raw_tz[0] in "+-":
+                tz_suffix = f"{raw_tz[:3]}:{raw_tz[3:]}"
+            else:
+                tz_suffix = raw_tz
+            val_str = val_str[:tz_match.start()].strip()
+
         # 1. YYYY-MM-DD HH:MM:SS (또는 T 구분자)
         match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2})", val_str)
         if match_obj:
-            return match_obj.group(1).replace("T", " ").replace("/", "-")
+            dt_part = match_obj.group(1).replace("T", " ").replace("/", "-")
+            return f"{dt_part}{tz_suffix}"
 
         # 2. YYYY-MM-DD HH:MM
         match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2})", val_str)
         if match_obj:
-            return f"{match_obj.group(1).replace('T', ' ').replace('/', '-')}:00"
+            dt_part = match_obj.group(1).replace("T", " ").replace("/", "-")
+            return f"{dt_part}:00{tz_suffix}"
 
         # 3. YYYY-MM-DD
         match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2})", val_str)
         if match_obj:
-            return f"{match_obj.group(1).replace('/', '-')} 00:00:00"
+            dt_part = match_obj.group(1).replace("/", "-")
+            return f"{dt_part} 00:00:00{tz_suffix}"
 
         # 4. YYYYMMDDHHMMSS (14자리 숫자)
         match_obj = re.search(r"(\d{14})", val_str)
         if match_obj:
             num_str = match_obj.group(1)
-            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} {num_str[8:10]}:{num_str[10:12]}:{num_str[12:14]}"
+            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} {num_str[8:10]}:{num_str[10:12]}:{num_str[12:14]}{tz_suffix}"
 
         # 5. YYYYMMDD (8자리 숫자)
         match_obj = re.search(r"(\d{8})", val_str)
         if match_obj:
             num_str = match_obj.group(1)
-            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} 00:00:00"
+            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} 00:00:00{tz_suffix}"
 
         return None
 

@@ -1,5 +1,18 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.3.76 (2026-08-20)
+- **`ProgressTracker` 유틸리티 및 배치 실시간 진행률/최종 요약 리포트 시스템 구축**:
+  - `ProgressTracker` 클래스 신설: 실시간 진행률(`[N/Total] (P%)`, 성공/실패/제외 카운트, 경과시간, 전송량) 추적.
+  - 진행률 레벨 차등 출력: 일반 진행률은 `INFO` 레벨로 출력하되, `config.yml`의 `logging.progress_interval_percent`(기본값: `10%`) 배수 마일스톤 및 완료 시점은 `WARNING` 레벨로 승격 출력하여 `WARNING` 운영 모드에서도 모니터링 보장.
+  - 최종 결과 요약(Summary Report) 블록을 `WARNING` 레벨로 출력.
+  - 세 메인 프로그램(`ecs_to_gcs.py`, `ecs_to_bigquery.py`, `ecs_to_gcsbigquery_merge.py`)에 `ProgressTracker` 및 Summary Report 전면 연동.
+
+### v0.3.75 (2026-08-20)
+- **로그 파일 생성 활성화/비활성화 제어 옵션(`logging.file_logging` 및 CLI `--file-log`/`--no-file-log`) 지원**:
+  - `config.yml` 내 `logging.file_logging` (기본값: `true`) 설정 항목 추가.
+  - `ProjectLogger.configure`에 `file_logging` 파라미터를 추가하여 파일 로깅 활성화 여부를 동적으로 제어(비활성화 시 FileHandler 생성을 건너뛰고 콘솔 출력만 유지).
+  - 세 메인 프로그램(`ecs_to_gcs.py`, `ecs_to_bigquery.py`, `ecs_to_gcsbigquery_merge.py`)의 CLI 옵션에 `--file-log` 및 `--no-file-log` 플래그 추가.
+
 ### v0.3.74 (2026-08-20)
 - **BigQuery TIMESTAMP 타임존 오프셋 설정(`bigquery.timezone_offset`) 및 포맷팅 지원**:
   - `config.yml` 내 `bigquery.timezone_offset` (기본값: `+09:00`) 설정 항목 추가 및 `BigQueryClient`에 바인딩.

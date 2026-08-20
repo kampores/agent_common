@@ -47,6 +47,9 @@ logging_messages:
       # 예시: logger.info("operation_cancelled_by_user", reason="사용자 입력으로 WRITE_TRUNCATE 취소")
       operation_cancelled_by_user: "사용자에 의해 작업이 취소되었습니다: {reason}"
 
+      # 예시: logger.info("progress_update", message="[작업 진행상황] 370 / 1,000 건 (37.0%) ...")
+      progress_update: "{message}"
+
     # --- [데이터베이스 및 테이블 적재 범용] ---
     db:
       # 예시: logger.info("db_inline_merge_started", service_name="BigQuery", target_table="proj.ds.tbl", total_rows=100, chunk_size=500, total_chunks=1, pk_key="id")
@@ -126,6 +129,14 @@ logging_messages:
       rule_eval_success: "템플릿 평가 성공{json_info}: [Col={col_name} Folder={folder_val} Tmpl='{tmpl}' Result='{res}']"
 
   WARNING:
+    # --- [프로그램 생명주기 및 요약 리포트] ---
+    lifecycle:
+      # 예시: logger.warning("progress_milestone", message="[작업 진행상황] 400 / 1,000 건 (40.0%) ...")
+      progress_milestone: "{message}"
+
+      # 예시: logger.warning("execution_summary_report", summary="\n================...")
+      execution_summary_report: "{summary}"
+
     # --- [설정 파일 관리 경고] ---
     config:
       # 예시: logger.warning("config_auto_create_failed", file_path="config/config.yml", error="Permission denied")

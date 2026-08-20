@@ -97,8 +97,15 @@ class ProjectLogger:
         config_dir: str | Path | None = None,
         default_log_file: str = "logs/app.log",
         app_name: str | None = None,
+        file_logging: bool | None = None,
     ) -> None:
-        """설정 파일(logging.yml 등)을 기반으로 전체 로깅 환경을 일괄 초기화합니다."""
+        """설정 파일(logging.yml, config.yml 등)을 기반으로 전체 로깅 환경을 일괄 초기화합니다.
+
+        :param config_dir: 커스텀 설정 디렉토리 경로 (선택)
+        :param default_log_file: 기본 로그 파일 경로 (선택)
+        :param app_name: 애플리케이션 명칭 (로그 파일명 {app_name} 치환용)
+        :param file_logging: 로그 파일 생성 활성화 여부 (True: 파일 저장, False: 콘솔만 출력, None: config.yml logging.file_logging 설정 준용)
+        """
         import sys
         from agent_common.config_loader import ConfigLoader
 
@@ -121,6 +128,13 @@ class ProjectLogger:
         console_handler.setFormatter(formatter)
         handlers: list[logging.Handler] = [console_handler]
 
+        # 로그 파일 생성 활성화 여부 결정 (CLI 파라미터 우선 -> config.yml logging.file_logging -> 기본값 True)
+        file_logging_enabled: bool = (
+            file_logging
+            if file_logging is not None
+            else bool(loader.setting("logging.file_logging", True))
+        )
+
         log_file = loader.setting("logging.file", default_log_file)
         out_file = loader.setting("logging.out_file")
         debug_file = loader.setting("logging.debug_file")
@@ -136,7 +150,7 @@ class ProjectLogger:
         elif log_file:
             target_log_file = log_file
 
-        if target_log_file:
+        if file_logging_enabled and target_log_file:
             from datetime import datetime
 
             today = datetime.now()
