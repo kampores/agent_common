@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent_common"
-version = "0.3.79"
+version = "0.4.0"
 description = "중앙 에이전트 및 하위 SQL 생성 서비스를 위한 공통 로깅/설정 모듈"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,7 +16,7 @@ dependencies = [
 
 [tool.setuptools]
 package-dir = {"agent_common" = "."}
-packages = ["agent_common"]
+packages = ["agent_common", "agent_common.tool", "agent_common.tool.date"]
 
 [tool.setuptools.package-data]
-agent_common = ["*.yml", "config/*.yml"]
+agent_common = ["*.yml", "config/*.yml", "schemas/*.json", "tool/**/*.py"]

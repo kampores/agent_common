@@ -1,5 +1,16 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.0 (2026-08-21)
+- **`agent_common.tool_parser.ToolParser` 및 이원화된 Tool 디렉터리 계층 아키텍처 신설 (Major Update)**:
+  - `ToolParser` 클래스 신설: 이원화된 도구 계층(1순위: 내장 `agent_common/tool`, 2순위: 로컬 `medallion/tool`) 동적 로드 및 `{ }` 템플릿 구문 치환/평가 엔진 제공.
+  - `agent_common/tool/date/` 내장 범용 도구 신설: `DateTimeUtils`, `get_now_compact` (14자리 일시), `get_today` (8자리 일자), `get_now_formatted` (포맷팅 일시).
+  - 시스템 표준 네임스페이스 `sys` 확장 및 공통 스키마(`agent_common/schemas/sys.json`) 탑재: `{sys.now_compact}`, `{sys.timestamp_compact}` (14자리 일시) 기본 제공.
+  - `agent_common` 최상위 패키지에서 `ToolParser` 노출 (`from agent_common import ToolParser`).
+
+### v0.3.80 (2026-08-21)
+- **소스 코드 헤더 설계자(김유상) 및 설계자 소속(경포씨엔씨) 명칭 정정**:
+  - 모든 모듈 파일 헤더 내 저작권 및 설계자 정보 명칭을 '김유상/경포씨엔씨'로 통일 및 정정.
+
 ### v0.3.79 (2026-08-21)
 - **`BigQueryClient` 범용 SELECT 쿼리 메서드(`query`) 신설**:
   - 임의의 SQL 쿼리를 실행하여 결과 행들을 `list[dict[str, Any]]` 형태로 반환하는 범용 `query()` 메서드 추가 (공통 코드 테이블 `TCTBICM02` 실시간 조회 등 지원).
