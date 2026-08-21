@@ -174,7 +174,7 @@ class ToolParser:
             if cand_dir.exists():
                 for py_file in cand_dir.rglob("*.py"):
                     if py_file.stem == func_name_str or py_file.stem == func_name_str.split(".")[-1]:
-                        rel_parts = py_file.relative_to(self.config_loader.project_path()).with_suffix("").parts
+                        rel_parts = py_file.relative_to(self.config_loader.ROOT).with_suffix("").parts
                         mod_name_str = ".".join(rel_parts)
                         try:
                             mod = importlib.import_module(mod_name_str)
