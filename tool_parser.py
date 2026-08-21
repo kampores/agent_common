@@ -87,38 +87,24 @@ class ToolParser:
 
     def build_sys_context(self) -> Dict[str, Any]:
         """
-        agent_common/schemas/sys.json 명세 파일을 읽어 표준 시스템 런타임 변수 네임스페이스(sys.*)를 조립합니다.
-        (sys.now, sys.now_compact, sys.today 등 포함)
+        표준 시스템 런타임 변수 네임스페이스(sys.*)를 조립하여 반환합니다.
+        (sys.now, sys.now_compact, sys.today, sys.timestamp_compact 등 포함)
 
         :return: 시스템 컨텍스트 딕셔너리
         """
-        sys_dict: Dict[str, Any] = {
-            "now": DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ),
-            "now_compact": DateTimeUtils.get_now_compact(),
-            "timestamp_compact": DateTimeUtils.get_now_compact(),
-            "today": DateTimeUtils.get_today_yyyymmdd(),
-            "date_compact": DateTimeUtils.get_today_yyyymmdd(),
+        now_compact_str: str = DateTimeUtils.get_now_compact()
+        today_str: str = DateTimeUtils.get_today_yyyymmdd()
+        now_dt_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ)
+
+        return {
+            "sys": {
+                "now": now_dt_str,
+                "now_compact": now_compact_str,
+                "timestamp_compact": now_compact_str,
+                "today": today_str,
+                "date_compact": today_str,
+            }
         }
-
-        # agent_common/schemas/sys.json 명세 파일 동적 로드 및 반영
-        schema_file = Path(__file__).resolve().parent / "schemas" / "sys.json"
-        if schema_file.exists():
-            try:
-                import json
-                with open(schema_file, "r", encoding="utf-8") as f_in:
-                    spec_data = json.load(f_in)
-                    if isinstance(spec_data, dict):
-                        for k_str, expr_val in spec_data.items():
-                            if isinstance(expr_val, str) and expr_val.startswith("{") and expr_val.endswith("}"):
-                                # {DateTimeUtils.func()} 또는 {func()} 평가
-                                evaluated_val = self.eval(expr_val, context_dict={"sys": sys_dict})
-                                sys_dict[k_str] = evaluated_val
-                            else:
-                                sys_dict[k_str] = expr_val
-            except Exception as read_err:
-                self.logger_obj.warning("sys_schema_load_failed", error=str(read_err))
-
-        return {"sys": sys_dict}
 
     def load_tool_function(self, func_name_str: str) -> Optional[Callable]:
         """
