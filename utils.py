@@ -25,7 +25,7 @@ class ProgressTracker:
         self,
         total_items_int: int,
         interval_percent_int: int = 10,
-        logger_obj: Any = None,
+        logger: Any = None,
         task_name_str: str = "작업",
         start_time_float: Optional[float] = None,
     ):
@@ -34,13 +34,13 @@ class ProgressTracker:
 
         :param total_items_int: 전체 처리 대상 총 건수
         :param interval_percent_int: WARNING 레벨로 승격 출력할 진행률 간격 (% 단위, 기본값: 10)
-        :param logger_obj: ProjectLogger 또는 logging.Logger 객체
+        :param logger: ProjectLogger 또는 logging.Logger 객체
         :param task_name_str: 작업 명칭 (로그 접두사 및 요약 제목용)
         :param start_time_float: 작업 시작 타임스탬프 (미지정 시 현재 시간)
         """
         self.total_items_int: int = max(1, total_items_int)
         self.interval_percent_int: int = max(1, min(100, interval_percent_int))
-        self.logger_obj: Any = logger_obj
+        self.logger: Any = logger
         self.task_name_str: str = task_name_str
         self.start_time_float: float = start_time_float if start_time_float is not None else time.time()
         self.start_datetime_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ)
@@ -97,12 +97,12 @@ class ProgressTracker:
         if details_str:
             progress_msg_str = f"{progress_msg_str} | {details_str}"
 
-        if self.logger_obj:
+        if self.logger:
             if is_warn_milestone_bool:
                 self._last_warn_milestone_int = (current_percent_int // self.interval_percent_int) * self.interval_percent_int
-                self.logger_obj.warning("progress_milestone", message=progress_msg_str)
+                self.logger.warning("progress_milestone", message=progress_msg_str)
             else:
-                self.logger_obj.info("progress_update", message=progress_msg_str)
+                self.logger.info("progress_update", message=progress_msg_str)
 
     def log_summary(self, extra_lines_list: Optional[list[str]] = None) -> None:
         """
@@ -145,8 +145,8 @@ class ProgressTracker:
         lines_list.append("=" * 80)
 
         summary_block_str: str = "\n" + "\n".join(lines_list)
-        if self.logger_obj:
-            self.logger_obj.warning("execution_summary_report", summary=summary_block_str)
+        if self.logger:
+            self.logger.warning("execution_summary_report", summary=summary_block_str)
         else:
             print(summary_block_str)
 

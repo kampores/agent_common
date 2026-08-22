@@ -387,6 +387,7 @@ class BigQueryClient:
             else self.ignore_unknown_values
         )
         table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        table_target = self.table_obj if getattr(self, "table_obj", None) else table_ref
         rows_to_insert = [json_data] if isinstance(json_data, dict) else (json_data if isinstance(json_data, list) else None)
         if rows_to_insert is None:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")

@@ -81,7 +81,7 @@ class ToolParser:
         :param config_loader_obj: ConfigLoader 인스턴스 (옵션)
         :param config_dir_path: 커스텀 설정 디렉토리 경로 (옵션)
         """
-        self.logger_obj = ProjectLogger(self.__class__.__name__)
+        self.logger = ProjectLogger(self.__class__.__name__)
         self.config_loader: ConfigLoader = config_loader_obj or ConfigLoader(config_dir=config_dir_path)
         self._tool_cache: Dict[str, Callable] = {}
 
@@ -188,7 +188,7 @@ class ToolParser:
                                 self._tool_cache[func_name_str] = fn
                                 return fn
                         except Exception as import_err:
-                            self.logger_obj.warning(
+                            self.logger.warning(
                                 "tool_load_failed",
                                 func_name=func_name_str,
                                 module=mod_name_str,
@@ -224,7 +224,7 @@ class ToolParser:
                 bound_kwargs = {k: v for k, v in kwargs_dict.items() if k in params}
                 return tool_func(*args_list, **bound_kwargs)
         except Exception as exec_err:
-            self.logger_obj.exception("tool_execution_failed", func_name=func_name_str, error=str(exec_err))
+            self.logger.exception("tool_execution_failed", func_name=func_name_str, error=str(exec_err))
             raise
 
     def eval(self, template_str: Optional[str], context_dict: Optional[Dict[str, Any]] = None) -> Optional[str]:

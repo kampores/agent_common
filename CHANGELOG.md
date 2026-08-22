@@ -1,5 +1,11 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.1 (2026-08-21)
+- **`BigQueryClient.load_table_from_json_data` 변수 정의 누락 보정**:
+  - `table_target` 변수 미정의 결함을 수정하여 `self.table_obj` 또는 `table_ref`를 안전하게 참조하도록 보강.
+- **클래스 전반의 로거 인스턴스 명칭 표준화**:
+  - `self.logger_obj`를 `self.logger`로 일괄 통일.
+
 ### v0.4.0 (2026-08-21)
 - **`agent_common.tool_parser.ToolParser` 및 이원화된 Tool 디렉터리 계층 아키텍처 신설 (Major Update)**:
   - `ToolParser` 클래스 신설: 이원화된 도구 계층(1순위: 내장 `agent_common/tool`, 2순위: 로컬 `medallion/tool`) 동적 로드 및 `{ }` 템플릿 구문 치환/평가 엔진 제공.
