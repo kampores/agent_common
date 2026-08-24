@@ -177,63 +177,85 @@ class ProjectLogger:
 
         ProjectLogger._configured = True
 
-    def get_log_msg(self, level: str, code: str, default: str = "", **kwargs: Any) -> str:
-        """logging_messages.yml 파일에 정의된 로그 레벨(level)과 메시지 코드(code) 템플릿을 포매팅하여 반환합니다."""
-        level_str = str(level).strip().upper()
+    def _search_template_in_level(self, target_lvl_str: str, target_code_str: str) -> str | None:
+        """
+        지정된 로그 레벨 섹션 또는 하위 카테고리에서 메시지 코드 템플릿을 탐색합니다.
 
-        def _search_in_level(target_lvl: str) -> str | None:
-            direct = self.config_loader.setting(f"logging_messages.{target_lvl}.{code}")
-            if direct and isinstance(direct, str):
-                return direct
-            lvl_dict = self.config_loader.setting(f"logging_messages.{target_lvl}")
-            if isinstance(lvl_dict, dict):
-                for _, sub_val in lvl_dict.items():
-                    if isinstance(sub_val, dict) and code in sub_val:
-                        candidate = sub_val[code]
-                        if isinstance(candidate, str):
-                            return candidate
-            return None
+        :param target_lvl_str: 탐색 대상 로그 레벨 문자열 (INFO, WARNING, ERROR 등)
+        :param target_code_str: 탐색할 메시지 식별 코드 문자열
+        :return: 발견된 메시지 템플릿 문자열 (미발견 시 None)
+        """
+        direct_template_str: Any = self.config_loader.setting(f"logging_messages.{target_lvl_str}.{target_code_str}")
+        if direct_template_str and isinstance(direct_template_str, str):
+            return direct_template_str
+        lvl_dict: Any = self.config_loader.setting(f"logging_messages.{target_lvl_str}")
+        if isinstance(lvl_dict, dict):
+            for _, sub_val in lvl_dict.items():
+                if isinstance(sub_val, dict) and target_code_str in sub_val:
+                    candidate_str: Any = sub_val[target_code_str]
+                    if isinstance(candidate_str, str):
+                        return candidate_str
+        return None
 
-        template = _search_in_level(level_str)
+    def get_log_msg(self, level_str: str, msg_code_str: str, default_str: str = "", **kwargs: Any) -> str:
+        """logging_messages.yml 파일에 정의된 로그 레벨(level_str)과 메시지 코드(msg_code_str) 템플릿을 포매팅하여 반환합니다.
 
-        if not template:
-            all_msgs = self.config_loader.setting("logging_messages")
-            if isinstance(all_msgs, dict):
-                for other_lvl in all_msgs.keys():
-                    if str(other_lvl).upper() != level_str:
-                        cand = _search_in_level(str(other_lvl).upper())
-                        if cand:
-                            template = cand
+        :param level_str: 로그 레벨 문자열 (INFO, WARNING, ERROR 등)
+        :param msg_code_str: 메시지 식별 코드
+        :param default_str: 템플릿 미존재 시 사용할 기본 문자열
+        :param kwargs: 템플릿 포매팅용 키워드 인자
+        :return: 포매팅 완료된 로그 메시지 문자열
+        """
+        target_level_str: str = str(level_str).strip().upper()
+        target_code_str: str = str(msg_code_str).strip()
+
+        template_str: str | None = self._search_template_in_level(target_level_str, target_code_str)
+
+        if not template_str:
+            all_msgs_dict: Any = self.config_loader.setting("logging_messages")
+            if isinstance(all_msgs_dict, dict):
+                for other_lvl_str in all_msgs_dict.keys():
+                    if str(other_lvl_str).upper() != target_level_str:
+                        cand_str: str | None = self._search_template_in_level(str(other_lvl_str).upper(), target_code_str)
+                        if cand_str:
+                            template_str = cand_str
                             break
 
-        if not template or not isinstance(template, str):
-            template = default or code
+        if not template_str or not isinstance(template_str, str):
+            template_str = default_str or target_code_str
         if kwargs:
             try:
-                safe_kwargs = {
+                safe_kwargs_dict: dict[str, Any] = {
                     k: str(v).replace("{", "{{").replace("}", "}}") if isinstance(v, str) else v
                     for k, v in kwargs.items()
                 }
-                return template.format(**safe_kwargs)
+                return template_str.format(**safe_kwargs_dict)
             except Exception:
-                kwargs_detail = " ".join(f"{k}={v}" for k, v in kwargs.items())
-                return f"{template} [{kwargs_detail}]" if template != code else f"[FATAL][Fail-Fast] {code}: {kwargs_detail}"
-        return str(template)
+                kwargs_detail_str: str = " ".join(f"{k}={v}" for k, v in kwargs.items())
+                return f"{template_str} [{kwargs_detail_str}]" if template_str != target_code_str else f"[FATAL][Fail-Fast] {target_code_str}: {kwargs_detail_str}"
+        return str(template_str)
 
     def log_msg(
         self,
-        level: str,
-        code: str,
-        default: str = "",
+        level_str: str,
+        msg_code_str: str,
+        default_str: str = "",
         **kwargs: Any,
     ) -> str:
-        """코드 기반 메시지를 로거에 즉시 기록하고 완성된 메시지를 반환합니다."""
-        stacklevel = kwargs.pop("stacklevel", 2)
-        msg = self.get_log_msg(level, code, default=default, **kwargs)
-        lvl_name = str(level).strip().upper()
-        lvl_num = getattr(logging, lvl_name, logging.INFO)
-        self.logger.log(lvl_num, msg, stacklevel=stacklevel)
-        return msg
+        """코드 기반 메시지를 로거에 즉시 기록하고 완성된 메시지를 반환합니다.
+
+        :param level_str: 로그 레벨 문자열
+        :param msg_code_str: 메시지 식별 코드
+        :param default_str: 기본 문자열
+        :param kwargs: 추가 포매팅 인자
+        :return: 기록된 완성 메시지 문자열
+        """
+        stacklevel_int: int = kwargs.pop("stacklevel", 2)
+        msg_str: str = self.get_log_msg(level_str, msg_code_str, default_str=default_str, **kwargs)
+        lvl_name_str: str = str(level_str).strip().upper()
+        lvl_num_int: int = getattr(logging, lvl_name_str, logging.INFO)
+        self.logger.log(lvl_num_int, msg_str, stacklevel=stacklevel_int)
+        return msg_str
 
     def info(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """INFO 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""

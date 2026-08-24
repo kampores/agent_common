@@ -1,0 +1,6 @@
+{
+  "today": "{DateTimeUtils.get_today_yyyymmdd()}",
+  "now": "{DateTimeUtils.get_now_formatted()}",
+  "now_compact": "{DateTimeUtils.get_now_compact()}",
+  "timestamp_compact": "{DateTimeUtils.get_now_compact()}"
+}

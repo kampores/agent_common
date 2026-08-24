@@ -1,5 +1,21 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.4 (2026-08-24)
+- **AGENTS.md 1.4.1조 준수 (메서드 내 중첩 함수 제거 및 독립 private 메서드 분리)**:
+  - `ProjectLogger.get_log_msg`: 내부 함수 `_search_in_level`을 클래스 독립 private 메서드 `_search_template_in_level`로 분리 및 한글 docstring, 타입 접미사 보강.
+  - `ToolParser.eval`: 내부 함수 `_replace_placeholder`를 클래스 독립 private 메서드 `_resolve_placeholder_token`으로 분리.
+
+### v0.4.3 (2026-08-24)
+- **`llmpool.yml` Groq 모델 프로필 정리 및 `openai/gpt-oss-120b` 표준화**:
+  - 미지원 레거시 모델 프로필(`groq_llama33_70b`, `groq_qwen_coder_32b`) 전면 제거.
+  - `groq_gpt_oss` (`openai/gpt-oss-120b`) 모델을 AGENTS.md 룰 감독관 및 주력 오픈소스 모델로 단일 표준화.
+- **`ProjectLogger.get_log_msg` 파라미터 충돌 방지 및 타입 접미사 표준화**:
+  - `code` 파라미터명을 `msg_code_str`로 변경하여 `kwargs`에 `code=...` 인자 전달 시 발생하는 `TypeError` 원천 방지 및 Rule 1.6.1 준수.
+
+### v0.4.2 (2026-08-24)
+- **`llmpool.yml` Groq 모델 풀 연동 기반 구축**:
+  - `groq_gpt_oss` 모델 프로필 추가 및 Groq OpenAI 호환 엔드포인트 연동.
+
 ### v0.4.1 (2026-08-21)
 - **`BigQueryClient.load_table_from_json_data` 변수 정의 누락 보정**:
   - `table_target` 변수 미정의 결함을 수정하여 `self.table_obj` 또는 `table_ref`를 안전하게 참조하도록 보강.

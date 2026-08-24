@@ -416,13 +416,16 @@ class ConfigLoader:
 
         return current
 
-    def project_path(self, path: str | Path) -> Path:
+    def project_path(self, path: str | Path | None = None) -> Path:
         """
         프로젝트 루트를 기준으로 한 상대 경로를 절대 경로로 변환하여 반환합니다.
+        (path 미지정 시 프로젝트 루트 ROOT 경로 반환)
 
-        :param path: 절대 경로 또는 프로젝트 루트 기준 상대 경로
+        :param path: 절대 경로 또는 프로젝트 루트 기준 상대 경로 (선택)
         :return: 정규화된 절대 Path 객체
         """
+        if path is None or path == "":
+            return self.ROOT
         value = Path(path)
         if value.is_absolute():
             return value

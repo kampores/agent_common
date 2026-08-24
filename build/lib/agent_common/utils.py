@@ -4,54 +4,16 @@
 # 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
 
 """
-프로젝트 전역에서 공통으로 사용하는 날짜, 시간, 문자열 포맷팅 및 표준 규격 유틸리티 모듈입니다.
+프로젝트 전역에서 공통으로 사용하는 런타임 진행률 추적(ProgressTracker) 및 모니터링 유틸리티 모듈입니다.
 """
 
 from __future__ import annotations
 
 import time
-from typing import Optional
+from typing import Any, Optional
 
-
-class DateTimeUtils:
-    """
-    날짜 및 시간 규격을 표준화하여 제공하는 공용 유틸리티 클래스입니다.
-    """
-
-    FORMAT_DATE_YYYYMMDD: str = "%Y%m%d"
-    FORMAT_DATETIME_STD: str = "%Y-%m-%d %H:%M:%S+09:00"
-    FORMAT_DATETIME_NO_TZ: str = "%Y-%m-%d %H:%M:%S"
-    FORMAT_DATETIME_KST: str = "%Y-%m-%d %H:%M:%S+09:00"
-    FORMAT_DATETIME_COMPACT: str = "%Y%m%d%H%M%S"
-
-    @classmethod
-    def get_today_yyyymmdd(cls) -> str:
-        """
-        현재 일자를 YYYYMMDD 형식의 8자리 문자열로 반환합니다.
-
-        :return: 'YYYYMMDD' 형식의 당일 날짜 문자열 (예: '20260816')
-        """
-        return time.strftime(cls.FORMAT_DATE_YYYYMMDD)
-
-    @classmethod
-    def get_now_formatted(cls, fmt_str: Optional[str] = None) -> str:
-        """
-        현재 일시를 표준 형식(기본값: YYYY-MM-DD HH:MM:SS+09:00) 문자열로 반환합니다.
-
-        :param fmt_str: 사용할 strftime 포맷 문자열 (기본값: '%Y-%m-%d %H:%M:%S+09:00')
-        :return: 포맷팅된 현재 일시 문자열 (예: '2026-08-16 22:15:00+09:00')
-        """
-        target_fmt_str: str = fmt_str or cls.FORMAT_DATETIME_STD
-        return time.strftime(target_fmt_str)
-
-    @classmethod
-    def get_now_compact(cls) -> str:
-        """
-        현재 일시를 14자리 압축 형식(YYYYMMDDHHMMSS) 문자열로 반환합니다.
-
-        :return: 'YYYYMMDDHHMMSS' 형식의 타임스탬프 문자열
-        """
-        return time.strftime(cls.FORMAT_DATETIME_COMPACT)
+# DateTimeUtils 도구 클래스 임포트 및 하위 호환성 노출
+from agent_common.tool.date.date_time_utils import DateTimeUtils
 
 
 class ProgressTracker:
@@ -63,7 +25,7 @@ class ProgressTracker:
         self,
         total_items_int: int,
         interval_percent_int: int = 10,
-        logger_obj: Any = None,
+        logger: Any = None,
         task_name_str: str = "작업",
         start_time_float: Optional[float] = None,
     ):
@@ -72,13 +34,13 @@ class ProgressTracker:
 
         :param total_items_int: 전체 처리 대상 총 건수
         :param interval_percent_int: WARNING 레벨로 승격 출력할 진행률 간격 (% 단위, 기본값: 10)
-        :param logger_obj: ProjectLogger 또는 logging.Logger 객체
+        :param logger: ProjectLogger 또는 logging.Logger 객체
         :param task_name_str: 작업 명칭 (로그 접두사 및 요약 제목용)
         :param start_time_float: 작업 시작 타임스탬프 (미지정 시 현재 시간)
         """
         self.total_items_int: int = max(1, total_items_int)
         self.interval_percent_int: int = max(1, min(100, interval_percent_int))
-        self.logger_obj: Any = logger_obj
+        self.logger: Any = logger
         self.task_name_str: str = task_name_str
         self.start_time_float: float = start_time_float if start_time_float is not None else time.time()
         self.start_datetime_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ)
@@ -135,12 +97,12 @@ class ProgressTracker:
         if details_str:
             progress_msg_str = f"{progress_msg_str} | {details_str}"
 
-        if self.logger_obj:
+        if self.logger:
             if is_warn_milestone_bool:
                 self._last_warn_milestone_int = (current_percent_int // self.interval_percent_int) * self.interval_percent_int
-                self.logger_obj.warning("progress_milestone", message=progress_msg_str)
+                self.logger.warning("progress_milestone", message=progress_msg_str)
             else:
-                self.logger_obj.info("progress_update", message=progress_msg_str)
+                self.logger.info("progress_update", message=progress_msg_str)
 
     def log_summary(self, extra_lines_list: Optional[list[str]] = None) -> None:
         """
@@ -183,7 +145,13 @@ class ProgressTracker:
         lines_list.append("=" * 80)
 
         summary_block_str: str = "\n" + "\n".join(lines_list)
-        if self.logger_obj:
-            self.logger_obj.warning("execution_summary_report", summary=summary_block_str)
+        if self.logger:
+            self.logger.warning("execution_summary_report", summary=summary_block_str)
         else:
             print(summary_block_str)
+
+
+__all__ = [
+    "DateTimeUtils",
+    "ProgressTracker",
+]
