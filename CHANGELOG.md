@@ -1,5 +1,10 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.5 (2026-08-24)
+- **`llmpool.yml` Groq Qwen 3.6 27B 및 GPT-OSS-20B 모델 프로필 신설**:
+  - `groq_qwen_36_27b`: Qwen 3.6 27B 추론 모델 (`qwen/qwen3.6-27b`) 프로필 추가 (다국어/코딩 추론 및 질의응답 지원).
+  - `groq_gpt_oss_20b`: GPT-OSS-20B 경량화 모델 (`openai/gpt-oss-20b`) 프로필 추가.
+
 ### v0.4.4 (2026-08-24)
 - **AGENTS.md 1.4.1조 준수 (메서드 내 중첩 함수 제거 및 독립 private 메서드 분리)**:
   - `ProjectLogger.get_log_msg`: 내부 함수 `_search_in_level`을 클래스 독립 private 메서드 `_search_template_in_level`로 분리 및 한글 docstring, 타입 접미사 보강.

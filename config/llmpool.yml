@@ -47,6 +47,48 @@ llm_pool:
     # 생성 다양성 템퍼러처 (Groq API 가이드 스펙 적용)
     temperature: 0
 
+  # Groq 기반 Qwen 3.6 27B 추론 모델 정의 (고성능 오픈소스 다국어/코딩 모델)
+  groq_qwen_36_27b:
+    # LLM 제공 방식 (external: 외부 API 호환 전용)
+    provider: external
+    # 외부 LLM API 활성화 여부
+    enabled: true
+    # 인증 키를 로드할 환경변수 이름 (Groq API 키)
+    api_key_env: GROQ_API_KEY
+    # API 요청을 전송할 Groq 베이스 URL
+    base_url: https://api.groq.com/openai/v1
+    # 채팅 완성 API 상세 경로
+    chat_completions_path: /chat/completions
+    # 호출할 외부 오픈소스 LLM 모델명
+    model: qwen/qwen3.6-27b
+    # API 호출 시 타임아웃 제한 시간(초)
+    timeout_seconds: 60
+    # 생성할 최대 토큰 수
+    max_tokens: 4096
+    # 생성 다양성 템퍼러처
+    temperature: 0
+
+  # Groq 기반 GPT-OSS-20B 모델 정의 (경량화 고속 추론 및 폴백 전용)
+  groq_gpt_oss_20b:
+    # LLM 제공 방식 (external: 외부 API 호환 전용)
+    provider: external
+    # 외부 LLM API 활성화 여부
+    enabled: true
+    # 인증 키를 로드할 환경변수 이름 (Groq API 키)
+    api_key_env: GROQ_API_KEY
+    # API 요청을 전송할 Groq 베이스 URL
+    base_url: https://api.groq.com/openai/v1
+    # 채팅 완성 API 상세 경로
+    chat_completions_path: /chat/completions
+    # 호출할 외부 오픈소스 LLM 모델명
+    model: openai/gpt-oss-20b
+    # API 호출 시 타임아웃 제한 시간(초)
+    timeout_seconds: 60
+    # 생성할 최대 토큰 수
+    max_tokens: 4096
+    # 생성 다양성 템퍼러처
+    temperature: 0
+
   # Fabrix GPT-OSS 120B 외부 API 모델 정의 (kbonecloud GenAI 허브 전용)
   fabrix_gpt_oss_120b:
     # LLM 제공 방식 (external: 외부 API 전용)
