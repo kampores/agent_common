@@ -1,5 +1,11 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.6 (2026-08-24)
+- **`ProjectLogger.configure` 로그 디렉터리 및 핸들러 생성 예외 처리 강화**:
+  - `log_file_path.parent.mkdir` 및 `logging.FileHandler` 초기화 블록에 `try-except` 예외 처리(`PermissionError`, `OSError`, `Exception`) 추가.
+  - 로그 저장 디렉터리 권한 부족이나 생성 실패 시 프로세스가 비정상 종료(Crash)되지 않고 경고 메시지 출력 후 안전하게 콘솔 출력(StreamHandler)으로 폴백하도록 안정성 개선.
+  - 내부 변수명 Rule 1.6.1 타입 접미사(`today_dt`, `dynamic_log_path`, `log_file_path`, `file_handler_obj`) 적용.
+
 ### v0.4.5 (2026-08-24)
 - **`llmpool.yml` Groq Qwen 3.6 27B 및 GPT-OSS-20B 모델 프로필 신설**:
   - `groq_qwen_36_27b`: Qwen 3.6 27B 추론 모델 (`qwen/qwen3.6-27b`) 프로필 추가 (다국어/코딩 추론 및 질의응답 지원).

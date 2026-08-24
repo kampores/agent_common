@@ -153,16 +153,32 @@ class ProjectLogger:
         if file_logging_enabled and target_log_file:
             from datetime import datetime
 
-            today = datetime.now()
-            target_log_str = str(target_log_file)
+            today_dt: datetime = datetime.now()
+            target_log_str: str = str(target_log_file)
             if "{app_name}" in target_log_str:
                 target_log_str = target_log_str.format(app_name=app_name)
-            dynamic_log_path = Path(today.strftime(target_log_str))
-            log_path = loader.project_path(dynamic_log_path)
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            file_handler = logging.FileHandler(log_path, encoding="utf-8")
-            file_handler.setFormatter(formatter)
-            handlers.append(file_handler)
+            dynamic_log_path: Path = Path(today_dt.strftime(target_log_str))
+            log_file_path: Path = loader.project_path(dynamic_log_path)
+            try:
+                log_file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_handler_obj = logging.FileHandler(log_file_path, encoding="utf-8")
+                file_handler_obj.setFormatter(formatter)
+                handlers.append(file_handler_obj)
+            except PermissionError as perm_err:
+                sys.stderr.write(
+                    f"[경고] 로그 파일 저장 디렉터리({log_file_path.parent})에 대한 접근/생성 권한이 없어 "
+                    f"파일 로깅을 비활성화하고 콘솔 출력만 유지합니다: {perm_err}\n"
+                )
+            except OSError as os_err:
+                sys.stderr.write(
+                    f"[경고] 로그 파일 경로({log_file_path}) 생성 중 OS 오류가 발생하여 "
+                    f"파일 로깅을 비활성화하고 콘솔 출력만 유지합니다: {os_err}\n"
+                )
+            except Exception as unk_err:
+                sys.stderr.write(
+                    f"[경고] 로그 핸들러 초기화 중 예기치 않은 오류가 발생하여 "
+                    f"파일 로깅을 비활성화하고 콘솔 출력만 유지합니다: {unk_err}\n"
+                )
 
         logging.basicConfig(
             level=level,
