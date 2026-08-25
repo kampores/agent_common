@@ -1,5 +1,10 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.7 (2026-08-25)
+- **`fastapi` 의존성 선택적(Optional) 처리 및 패키지 경량화**:
+  - `error_handler.py` 내 `fastapi` 모듈 임포트를 `try-except` 기반 동적 로딩으로 전환하여 `fastapi` 미설치 환경에서도 `agent_common`을 안전하게 임포트 및 활용할 수 있도록 개선.
+  - `pyproject.toml` 및 휠 메타데이터(`Requires-Dist`)의 필수 의존성에서 `fastapi`를 제외하여 오프라인 환경(`whls`)에서의 의존성 충돌 해소.
+
 ### v0.4.6 (2026-08-24)
 - **`ProjectLogger.configure` 로그 디렉터리 및 핸들러 생성 예외 처리 강화**:
   - `log_file_path.parent.mkdir` 및 `logging.FileHandler` 초기화 블록에 `try-except` 예외 처리(`PermissionError`, `OSError`, `Exception`) 추가.

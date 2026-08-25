@@ -8,8 +8,15 @@
 from __future__ import annotations
 
 from typing import Any
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+import logging
+
+try:
+    from fastapi import FastAPI, Request
+    from fastapi.responses import JSONResponse
+except ImportError:
+    FastAPI = Any  # type: ignore
+    Request = Any  # type: ignore
+    JSONResponse = None  # type: ignore
 
 from agent_common.logger import ProjectLogger
 
@@ -91,6 +98,10 @@ class ErrorHandler:
         Args:
             app: 등록 대상인 FastAPI 애플리케이션 인스턴스
         """
+        if JSONResponse is None:
+            logger.warning("fastapi 패키지가 설치되어 있지 않아 FastAPI 예외 핸들러를 등록할 수 없습니다.")
+            return
+
         try:
             from app.exceptions import SqlGenerationError, MetricFlowError
         except ImportError:
