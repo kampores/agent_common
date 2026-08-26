@@ -1,5 +1,14 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.9 (2026-08-26)
+- **외래어 '파싱'의 우리말 '해석' 순화 및 용어 표준화**:
+  - `tool_parser.py`, `error_handler.py`, `config_loader.py`, `logging_messages.yml`, `README.md`의 주석, 독스트링 및 예외/로그 메시지에서 외래어 '파싱'을 직관적인 우리말 표준 용어인 '해석'으로 변경.
+
+### v0.4.8 (2026-08-26)
+- **`ProgressTracker` 대상 건수 0건(`total_items_int=0`) 지원 및 `ZeroDivisionError` 방지 구조 개선**:
+  - `ProgressTracker.__init__`에서 `total_items_int`가 0일 때 강제로 1로 보정하던 로직을 `max(0, total_items_int)`로 변경하여 요약 리포트(`log_summary`)에서 실제 대상 건수 `0 건`이 정확하게 표시되도록 수정.
+  - 진행률 백분율 계산 시 `max(1, self.total_items_int)`를 제수로 사용하여 0건 대상 처리 시 발생할 수 있는 `ZeroDivisionError`를 원천 방지.
+
 ### v0.4.7 (2026-08-25)
 - **`fastapi` 의존성 선택적(Optional) 처리 및 패키지 경량화**:
   - `error_handler.py` 내 `fastapi` 모듈 임포트를 `try-except` 기반 동적 로딩으로 전환하여 `fastapi` 미설치 환경에서도 `agent_common`을 안전하게 임포트 및 활용할 수 있도록 개선.

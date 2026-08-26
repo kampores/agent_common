@@ -385,7 +385,7 @@ class ConfigLoader:
                 except Exception as read_err:
                     data = None
                     raw_keys = []
-                    message = f"{message} (파일 파싱 오류: {read_err})" if message else f"파일 파싱 오류: {read_err}"
+                    message = f"{message} (파일 해석 오류: {read_err})" if message else f"파일 해석 오류: {read_err}"
 
         # 2. 점(.) 표기법 경로 탐색
         current: Any = data
@@ -434,10 +434,10 @@ class ConfigLoader:
     @staticmethod
     def _load_yaml_mapping(path: Path) -> dict[str, Any]:
         """
-        지정된 YAML 파일을 파싱하여 최상위 매핑 딕셔너리로 읽어들입니다 (UTF-8 / BOM 지원).
+        지정된 YAML 파일을 해석하여 최상위 매핑 딕셔너리로 읽어들입니다 (UTF-8 / BOM 지원).
 
-        :param path: 파싱할 대상 YAML 파일 절대 경로
-        :return: 파싱된 딕셔너리 객체
+        :param path: 해석할 대상 YAML 파일 절대 경로
+        :return: 해석된 딕셔너리 객체
         """
         try:
             with path.open("r", encoding="utf-8-sig") as handle:

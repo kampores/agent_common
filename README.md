@@ -7,7 +7,7 @@
 ## 📌 주요 제공 기능
 
 ### 1. 설정 로더 (`agent_common.config_loader`)
-- 계층적 YAML 설정 파싱 및 병합 (Deep Merge)
+- 계층적 YAML 설정 해석 및 병합 (Deep Merge)
 - 패키지 내 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정 오버라이드 지원
 - `setting("key.path")` 형태의 점 표기법 설정 조회 기능 및 `NO_PROXY` 환경변수 자동 반영
 - `ensure_config_file()`: 프로젝트 기본 설정 템플릿 자동 생성 및 검증 지원
@@ -18,7 +18,7 @@
 - `logging_messages.yml` 사전 기반 한글 포맷 템플릿 연동 로깅 지원
 
 ### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
-- `EcsClient`: Dell ECS S3 저장소 접속, 목록 조회, 메타데이터 파싱 및 파일 메모리 스트리밍 획득
+- `EcsClient`: Dell ECS S3 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득
 - `GcsClient`: Google Cloud Storage 연결, 파일 존재 검증 및 대용량 멀티스레드 스트리밍 업로드
 - `BigQueryClient`: Google Cloud BigQuery 연결, JSON 데이터 스트리밍 입력(`insert_rows_json`), 배치 로드(`load_table_from_json_data`), 인라인 MERGE(`merge_table_from_json_data`), 범용 SQL 쿼리(`query`)
 

@@ -38,7 +38,7 @@ class ProgressTracker:
         :param task_name_str: 작업 명칭 (로그 접두사 및 요약 제목용)
         :param start_time_float: 작업 시작 타임스탬프 (미지정 시 현재 시간)
         """
-        self.total_items_int: int = max(1, total_items_int)
+        self.total_items_int: int = max(0, total_items_int)
         self.interval_percent_int: int = max(1, min(100, interval_percent_int))
         self.logger: Any = logger
         self.task_name_str: str = task_name_str
@@ -79,13 +79,14 @@ class ProgressTracker:
         if bytes_int > 0:
             self.total_bytes_int += bytes_int
 
-        current_percent_float: float = (self.current_count_int / self.total_items_int) * 100.0
+        divisor_int: int = max(1, self.total_items_int)
+        current_percent_float: float = (self.current_count_int / divisor_int) * 100.0
         current_percent_int: int = int(current_percent_float)
 
         # 지정된 interval_percent(예: 10%)의 배수 도달 여부 판별
         is_warn_milestone_bool: bool = (
             (current_percent_int >= self._last_warn_milestone_int + self.interval_percent_int)
-            or (self.current_count_int >= self.total_items_int)
+            or (self.total_items_int > 0 and self.current_count_int >= self.total_items_int)
         )
 
         elapsed_float: float = time.time() - self.start_time_float

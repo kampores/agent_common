@@ -229,7 +229,7 @@ class ToolParser:
 
     def eval(self, template_str: Optional[str], context_dict: Optional[Dict[str, Any]] = None) -> Optional[str]:
         """
-        { } 템플릿 문자열을 파싱하고 네임스페이스 변수 치환 및 Tool 함수 호출을 수행하여 최종 문자열을 반환합니다.
+        { } 템플릿 문자열을 해석하고 네임스페이스 변수 치환 및 Tool 함수 호출을 수행하여 최종 문자열을 반환합니다.
 
         :param template_str: 평가 대상 템플릿 문자열 (예: '{sys.now_compact}', '{get_now_compact()}', '{ecs.key}')
         :param context_dict: 컨텍스트 딕셔너리 (생략 시 기본 sys 컨텍스트 사용)
@@ -265,7 +265,7 @@ class ToolParser:
                 args: list = []
                 kwargs: dict = {}
                 if raw_args_str:
-                    # 간단한 인자 파싱
+                    # 간단한 인자 해석
                     for arg_part in raw_args_str.split(","):
                         arg_clean = arg_part.strip()
                         if "=" in arg_clean:

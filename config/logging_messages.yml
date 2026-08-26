@@ -284,7 +284,7 @@ logging_messages:
       # 예시: logger.exception("folder_search_error", search_prefix="folder/", error="Access Denied")
       folder_search_error: "스토리지 폴더 '{search_prefix}' 탐색 중 오류 발생: {error}"
 
-      # 예시: logger.error("json_process_error", stage="디코딩/파싱", json_key="folder/123.json", error="JSONDecodeError")
+      # 예시: logger.error("json_process_error", stage="디코딩/해석", json_key="folder/123.json", error="JSONDecodeError")
       json_process_error: "메타데이터 {stage} 실패: [Key={json_key}], 에러: {error}"
 
       # 예시: logger.error("source_size_error", source_key="sample.pdf", json_key="sample.json", error="404 Not Found")
