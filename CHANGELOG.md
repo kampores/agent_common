@@ -1,5 +1,9 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.10 (2026-08-28)
+- **`ReadOnlyConfig` 불필요한 `get()` 메서드 제거 및 점 표기법(Dot-notation) 접근 일원화**:
+  - `ReadOnlyConfig`에서 딕셔너리 폴백용 `get()` 메서드를 제거하고, AGENTS.md 1.4.2 및 Fail-Fast 정책에 따라 `config.section.key` 점 표기법 및 인덱싱(`config['section']`)으로 설정 접근 체계를 단일화.
+
 ### v0.4.9 (2026-08-26)
 - **외래어 '파싱'의 우리말 '해석' 순화 및 용어 표준화**:
   - `tool_parser.py`, `error_handler.py`, `config_loader.py`, `logging_messages.yml`, `README.md`의 주석, 독스트링 및 예외/로그 메시지에서 외래어 '파싱'을 직관적인 우리말 표준 용어인 '해석'으로 변경.

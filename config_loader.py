@@ -51,18 +51,6 @@ class ReadOnlyConfig:
         """딕셔너리 키 인덱싱 표기법(config['ecs'])으로 조회합니다."""
         return self.__getattr__(key)
 
-    def get(self, key: str, default: Any = None) -> Any:
-        """키에 해당하는 설정값을 반환하며, 미존재 시 default 값을 반환합니다."""
-        data: dict[str, Any] = object.__getattribute__(self, "_data")
-        if key not in data:
-            return default
-        val = data[key]
-        if isinstance(val, dict):
-            return ReadOnlyConfig(val)
-        if isinstance(val, list):
-            return [ReadOnlyConfig(item) if isinstance(item, dict) else item for item in val]
-        return val
-
     def __contains__(self, key: str) -> bool:
         """설정 키 존재 여부(in 연산자)를 확인합니다."""
         data: dict[str, Any] = object.__getattribute__(self, "_data")
