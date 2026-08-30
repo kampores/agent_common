@@ -12,10 +12,8 @@ from __future__ import annotations
 import os
 import re
 import sys
-import time
-from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional, TYPE_CHECKING, Dict
+from typing import Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agent_common.logger import ProjectLogger
@@ -25,19 +23,31 @@ from agent_common.utils import DateTimeUtils
 
 
 class ReadOnlyConfig:
-    """YAML 설정 딕셔너리를 감싸서 점 표기법(Dot-notation, 속성 접근) 및 불변성(Read-Only)을 제공하는 설정 래퍼 클래스입니다.
+    """YAML 설정 딕셔너리 또는 ConfigLoader를 감싸서 점 표기법(Dot-notation, 속성 접근) 및 불변성(Read-Only)을 제공하는 설정 래퍼 클래스입니다.
 
     도메인 의미: config.ecs.endpoint_url, config.transfer.max_workers 형태로
     설정값을 직관적으로 조회할 수 있으며, 런타임에 설정값이 임의로 변조되는 것을 방지합니다.
     """
 
-    def __init__(self, data: dict[str, Any] | Any) -> None:
-        """딕셔너리 데이터를 기반으로 ReadOnlyConfig 인스턴스를 초기화합니다."""
-        object.__setattr__(self, "_data", data if isinstance(data, dict) else {})
+    def __init__(self, data_or_loader: dict[str, Any] | Any) -> None:
+        """딕셔너리 데이터 또는 ConfigLoader 인스턴스를 기반으로 ReadOnlyConfig 인스턴스를 초기화합니다."""
+        object.__setattr__(self, "_source", data_or_loader)
+
+    def _get_data(self) -> dict[str, Any]:
+        """현재 연결된 데이터 소스로부터 최신 딕셔너리를 반환합니다."""
+        src: Any = object.__getattribute__(self, "_source")
+        if isinstance(src, dict):
+            return src
+        if hasattr(src, "get_settings") and callable(src.get_settings):
+            return src.get_settings()
+        return {}
 
     def __getattr__(self, key: str) -> Any:
-        """점 표기법(속성)으로 설정값을 조회하며 하위 딕셔너리는 ReadOnlyConfig로 자동 래핑합니다."""
-        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        """점 표기법(속성)으로 설정값을 조회하며 하위 딕셔너리는 ReadOnlyConfig로 자동 래핑합니다.
+        
+        설정 키가 '_str' 접미사로 끝나고 값이 문자열인 경우 자동으로 .strip() 처리하여 반환합니다.
+        """
+        data: dict[str, Any] = self._get_data()
         if key not in data:
             raise AttributeError(f"config.yml에 정의되지 않은 설정 항목입니다: '{key}'")
         val = data[key]
@@ -45,6 +55,8 @@ class ReadOnlyConfig:
             return ReadOnlyConfig(val)
         if isinstance(val, list):
             return [ReadOnlyConfig(item) if isinstance(item, dict) else item for item in val]
+        if isinstance(val, str) and key.endswith("_str"):
+            return val.strip()
         return val
 
     def __getitem__(self, key: str) -> Any:
@@ -53,7 +65,7 @@ class ReadOnlyConfig:
 
     def __contains__(self, key: str) -> bool:
         """설정 키 존재 여부(in 연산자)를 확인합니다."""
-        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        data: dict[str, Any] = self._get_data()
         return key in data
 
     def __setattr__(self, key: str, value: Any) -> None:
@@ -74,16 +86,16 @@ class ReadOnlyConfig:
 
     def to_dict(self) -> dict[str, Any]:
         """내부 원본 딕셔너리를 반환합니다."""
-        return object.__getattribute__(self, "_data")
+        return self._get_data()
 
     def __repr__(self) -> str:
         """객체 문자열 표현을 반환합니다."""
-        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        data: dict[str, Any] = self._get_data()
         return f"ReadOnlyConfig({data!r})"
 
     def __str__(self) -> str:
         """객체 문자열 표현을 반환합니다."""
-        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        data: dict[str, Any] = self._get_data()
         return str(data)
 
 
@@ -153,10 +165,6 @@ class ConfigLoader:
         self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         self._registered_schemas: dict[str, Any] = {}
 
-    def config_dir_get(self) -> Path:
-        """설정 디렉토리 경로를 반환합니다 (Getter)."""
-        return self._config_dir
-
     def config_dir_set(self, config_dir: str | Path) -> None:
         """설정 디렉토리 경로를 세팅하고 설정값 캐시를 초기화합니다 (Setter)."""
         self._config_dir = self.project_path(config_dir)
@@ -165,18 +173,11 @@ class ConfigLoader:
     @property
     def config_dir(self) -> Path:
         """설정 디렉토리 경로 프로퍼티 (Getter)."""
-        return self.config_dir_get()
+        return self._config_dir
 
     @config_dir.setter
     def config_dir(self, config_dir: str | Path) -> None:
         """설정 디렉토리 경로 프로퍼티 (Setter)."""
-        self.config_dir_set(config_dir)
-
-    def configure(self, config_dir: str | Path) -> None:
-        """설정 파일들을 로드할 디렉토리를 명시적으로 지정한다.
-
-        지정 후 캐시를 비워 새로운 설정값들이 반환되도록 초기화한다.
-        """
         self.config_dir_set(config_dir)
 
     def register_schema(self, schema_dict: dict[str, Any]) -> None:
@@ -325,6 +326,7 @@ class ConfigLoader:
     def setting(self, path: str, default: Any = None) -> Any:
         """
         점 표기법 경로(예: 'api.port', 'transfer.lodin_dstlc_cd')를 사용해 병합된 설정값을 조회합니다.
+        설정 키가 '_str' 접미사로 끝나고 값이 문자열인 경우 자동으로 .strip() 처리하여 반환합니다.
 
         :param path: 점 표기법 설정 경로 문자열
         :param default: 설정값이 없거나 유효하지 않을 때 반환할 기본 fallback 값 (기본값: None)
@@ -335,6 +337,8 @@ class ConfigLoader:
             if not isinstance(current, dict) or key not in current:
                 return default
             current = current[key]
+        if isinstance(current, str) and path.split(".")[-1].endswith("_str"):
+            return current.strip()
         return current
 
     def require_setting(
@@ -348,6 +352,7 @@ class ConfigLoader:
         프로그램 기동에 필요한 필수 설정값을 점 표기법(예: 'schema_config.pk_key')으로 조회합니다.
         설정값이 누락되어 있거나 빈 값인 경우, 명시된 설정 파일명과 함께 오류 메시지를 CLI 및 로그로 출력하고
         프로세스를 즉시 강제 종료(sys.exit(1))하여 빠른 실패(Fail-Fast)를 유도합니다.
+        설정 키가 '_str' 접미사로 끝나고 값이 문자열인 경우 자동으로 .strip() 처리하여 반환합니다.
 
         :param path: 점 표기법 필수 설정 경로 (예: 'schema_config.pk_key')
         :param message: 설정값 누락 시 추가 안내 설명 메시지 (옵션)
@@ -402,6 +407,9 @@ class ConfigLoader:
 
             sys.exit(1)
 
+        if isinstance(current, str) and path.split(".")[-1].endswith("_str"):
+            return current.strip()
+
         return current
 
     def project_path(self, path: str | Path | None = None) -> Path:
@@ -451,19 +459,6 @@ class ConfigLoader:
             else:
                 target[key] = value
 
-    @property
-    def config(self) -> ReadOnlyConfig:
-        """현재 병합된 전체 설정을 읽기 전용 점 표기법(Dot-notation) 객체로 반환합니다 (Getter)."""
-        return ReadOnlyConfig(self.get_settings())
-
-
-# 전역 기본 싱글톤 인스턴스 생성
-_default_loader = ConfigLoader()
-
-ROOT = ConfigLoader.ROOT
-PACKAGE_DIR = ConfigLoader.PACKAGE_DIR
-CONFIG_DIR = _default_loader.config_dir
-
 # 전역에서 바로 import 하여 점 표기법(config.ecs.endpoint_url)으로 쓸 수 있는 읽기 전용 설정 객체
-config: ReadOnlyConfig = _default_loader.config
+config: ReadOnlyConfig = ReadOnlyConfig(ConfigLoader())
 

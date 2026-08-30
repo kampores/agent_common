@@ -1,5 +1,23 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.13 (2026-08-30)
+- **`ReadOnlyConfig` 및 `ConfigLoader`의 `_str` 타입 접미사 설정값 자동 `.strip()` 처리**:
+  - `ReadOnlyConfig.__getattr__`, `ConfigLoader.setting()`, `ConfigLoader.require_setting()`에서 `_str` 접미사로 끝나는 설정 키 조회 시 문자열 값에 대해 자동으로 `.strip()` 처리를 적용하여 호출부의 중복 `str().strip()` 코드 제거 및 안정성 강화.
+  - 관련 docstring 및 타입 가이드 보강.
+
+### v0.4.12 (2026-08-30)
+- **`ConfigLoader` 미사용 함수, 불필요한 중간 변수 및 미사용 임포트 정리**:
+  - `ConfigLoader` 내 단순 위임 껍데기 함수인 `configure()` 및 중복 게터 `config_dir_get()` 제거 (파이썬 표준 `@property def config_dir`로 일원화).
+  - 모듈 레벨의 불필요한 중간 변수 `_default_loader` 및 미사용 상수(`CONFIG_DIR`, `ROOT`, `PACKAGE_DIR`)를 제거하고, `config = ReadOnlyConfig(ConfigLoader())`로 직결 단일화.
+  - 모듈 상단의 미사용 임포트(`time`, `lru_cache`, `Dict`) 정리.
+  - 설정 파일 자가 치유 및 자동 생성용 `ensure_config_file()`은 인프라 유지 관리용으로 온전히 보존.
+
+### v0.4.11 (2026-08-30)
+- **`ReadOnlyConfig` 및 전역 `config` 바인딩 구조 정비 (AGENTS.md 1.4.6 준수)**:
+  - `ConfigLoader` 내의 불필요한 위임 껍데기(Pass-through) 프로퍼티(`@property def config`)를 완전히 제거.
+  - `ReadOnlyConfig`가 딕셔너리(`dict`)뿐만 아니라 `ConfigLoader` 인스턴스를 직접 수용하도록 확장하여, 스키마 등록(`register_schema`)이나 동적 설정 갱신 시 실시간 최신 설정을 점 표기법(`config.ecs.base_folder`)으로 안전하게 조회할 수 있도록 개선.
+  - 전역 `config` 객체를 `ReadOnlyConfig(_default_loader)`로 직결하여 불필요한 호출 레이어를 해소.
+
 ### v0.4.10 (2026-08-28)
 - **`ReadOnlyConfig` 불필요한 `get()` 메서드 제거 및 점 표기법(Dot-notation) 접근 일원화**:
   - `ReadOnlyConfig`에서 딕셔너리 폴백용 `get()` 메서드를 제거하고, AGENTS.md 1.4.2 및 Fail-Fast 정책에 따라 `config.section.key` 점 표기법 및 인덱싱(`config['section']`)으로 설정 접근 체계를 단일화.
