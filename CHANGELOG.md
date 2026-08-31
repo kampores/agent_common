@@ -1,5 +1,14 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.14 (2026-08-31)
+- **`ReadOnlyConfig` 및 `ConfigLoader` 타입 접미사 자동 형 변환 및 타입 보증(Type Guarantee & Coercion)**:
+  - `_int`: `int()` 자동 정수 변환 보증
+  - `_float`: `float()` 자동 실수 변환 보증
+  - `_bool`: `bool()` 자동 불리언 변환 보증 (`"true"`, `"false"`, `1`, `0` 등 문자열/숫자 완벽 대응)
+  - `_str`: `str().strip()` 자동 문자열 변환 및 공백 제거
+  - `_list` / `_dict`: 리스트/딕셔너리(ReadOnlyConfig) 타입 보증
+  - 호출부에서 불필요한 방어적 `int(config.xxx_int)` 형변환 코드 제거 가능하도록 보증 체계 확립.
+
 ### v0.4.13 (2026-08-30)
 - **`ReadOnlyConfig` 및 `ConfigLoader`의 `_str` 타입 접미사 설정값 자동 `.strip()` 처리**:
   - `ReadOnlyConfig.__getattr__`, `ConfigLoader.setting()`, `ConfigLoader.require_setting()`에서 `_str` 접미사로 끝나는 설정 키 조회 시 문자열 값에 대해 자동으로 `.strip()` 처리를 적용하여 호출부의 중복 `str().strip()` 코드 제거 및 안정성 강화.

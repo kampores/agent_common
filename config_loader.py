@@ -42,10 +42,46 @@ class ReadOnlyConfig:
             return src.get_settings()
         return {}
 
+    @staticmethod
+    def _coerce_type_by_key_suffix(key: str, val: Any) -> Any:
+        """키 접미사(_int, _str, _bool, _float, _list, _dict)에 따라 값을 보증된 파이썬 타입으로 변환합니다.
+
+        :param key: 설정 키 문자열
+        :param val: 변환할 원본 값
+        :return: 변환 및 보증된 파이썬 타입 값
+        """
+        if val is None:
+            return val
+        if key.endswith("_int"):
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return val
+        if key.endswith("_float"):
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return val
+        if key.endswith("_bool"):
+            if isinstance(val, bool):
+                return val
+            if isinstance(val, str):
+                return val.strip().lower() in ("true", "1", "yes", "y", "on")
+            return bool(val)
+        if key.endswith("_str"):
+            return str(val).strip()
+        if key.endswith("_list") and not isinstance(val, list):
+            if isinstance(val, (tuple, set)):
+                return list(val)
+            return [val]
+        if key.endswith("_dict") and not isinstance(val, dict):
+            return dict(val) if hasattr(val, "to_dict") or hasattr(val, "items") else val
+        return val
+
     def __getattr__(self, key: str) -> Any:
         """점 표기법(속성)으로 설정값을 조회하며 하위 딕셔너리는 ReadOnlyConfig로 자동 래핑합니다.
         
-        설정 키가 '_str' 접미사로 끝나고 값이 문자열인 경우 자동으로 .strip() 처리하여 반환합니다.
+        설정 키 접미사(_int, _str, _bool, _float, _list, _dict)에 맞춰 타입을 자동 보증하여 반환합니다.
         """
         data: dict[str, Any] = self._get_data()
         if key not in data:
@@ -55,9 +91,7 @@ class ReadOnlyConfig:
             return ReadOnlyConfig(val)
         if isinstance(val, list):
             return [ReadOnlyConfig(item) if isinstance(item, dict) else item for item in val]
-        if isinstance(val, str) and key.endswith("_str"):
-            return val.strip()
-        return val
+        return self._coerce_type_by_key_suffix(key, val)
 
     def __getitem__(self, key: str) -> Any:
         """딕셔너리 키 인덱싱 표기법(config['ecs'])으로 조회합니다."""
@@ -326,7 +360,7 @@ class ConfigLoader:
     def setting(self, path: str, default: Any = None) -> Any:
         """
         점 표기법 경로(예: 'api.port', 'transfer.lodin_dstlc_cd')를 사용해 병합된 설정값을 조회합니다.
-        설정 키가 '_str' 접미사로 끝나고 값이 문자열인 경우 자동으로 .strip() 처리하여 반환합니다.
+        설정 키 접미사(_int, _str, _bool, _float, _list, _dict)에 맞춰 타입을 자동 보증하여 반환합니다.
 
         :param path: 점 표기법 설정 경로 문자열
         :param default: 설정값이 없거나 유효하지 않을 때 반환할 기본 fallback 값 (기본값: None)
@@ -337,9 +371,8 @@ class ConfigLoader:
             if not isinstance(current, dict) or key not in current:
                 return default
             current = current[key]
-        if isinstance(current, str) and path.split(".")[-1].endswith("_str"):
-            return current.strip()
-        return current
+        last_key_str: str = path.split(".")[-1]
+        return ReadOnlyConfig._coerce_type_by_key_suffix(last_key_str, current)
 
     def require_setting(
         self, 
@@ -352,7 +385,7 @@ class ConfigLoader:
         프로그램 기동에 필요한 필수 설정값을 점 표기법(예: 'schema_config.pk_key')으로 조회합니다.
         설정값이 누락되어 있거나 빈 값인 경우, 명시된 설정 파일명과 함께 오류 메시지를 CLI 및 로그로 출력하고
         프로세스를 즉시 강제 종료(sys.exit(1))하여 빠른 실패(Fail-Fast)를 유도합니다.
-        설정 키가 '_str' 접미사로 끝나고 값이 문자열인 경우 자동으로 .strip() 처리하여 반환합니다.
+        설정 키 접미사(_int, _str, _bool, _float, _list, _dict)에 맞춰 타입을 자동 보증하여 반환합니다.
 
         :param path: 점 표기법 필수 설정 경로 (예: 'schema_config.pk_key')
         :param message: 설정값 누락 시 추가 안내 설명 메시지 (옵션)
@@ -407,10 +440,8 @@ class ConfigLoader:
 
             sys.exit(1)
 
-        if isinstance(current, str) and path.split(".")[-1].endswith("_str"):
-            return current.strip()
-
-        return current
+        last_key_str: str = path.split(".")[-1]
+        return ReadOnlyConfig._coerce_type_by_key_suffix(last_key_str, current)
 
     def project_path(self, path: str | Path | None = None) -> Path:
         """
