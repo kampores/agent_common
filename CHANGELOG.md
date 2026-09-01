@@ -1,5 +1,13 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.16 (2026-09-01)
+- **`ProgressTracker` 로그 ID 기반 예외 유형별 집계 및 `logging_messages.yml` 동적 연동 요약 리포트(`log_summary`) 지원**:
+  - `self.error_counts_dict: dict[str, int]` 및 에러 누적 기록 메서드 `record_error(error_type_str, count_int=1)` 추가.
+  - 다단계 처리 및 복합 프로세스 간 에러 통계 병합용 `merge_error_counts(other_error_counts_dict)` 추가.
+  - `update(..., error_type_str="")` 파라미터 지원으로 실패 카운트와 에러 유형 동시 갱신 지원.
+  - **하드코딩 배제 및 `logging_messages.yml` 동적 연동**: 소스코드 내 하드코딩 사전 없이 `ConfigLoader`를 통해 `agent_common/config/logging_messages.yml` 및 `config/logging_messages.yml`의 메시지 템플릿을 동적으로 탐색하고 정제하여 요약 리포트에 `* 로그ID (한글설명): N 건` 형식으로 자동 출력.
+  - 세 메인 프로그램(`ecs_to_gcs.py`, `ecs_to_bigquery.py`, `ecs_to_gcsbigquery_merge.py`)의 런타임 로그 ID 기반 예외 통계 연동.
+
 ### v0.4.15 (2026-09-01)
 - **`ProjectLogger` 프로그램별 차등 로깅 레벨(`logging.level.<app_name>`) 지원**:
   - `config.yml`의 `logging.level`에 프로그램별 레벨 딕셔너리(`ecs_to_gcs`, `ecs_to_bigquery`, `ecs_to_gcsbigquery_merge` 등) 설정 시, 실행되는 애플리케이션 명칭(`app_name` 또는 `sys.argv[0]`)을 매칭하여 차등 로깅 레벨 적용.
