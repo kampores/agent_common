@@ -6,11 +6,18 @@
 
 ## 📌 주요 제공 기능
 
-### 1. 설정 로더 (`agent_common.config_loader`)
-- 계층적 YAML 설정 해석 및 병합 (Deep Merge)
-- 패키지 내 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정 오버라이드 지원
-- `setting("key.path")` 형태의 점 표기법 설정 조회 기능 및 `NO_PROXY` 환경변수 자동 반영
-- `ensure_config_file()`: 프로젝트 기본 설정 템플릿 자동 생성 및 검증 지원
+### 1. 설정 로더 및 불변 설정 객체 (`agent_common.config_loader`)
+- **계층적 YAML 설정 해석 및 병합 (Deep Merge)**: 패키지 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정(`config/*.yml`) 동적 병합.
+- **불변 점 표기법 조회 (`ReadOnlyConfig`)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 형태로 직관적 속성 접근 및 런타임 변조 방지.
+- **타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion - v0.4.14)**:
+  - `_int`: `int` 정수형 자동 형 변환 및 보증
+  - `_float`: `float` 실수형 자동 형 변환 및 보증
+  - `_bool`: `bool` 불리언형 자동 변환 (`"true"`, `"false"`, `1`, `0` 등 완벽 대응)
+  - `_str`: `str` 문자열 변환 및 `.strip()` 공백 자동 정제
+  - `_list` / `_dict`: 리스트 / 불변 딕셔너리(`ReadOnlyConfig`) 래핑 보증
+- **Fail-Fast 필수 설정 검증 (`require_setting()`)**: 프로그램 시작 시 필수 설정값 누락 시 상세 원인 출력 후 프로세스 즉시 종료.
+- **네트워크 프록시 제어**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
+- **설정 파일 템플릿 보정 (`ensure_config_file()`)**: 프로젝트 설정 누락 시 기본 스키마 기반 자동 생성 및 자가 치유(Self-healing).
 
 ### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - `SingleLineFlattenFormatter`: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화하여 중앙 로그 수집(Logstash, Fluentd 등)에 최적화
@@ -40,17 +47,42 @@
   - `{sys.today}`, `{sys.now_compact}`, `{sys.timestamp_compact}`, `{sys.env}` 등 기본 자동 제공
 
 ### 5. 진행률 트래커 및 공용 유틸리티 (`agent_common.utils`)
-- `ProgressTracker`: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도 및 남은 시간 예측, 10% 단위 마일스톤 경고 승격 로깅, 최종 요약 리포트(Summary Report) 생성
+- `ProgressTracker`: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도 및 남은 시간 예측, 마일스톤 경고 승격 로깅, 최종 요약 리포트(Summary Report) 생성
 - `DateTimeUtils`: 전역 일시 헬퍼 함수군
 
 ### 6. 공용 에러 및 예외 핸들러 (`agent_common.error_handler`)
 - 네트워크 장애, 설정 오류, 런타임 예외에 대한 일관된 로깅 및 핸들링 제공
 
+### 7. 통합 LLM 클라이언트 및 추론 엔진 (`agent_common.llm`)
+- **다중 프로바이더 통합 지원 (`LlmClient`)**:
+  - **외부 LLM API**: OpenAI 호환 표준 API (`/chat/completions`) 및 Fabrix 전용 API 형식 지원
+  - **로컬 GGUF 모델**: `llama-cpp-python` 기반 로컬 CPU/GPU 가속 추론 및 인메모리 모델 캐싱(`_LOCAL_LLMS`)
+- **설정 풀(Pool) 기반 모델 프로필 관리**:
+  - `llmpool.yml` 및 `config.yml`을 통해 모델명, 토큰 수(`max_tokens`), 온도(`temperature`), 타임아웃, 컨텍스트 크기(`n_ctx`), 스레드 수(`n_threads`), GPU 레이어(`n_gpu_layers`) 등 동적 구성
+- **자동 장애 복구 (Auto Failover)**:
+  - `provider: auto` 설정 시 외부 LLM API 호출 실패 시 로컬 GGUF 모델로 무중단 자동 전환
+- **추론 예외 통일 관리 (`LlmInferenceError`)**:
+  - API 키 누락, 타임아웃, 모델 로드 실패 등에 대한 통합 예외 처리
+
 ---
 
 ## 🛠️ 사용 예시 (Usage Examples)
 
-### 1. ToolParser를 통한 동적 룰 평가
+### 1. 전역 `config` 점 표기법 및 타입 보증 활용
+```python
+from agent_common.config_loader import config
+
+# 1) 타입 접미사에 따른 자동 형 변환 보증
+max_workers: int = config.transfer.max_workers_int       # int 타입 보증
+prefix: str = config.gcs.prefix_str                      # str 타입 및 .strip() 정제 보증
+is_ecscopy: bool = config.gcs.ecscopy_bool               # bool 타입 보증
+
+# 2) 계층적 속성 접근
+ecs_url: str = config.ecs.endpoint_url
+table_id: str = config.bigquery.table_id
+```
+
+### 2. ToolParser를 통한 동적 룰 평가
 ```python
 from agent_common.tool_parser import ToolParser
 
@@ -73,7 +105,7 @@ today_val = tool_parser.eval("{sys.today}", context_dict)
 # -> "20260824"
 ```
 
-### 2. ProgressTracker 실시간 진행률 추적
+### 3. ProgressTracker 실시간 진행률 추적
 ```python
 from agent_common.utils import ProgressTracker
 from agent_common.logger import ProjectLogger
@@ -90,6 +122,23 @@ for file_info in file_list:
 
 # 최종 결과 요약 리포트 출력
 tracker.log_summary()
+```
+
+### 4. LlmClient를 통한 통합 텍스트/SQL 생성
+```python
+from agent_common.llm import LlmClient
+
+# 1) 설정 풀에 정의된 모델명 또는 용도로 클라이언트 초기화
+llm_client = LlmClient(purpose="sql_generator")
+
+# 2) 프롬프트 기반 텍스트 생성 (외부 API -> 로컬 GGUF 자동 폴백)
+prompt_str = "사용자 요청: 2026년 8월 일일 가입자 수 통계 쿼리를 작성해줘."
+response_str = llm_client.generate(
+    prompt=prompt_str,
+    system_prompt="당신은 BigQuery 전문 SQL 생성 AI입니다."
+)
+
+print(f"생성된 결과 ({llm_client.last_generated_by}):\n{response_str}")
 ```
 
 ---
@@ -127,7 +176,7 @@ python -m build agent_common --wheel -o whls/
 pip install -e agent_common
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install whls/agent_common-0.4.1-py3-none-any.whl
+pip install whls/agent_common-0.4.14-py3-none-any.whl
 ```
 
 ---

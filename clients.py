@@ -507,7 +507,7 @@ class BigQueryClient:
         :return: 이미 적재된 키 값들의 set 집합
         """
         table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
-        query = f"SELECT DISTINCT {field_name} FROM `{table_ref}` WHERE {field_name} IS NOT NULL"
+        query = f"SELECT DISTINCT `{field_name}` FROM `{table_ref}` WHERE `{field_name}` IS NOT NULL"
         try:
             query_job = self.client.query(query, timeout=self.timeout_seconds)
             results = query_job.result()
