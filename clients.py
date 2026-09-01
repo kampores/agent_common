@@ -567,38 +567,39 @@ class BigQueryClient:
 
         # 1. UPDATE 대상 컬럼 구성
         update_cols_list: list[str] = [c for c in cols_list if c not in preserve_cols_set]
-        update_set_clause_str: str = ",\n        ".join([f"T.{c} = S.{c}" for c in update_cols_list])
+        update_set_clause_str: str = ",\n        ".join([f"T.`{c}` = S.`{c}`" for c in update_cols_list])
 
         # 2. INSERT 대상 컬럼 및 값 매핑
-        insert_cols_str: str = ", ".join(cols_list)
-        insert_vals_str: str = ", ".join([f"S.{c}" for c in cols_list])
+        insert_cols_str: str = ", ".join([f"`{c}`" for c in cols_list])
+        insert_vals_str: str = ", ".join([f"S.`{c}`" for c in cols_list])
 
         # 3. UNNEST SELECT 절 캐스팅 동적 생성 (명시적 타입 또는 파이썬 데이터 타입 기반 자동 추론)
         select_expressions_list: list[str] = []
         for col_str in cols_list:
             val_any = sample_row_dict.get(col_str)
+            safe_col_path_str: str = col_str.replace('"', '\\"')
             if col_str in explicit_types_dict:
                 sql_type_str: str = explicit_types_dict[col_str].upper()
                 if sql_type_str in ("JSON", "RECORD", "STRUCT"):
-                    expr_str: str = f"PARSE_JSON(JSON_QUERY(item, '$.{col_str}')) AS {col_str}"
+                    expr_str: str = f"PARSE_JSON(JSON_QUERY(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
                 elif sql_type_str.startswith("TIMESTAMP"):
-                    expr_str = f"TIMESTAMP(JSON_VALUE(item, '$.{col_str}')) AS {col_str}"
+                    expr_str = f"TIMESTAMP(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
                 elif sql_type_str.startswith("INT") or sql_type_str.startswith("NUMERIC") or sql_type_str.startswith("FLOAT"):
-                    expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS {sql_type_str}) AS {col_str}"
+                    expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS {sql_type_str}) AS `{col_str}`"
                 elif sql_type_str.startswith("BOOL"):
-                    expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS BOOL) AS {col_str}"
+                    expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS BOOL) AS `{col_str}`"
                 else:
-                    expr_str = f"STRING(JSON_VALUE(item, '$.{col_str}')) AS {col_str}"
+                    expr_str = f"STRING(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
             elif isinstance(val_any, (dict, list)):
-                expr_str = f"PARSE_JSON(JSON_QUERY(item, '$.{col_str}')) AS {col_str}"
+                expr_str = f"PARSE_JSON(JSON_QUERY(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
             elif isinstance(val_any, bool):
-                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS BOOL) AS {col_str}"
+                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS BOOL) AS `{col_str}`"
             elif isinstance(val_any, int) and not isinstance(val_any, bool):
-                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS INT64) AS {col_str}"
+                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS INT64) AS `{col_str}`"
             elif isinstance(val_any, float):
-                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.{col_str}') AS FLOAT64) AS {col_str}"
+                expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS FLOAT64) AS `{col_str}`"
             else:
-                expr_str = f"STRING(JSON_VALUE(item, '$.{col_str}')) AS {col_str}"
+                expr_str = f"STRING(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
             select_expressions_list.append(expr_str)
         unnest_select_clause_str: str = ",\n      ".join(select_expressions_list)
 
@@ -612,7 +613,7 @@ USING (
       {unnest_select_clause_str}
     FROM UNNEST(JSON_QUERY_ARRAY(@json_payload)) AS item
 ) S
-ON T.{pk_key_str} = S.{pk_key_str}
+ON T.`{pk_key_str}` = S.`{pk_key_str}`
 WHEN MATCHED THEN
   UPDATE SET
     {update_set_clause_str}

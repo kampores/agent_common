@@ -1,5 +1,11 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.17 (2026-09-01)
+- **`BigQueryClient.merge_table_from_json_data` 컬럼명 및 식별자 백틱(`` ` ``) 전면 적용**:
+  - MERGE INTO 쿼리 내 `ON` 조건절(`T.`{pk}` = S.`{pk}``), `UPDATE SET` 절(`T.`{col}` = S.`{col}``), `INSERT` 컬럼 목록(`(`{col1}`, `{col2}`)`), `VALUES` 절(`(S.`{col1}`, S.`{col2}`)`) 및 UNNEST SELECT Alias(`AS `{col}``)에 백틱(`` ` ``)을 전면 적용.
+  - 한글 컬럼명, 공백/특수문자 포함 컬럼 및 BigQuery 예약어(`order`, `status`, `date`, `group` 등) 컬럼과의 구문 충돌 완벽 방지.
+  - JSONPath 경로 내 큰따옴표 이스케이프(`$.\"{col}\"`) 적용으로 유니코드 및 특수 키 파싱 안정성 확보.
+
 ### v0.4.16 (2026-09-01)
 - **`ProgressTracker` 로그 ID 기반 예외 유형별 집계 및 `logging_messages.yml` 동적 연동 요약 리포트(`log_summary`) 지원**:
   - `self.error_counts_dict: dict[str, int]` 및 에러 누적 기록 메서드 `record_error(error_type_str, count_int=1)` 추가.
