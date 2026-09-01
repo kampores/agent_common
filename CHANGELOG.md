@@ -1,5 +1,11 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.15 (2026-09-01)
+- **`ProjectLogger` 프로그램별 차등 로깅 레벨(`logging.level.<app_name>`) 지원**:
+  - `config.yml`의 `logging.level`에 프로그램별 레벨 딕셔너리(`ecs_to_gcs`, `ecs_to_bigquery`, `ecs_to_gcsbigquery_merge` 등) 설정 시, 실행되는 애플리케이션 명칭(`app_name` 또는 `sys.argv[0]`)을 매칭하여 차등 로깅 레벨 적용.
+  - 기존 단일 문자열(`logging.level: "INFO"`) 설정과의 완벽한 하위 호환성 유지.
+  - 프로그램별 명시적 `app_name` 전달을 통해 임포트 또는 스크립트 실행 환경에서도 신뢰성 높은 로깅 레벨 바인딩 보장.
+
 ### v0.4.14 (2026-08-31)
 - **`ReadOnlyConfig` 및 `ConfigLoader` 타입 접미사 자동 형 변환 및 타입 보증(Type Guarantee & Coercion)**:
   - `_int`: `int()` 자동 정수 변환 보증

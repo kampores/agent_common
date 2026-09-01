@@ -22,6 +22,7 @@
 ### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - `SingleLineFlattenFormatter`: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화하여 중앙 로그 수집(Logstash, Fluentd 등)에 최적화
 - `ProjectLogger`: 콘솔 및 파일 로그 핸들러 동적 생성 및 일자별 로그 분리 관리
+- **프로그램별 차등 로깅 레벨 지원 (`logging.level.<app_name>`)**: 설정 파일에서 프로그램별로 세분화된 로그 레벨 지정 지원
 - `logging_messages.yml` 사전 기반 한글 포맷 템플릿 연동 로깅 지원
 
 ### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)

@@ -113,7 +113,37 @@ class ProjectLogger:
             app_name = Path(sys.argv[0]).stem if sys.argv and sys.argv[0] else "app"
 
         loader = ConfigLoader(config_dir=config_dir)
-        log_level_str = loader.setting("logging.level", "INFO")
+        log_level_setting: Any = loader.setting("logging.level", "INFO")
+
+        # logging.level이 dict/ReadOnlyConfig (프로그램별 레벨 설정)인 경우 app_name 매칭
+        log_level_str: str = "INFO"
+        if isinstance(log_level_setting, dict) or hasattr(log_level_setting, "items") or hasattr(log_level_setting, "get"):
+            lvl_dict: dict[str, Any] = (
+                dict(log_level_setting)
+                if not isinstance(log_level_setting, dict)
+                else log_level_setting
+            )
+            cand_keys_list: list[str] = [
+                str(app_name).strip().lower().replace("-", "_"),
+            ]
+            if sys.argv and sys.argv[0]:
+                cand_keys_list.append(Path(sys.argv[0]).stem.lower().replace("-", "_"))
+
+            found_lvl_any: Any = None
+            for cand_key_str in cand_keys_list:
+                for k_any, v_any in lvl_dict.items():
+                    if str(k_any).strip().lower().replace("-", "_") == cand_key_str:
+                        found_lvl_any = v_any
+                        break
+                if found_lvl_any is not None:
+                    break
+
+            if found_lvl_any is None:
+                found_lvl_any = lvl_dict.get("default", "INFO")
+            log_level_str = str(found_lvl_any)
+        else:
+            log_level_str = str(log_level_setting)
+
         log_format = loader.setting(
             "logging.format",
             "[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d %(funcName)s()] %(message)s",
