@@ -584,12 +584,18 @@ class BigQueryClient:
                     expr_str: str = f"PARSE_JSON(JSON_QUERY(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
                 elif sql_type_str.startswith("TIMESTAMP"):
                     expr_str = f"TIMESTAMP(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
-                elif sql_type_str.startswith("INT") or sql_type_str.startswith("NUMERIC") or sql_type_str.startswith("FLOAT"):
+                elif sql_type_str.startswith("DATETIME"):
+                    expr_str = f"DATETIME(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
+                elif sql_type_str.startswith("DATE"):
+                    expr_str = f"DATE(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
+                elif sql_type_str.startswith("TIME"):
+                    expr_str = f"TIME(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
+                elif sql_type_str.startswith("INT") or sql_type_str.startswith("NUMERIC") or sql_type_str.startswith("FLOAT") or sql_type_str.startswith("BIG"):
                     expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS {sql_type_str}) AS `{col_str}`"
                 elif sql_type_str.startswith("BOOL"):
                     expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS BOOL) AS `{col_str}`"
                 else:
-                    expr_str = f"STRING(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
+                    expr_str = f"JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS `{col_str}`"
             elif isinstance(val_any, (dict, list)):
                 expr_str = f"PARSE_JSON(JSON_QUERY(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
             elif isinstance(val_any, bool):
@@ -599,7 +605,7 @@ class BigQueryClient:
             elif isinstance(val_any, float):
                 expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS FLOAT64) AS `{col_str}`"
             else:
-                expr_str = f"STRING(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
+                expr_str = f"JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS `{col_str}`"
             select_expressions_list.append(expr_str)
         unnest_select_clause_str: str = ",\n      ".join(select_expressions_list)
 

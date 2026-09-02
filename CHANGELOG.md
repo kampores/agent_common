@@ -1,5 +1,10 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.18 (2026-09-01)
+- **`BigQueryClient.merge_table_from_json_data` UNNEST SELECT 절 `JSON_VALUE` 직접 반환 및 SQL 타입 분기 보강**:
+  - `JSON_VALUE(...)` 반환값에 불필요하게 씌워져 있던 `STRING(...)` 함수 래핑을 제거하여 `400 No matching signature for function STRING` 쿼리 구문 오류 원천 해결.
+  - 명시적 컬럼 타입 매핑(`column_types_dict`) 지원 시 `DATETIME`, `DATE`, `TIME`, `INT/BIGINT/NUMERIC/FLOAT` 등의 다양한 SQL 타입 캐스팅 표현식(`DATETIME(...)`, `DATE(...)`, `TIME(...)`, `SAFE_CAST(...)`) 분기 보강.
+
 ### v0.4.17 (2026-09-01)
 - **`BigQueryClient.merge_table_from_json_data` 컬럼명 및 식별자 백틱(`` ` ``) 전면 적용**:
   - MERGE INTO 쿼리 내 `ON` 조건절(`T.`{pk}` = S.`{pk}``), `UPDATE SET` 절(`T.`{col}` = S.`{col}``), `INSERT` 컬럼 목록(`(`{col1}`, `{col2}`)`), `VALUES` 절(`(S.`{col1}`, S.`{col2}`)`) 및 UNNEST SELECT Alias(`AS `{col}``)에 백틱(`` ` ``)을 전면 적용.
