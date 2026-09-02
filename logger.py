@@ -69,9 +69,18 @@ class ProjectLogger:
 
     # 중복 basicConfig 호출로 handler가 겹치지 않도록 로깅 초기화 여부를 기억합니다.
     _configured = False
+    # 클래스 전역 결과 건수 및 에러 집계
+    _success_count_int: int = 0
+    _failure_count_int: int = 0
+    _excluded_count_int: int = 0
+    _error_counts_dict: dict[str, int] = {}
 
     def __init__(self, name: str | logging.Logger, config_dir: str | Path | None = None):
         self._config_loader: ConfigLoader | None = None
+        self.success_count_int: int = 0
+        self.failure_count_int: int = 0
+        self.excluded_count_int: int = 0
+        self.error_counts_dict: dict[str, int] = {}
         if config_dir:
             self.config_loader.config_dir_set(config_dir)
 
@@ -281,6 +290,161 @@ class ProjectLogger:
                 return f"{template_str} [{kwargs_detail_str}]" if template_str != target_code_str else f"[FATAL][Fail-Fast] {target_code_str}: {kwargs_detail_str}"
         return str(template_str)
 
+    def record_error(self, error_type_str: str, count_int: int = 1) -> None:
+        """
+        발생한 예외 또는 에러 식별자(로그 ID)의 발생 건수를 누적 기록합니다.
+
+        :param error_type_str: 에러 식별 코드 또는 예외 클래스명
+        :param count_int: 누적할 발생 건수 (기본값: 1)
+        """
+        if not error_type_str:
+            error_type_str = "UnknownError"
+        clean_code_str: str = str(error_type_str).strip()
+        self.error_counts_dict[clean_code_str] = self.error_counts_dict.get(clean_code_str, 0) + max(1, count_int)
+        ProjectLogger._error_counts_dict[clean_code_str] = ProjectLogger._error_counts_dict.get(clean_code_str, 0) + max(1, count_int)
+
+    def get_error_counts(self) -> dict[str, int]:
+        """
+        누적된 에러 유형/로그 ID별 발생 건수 딕셔너리를 반환합니다.
+        인스턴스에 기록된 건수가 없을 경우 클래스 전역 집계 건수를 반환합니다.
+
+        :return: 에러 코드별 발생 건수 딕셔너리
+        """
+        if self.error_counts_dict:
+            return dict(self.error_counts_dict)
+        return dict(ProjectLogger._error_counts_dict)
+
+    def reset_error_counts(self) -> None:
+        """현재 인스턴스 및 클래스 전역 에러 건수 집계를 초기화합니다."""
+        self.error_counts_dict.clear()
+        ProjectLogger._error_counts_dict.clear()
+
+    @classmethod
+    def get_global_error_counts(cls) -> dict[str, int]:
+        """클래스 전역으로 누적된 모든 에러 건수 딕셔너리를 반환합니다."""
+        return dict(cls._error_counts_dict)
+
+    @classmethod
+    def reset_global_error_counts(cls) -> None:
+        """클래스 전역 에러 건수 집계를 초기화합니다."""
+        cls._error_counts_dict.clear()
+
+    def update(
+        self,
+        success_bool: bool = True,
+        excluded_bool: bool = False,
+        count_int: int = 1,
+    ) -> None:
+        """
+        작업 진행 건수의 결과 유형(성공/실패/제외)을 분류하여 누적 기록합니다.
+
+        :param success_bool: 성공 여부
+        :param excluded_bool: 제외 대상 여부 (예: 자산상태코드 09, 중복 PK 등)
+        :param count_int: 누적할 건수 (기본값: 1)
+        """
+        inc_int: int = max(1, count_int)
+        if excluded_bool:
+            self.excluded_count_int += inc_int
+            ProjectLogger._excluded_count_int += inc_int
+        elif success_bool:
+            self.success_count_int += inc_int
+            ProjectLogger._success_count_int += inc_int
+        else:
+            self.failure_count_int += inc_int
+            ProjectLogger._failure_count_int += inc_int
+
+    def record_result(
+        self,
+        success_bool: bool = True,
+        excluded_bool: bool = False,
+        count_int: int = 1,
+    ) -> None:
+        """진행 건수 분류 기록의 명시적 별칭 메서드입니다."""
+        self.update(success_bool=success_bool, excluded_bool=excluded_bool, count_int=count_int)
+
+    def record_success(self, count_int: int = 1) -> None:
+        """성공 건수를 누적 기록합니다."""
+        self.update(success_bool=True, excluded_bool=False, count_int=count_int)
+
+    def record_failure(self, count_int: int = 1) -> None:
+        """실패 건수를 누적 기록합니다."""
+        self.update(success_bool=False, excluded_bool=False, count_int=count_int)
+
+    def record_excluded(self, count_int: int = 1) -> None:
+        """제외 건수를 누적 기록합니다."""
+        self.update(success_bool=False, excluded_bool=True, count_int=count_int)
+
+    def get_result_counts(self) -> dict[str, int]:
+        """성공, 실패, 제외 건수 딕셔너리를 반환합니다."""
+        has_instance_counts_bool: bool = bool(self.success_count_int or self.failure_count_int or self.excluded_count_int)
+        return {
+            "success": self.success_count_int if has_instance_counts_bool else ProjectLogger._success_count_int,
+            "failure": self.failure_count_int if has_instance_counts_bool else ProjectLogger._failure_count_int,
+            "excluded": self.excluded_count_int if has_instance_counts_bool else ProjectLogger._excluded_count_int,
+        }
+
+    def reset_result_counts(self) -> None:
+        """진행 건수 분류 통계를 초기화합니다."""
+        self.success_count_int = 0
+        self.failure_count_int = 0
+        self.excluded_count_int = 0
+        ProjectLogger._success_count_int = 0
+        ProjectLogger._failure_count_int = 0
+        ProjectLogger._excluded_count_int = 0
+
+    def get_log_id_description(self, log_id_str: str) -> str:
+        """
+        로그 ID(메시지 코드)에 대응하는 직관적인 한글 설명 문자열을 logging_messages.yml 설정으로부터 동적으로 조회하고 정제하여 반환합니다.
+
+        :param log_id_str: 로그 메시지 식별 코드
+        :return: 정제된 한글 설명 문자열 (미매핑 시 빈 문자열)
+        """
+        if not log_id_str:
+            return ""
+
+        target_code_str: str = str(log_id_str).strip()
+        template_val: str | None = self._search_template_in_level("ERROR", target_code_str)
+
+        if not template_val:
+            all_msgs_dict = self.config_loader.setting("logging_messages")
+            if isinstance(all_msgs_dict, dict):
+                for lvl_str in all_msgs_dict.keys():
+                    cand_str: str | None = self._search_template_in_level(str(lvl_str).upper(), target_code_str)
+                    if cand_str:
+                        template_val = cand_str
+                        break
+
+        if not template_val or not isinstance(template_val, str) or template_val == target_code_str:
+            return ""
+
+        # 상세 파라미터 구분자(:, [ 등) 이전의 핵심 요약문 추출
+        import re
+        title_str: str = template_val.split(":")[0].split("[")[0].strip()
+
+        # 기본 서비스/스토리지 컨텍스트 치환 (설정 파일 기반 감지)
+        try:
+            settings_dict = self.config_loader.get_settings()
+            if "bigquery" in settings_dict and settings_dict.get("bigquery"):
+                title_str = title_str.replace("{service_name}", "BigQuery").replace("{client_name}", "BigQuery")
+            elif "db" in settings_dict and settings_dict.get("db"):
+                title_str = title_str.replace("{service_name}", "데이터베이스").replace("{client_name}", "데이터베이스")
+
+            if "gcs" in settings_dict and settings_dict.get("gcs"):
+                title_str = title_str.replace("{storage_type}", "GCS")
+            elif "ecs" in settings_dict and settings_dict.get("ecs"):
+                title_str = title_str.replace("{storage_type}", "ECS")
+        except Exception:
+            pass
+
+        # 미치환 템플릿 변수({stage}, {ecs_key} 등) 제거
+        cleaned_str: str = re.sub(r"\{[^}]*\}", "", title_str)
+
+        # 괄호, 따옴표, 잉여 특수문자 및 연속 공백 정제
+        cleaned_str = re.sub(r"[\(\)\[\]\'\"]", "", cleaned_str)
+        cleaned_str = re.sub(r"\s+", " ", cleaned_str).strip(" -:,")
+
+        return cleaned_str
+
     def log_msg(
         self,
         level_str: str,
@@ -296,9 +460,11 @@ class ProjectLogger:
         :param kwargs: 추가 포매팅 인자
         :return: 기록된 완성 메시지 문자열
         """
+        lvl_name_str: str = str(level_str).strip().upper()
+        if lvl_name_str in ("ERROR", "CRITICAL"):
+            self.record_error(msg_code_str)
         stacklevel_int: int = kwargs.pop("stacklevel", 2)
         msg_str: str = self.get_log_msg(level_str, msg_code_str, default_str=default_str, **kwargs)
-        lvl_name_str: str = str(level_str).strip().upper()
         lvl_num_int: int = getattr(logging, lvl_name_str, logging.INFO)
         self.logger.log(lvl_num_int, msg_str, stacklevel=stacklevel_int)
         return msg_str
@@ -326,20 +492,26 @@ class ProjectLogger:
     def error(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """ERROR 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
+        self.record_failure(1)
         if isinstance(msg_or_code, str):
+            self.record_error(msg_or_code)
             msg = self.get_log_msg("ERROR", msg_or_code, default=default, **kwargs)
             self.logger.error(msg, *args, stacklevel=stacklevel)
             return msg
+        self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
         self.logger.error(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
 
     def critical(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """CRITICAL 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
+        self.record_failure(1)
         if isinstance(msg_or_code, str):
+            self.record_error(msg_or_code)
             msg = self.get_log_msg("CRITICAL", msg_or_code, default=default, **kwargs)
             self.logger.critical(msg, *args, stacklevel=stacklevel)
             return msg
+        self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
         self.logger.critical(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
 
@@ -356,12 +528,115 @@ class ProjectLogger:
     def exception(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
         """예외 Traceback 정보와 함께 ERROR 레벨로 로그를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
+        self.record_failure(1)
         if isinstance(msg_or_code, str):
+            self.record_error(msg_or_code)
             msg = self.get_log_msg("ERROR", msg_or_code, default=default, **kwargs)
             self.logger.exception(msg, *args, stacklevel=stacklevel)
             return msg
+        self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
         self.logger.exception(msg_or_code, *args, stacklevel=stacklevel, **kwargs)
         return str(msg_or_code)
+
+    def log_summary(
+        self,
+        task_name_str: str = "작업",
+        total_items_int: int = 0,
+        success_count_int: int = 0,
+        failure_count_int: int = 0,
+        excluded_count_int: int = 0,
+        start_time_float: float | None = None,
+        start_datetime_str: str | None = None,
+        total_bytes_int: int = 0,
+        error_counts_dict: dict[str, int] | None = None,
+        extra_lines_list: list[str] | None = None,
+        tracker_obj: Any = None,
+    ) -> None:
+        """
+        작업 실행 메트릭 또는 ProgressTracker 객체를 기반으로 최종 결과 요약 리포트(Summary Report)를 생성하여 WARNING 레벨로 로깅합니다.
+
+        :param task_name_str: 작업 명칭 (요약 리포트 제목용)
+        :param total_items_int: 전체 처리 대상 건수
+        :param success_count_int: 처리 성공 건수
+        :param failure_count_int: 처리 실패 건수
+        :param excluded_count_int: 처리 제외(Skip) 건수
+        :param start_time_float: 작업 시작 타임스탬프 (미지정 시 현재 시간)
+        :param start_datetime_str: 작업 시작 일시 문자열 (YYYY-MM-DD HH:MM:SS)
+        :param total_bytes_int: 전송/처리된 총 바이트 수
+        :param error_counts_dict: 에러 코드별 발생 건수 딕셔너리 (미지정 시 로거 자동 집계 사용)
+        :param extra_lines_list: 요약 블록에 추가할 커스텀 상세 정보 행 리스트
+        :param tracker_obj: 메트릭을 추출할 ProgressTracker 인스턴스 (지정 시 다른 메트릭 인자 자동 추출)
+        """
+        if tracker_obj is not None:
+            task_name_str = getattr(tracker_obj, "task_name_str", task_name_str)
+            total_items_int = getattr(tracker_obj, "total_items_int", total_items_int)
+            start_time_float = getattr(tracker_obj, "start_time_float", start_time_float)
+            start_datetime_str = getattr(tracker_obj, "start_datetime_str", start_datetime_str)
+            total_bytes_int = getattr(tracker_obj, "total_bytes_int", total_bytes_int)
+
+        counts_dict: dict[str, int] = self.get_result_counts()
+        eff_success_count_int: int = success_count_int or counts_dict["success"]
+        eff_failure_count_int: int = failure_count_int or counts_dict["failure"]
+        eff_excluded_count_int: int = excluded_count_int or counts_dict["excluded"]
+
+        import time
+        from agent_common.tool.date.date_time_utils import DateTimeUtils
+
+        effective_start_time = start_time_float if start_time_float is not None else time.time()
+        effective_start_datetime = start_datetime_str or DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ)
+        elapsed_float: float = time.time() - effective_start_time
+        end_datetime_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ)
+
+        mins_int: int = int(elapsed_float // 60)
+        secs_float: float = elapsed_float % 60
+        time_display_str: str = f"{mins_int}분 {secs_float:.1f}초 ({elapsed_float:.2f}초)" if mins_int > 0 else f"{elapsed_float:.2f}초"
+
+        lines_list: list[str] = [
+            "=" * 80,
+            f"                    [{task_name_str} 작업 결과 요약]",
+            "=" * 80,
+            f"- 작업 시작 / 종료 시간 : {effective_start_datetime} ~ {end_datetime_str}",
+            f"- 총 소요 시간          : {time_display_str}",
+            "-" * 80,
+            f"- 총 처리 대상 건수     : {total_items_int:,} 건",
+            f"- 처리 성공 / 실패      : {eff_success_count_int:,} 건 / {eff_failure_count_int:,} 건",
+            f"- 처리 제외 (Skip)      : {eff_excluded_count_int:,} 건",
+        ]
+
+        # 에러 통계 조회: 인자로 전달된 error_counts_dict 우선, 없으면 로거의 get_error_counts() 사용
+        errors_map: dict[str, int] = error_counts_dict if error_counts_dict is not None else self.get_error_counts()
+
+        if errors_map:
+            total_errors_int: int = sum(errors_map.values())
+            lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {total_errors_int:,}건):")
+            for err_log_id_str, err_cnt_int in sorted(errors_map.items(), key=lambda x: (-x[1], x[0])):
+                desc_str: str = self.get_log_id_description(err_log_id_str)
+                if desc_str:
+                    lines_list.append(f"  * {err_log_id_str} ({desc_str}): {err_cnt_int:,} 건")
+                else:
+                    lines_list.append(f"  * {err_log_id_str}: {err_cnt_int:,} 건")
+        elif eff_failure_count_int > 0:
+            lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {eff_failure_count_int:,}건):")
+            lines_list.append(f"  * 기타 미분류 실패: {eff_failure_count_int:,} 건")
+
+        if total_bytes_int > 0:
+            mb_val_float: float = total_bytes_int / (1024 * 1024)
+            mb_rate_float: float = mb_val_float / max(0.001, elapsed_float)
+            lines_list.append(f"- 총 전송 데이터 용량   : {mb_val_float:.2f} MB (평균 {mb_rate_float:.2f} MB/s)")
+
+        total_processed_int: int = eff_success_count_int + eff_failure_count_int + eff_excluded_count_int
+        rate_float: float = total_processed_int / max(0.001, elapsed_float)
+        lines_list.append(f"- 평균 처리 속도        : {rate_float:.2f} items/sec")
+
+        if extra_lines_list:
+            lines_list.append("-" * 80)
+            for line_str in extra_lines_list:
+                lines_list.append(f"- {line_str}" if not line_str.startswith("-") else line_str)
+
+        lines_list.append("=" * 80)
+
+        summary_block_str: str = "\n" + "\n".join(lines_list)
+        self.warning("execution_summary_report", summary=summary_block_str)
 
     @staticmethod
     def log_request_result(

@@ -1,5 +1,18 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.20 (2026-09-02)
+- **`ProjectLogger` 에러 및 진행 건수 분류(성공/실패/제외) 집계, `log_summary` 요약 리포트 로거 고유 책임(SRP) 이전**:
+  - `ProjectLogger.update(success_bool, excluded_bool, count_int)`, `record_result()`, `record_success()`, `record_failure()`, `record_excluded()` 및 `get_result_counts()`를 추가하여 진행 건수 분류 책임을 로거로 일원화.
+  - `ProjectLogger.error()`, `exception()`, `critical()`, `log_msg()` 호출 시 로그 ID 및 실패 건수를 내부 `error_counts_dict` / `failure_count_int`에 자동 누적 기록하도록 개선.
+  - `logging_messages.yml` 템플릿 탐색 및 한글 설명 정제 메서드 `get_log_id_description()`과 최종 결과 요약 리포트 생성 메서드 `log_summary()`를 `ProjectLogger`의 메서드로 통합.
+  - `ProgressTracker.update(count_int=1, bytes_int=0, details_str="")`로 파라미터를 개편하여, `ProgressTracker`는 순수 진행 건수/바이트/진행률(%) 및 마일스톤 판별만 수행하는 경량 트래커로 정돈.
+  - 메인 애플리케이션(`ecs_to_gcs.py`, `ecs_to_bigquery.py`, `ecs_to_gcsbigquery_merge.py`)의 트래커/로거 호출 인터페이스 동기화.
+
+### v0.4.19 (2026-09-02)
+- **`BigQueryClient.format_timestamp` -> `BigQueryClient.convert_to_bigquery_timestamp` 명칭 직관화 및 표준화**:
+  - 다양한 원천 일시 포맷(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 타임스탬프(`YYYY-MM-DD HH:MM:SS{tz}`) 문자열로 변환하는 목적을 직관적으로 드러내도록 메서드명을 `convert_to_bigquery_timestamp`로 개선.
+  - `table_transformer.py` 등 호출부 및 관련 참조 동기화.
+
 ### v0.4.18 (2026-09-01)
 - **`BigQueryClient.merge_table_from_json_data` UNNEST SELECT 절 `JSON_VALUE` 직접 반환 및 SQL 타입 분기 보강**:
   - `JSON_VALUE(...)` 반환값에 불필요하게 씌워져 있던 `STRING(...)` 함수 래핑을 제거하여 `400 No matching signature for function STRING` 쿼리 구문 오류 원천 해결.

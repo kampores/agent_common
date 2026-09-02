@@ -693,7 +693,7 @@ WHEN MATCHED THEN
                 )
             ) from merge_err
 
-    def format_timestamp(self, val_any: Any, default_tz_offset_str: Optional[str] = None) -> Optional[str]:
+    def convert_to_bigquery_timestamp(self, val_any: Any, default_tz_offset_str: Optional[str] = None) -> Optional[str]:
         """
         다양한 원천 날짜/시간 문자열(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 타임스탬프(YYYY-MM-DD HH:MM:SS{tz}) 포맷으로 변환합니다.
         원천 데이터에 타임존 오프셋이 명시되어 있지 않은 경우 config.yml의 bigquery.timezone_offset(기본값: '+09:00')을 적용합니다.
