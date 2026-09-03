@@ -1,5 +1,5 @@
 # 작성일: 2026-06-15
-# 설계자: 김유상
+# 설계자: 김유상 수석
 # 설계자 소속: 경포씨엔씨
 # 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
 
@@ -26,7 +26,7 @@ llm_pool:
     # 생성 다양성 템퍼러처 (결정론적 SQL 생성을 위해 0으로 설정)
     temperature: 0
 
-  # Groq 호환 API를 사용하는 오픈소스 대형 언어 모델 정의 (개발망 및 폐쇄망 연동용)
+  # Groq 호환 API를 사용하는 오픈소스 대형 언어 모델 정의 (개발망, 폐쇄망 및 AGENTS.md 룰 감독 전용)
   groq_gpt_oss:
     # LLM 제공 방식 (external: 외부 API 호환 전용)
     provider: external
@@ -42,10 +42,52 @@ llm_pool:
     model: openai/gpt-oss-120b
     # API 호출 시 타임아웃 제한 시간(초)
     timeout_seconds: 60
-    # 생성할 최대 토큰 수 (추론 모델의 생각 토큰을 고려하여 충분히 늘림)
+    # 생성할 최대 토큰 수
     max_tokens: 4096
     # 생성 다양성 템퍼러처 (Groq API 가이드 스펙 적용)
-    temperature: 1
+    temperature: 0
+
+  # Groq 기반 Qwen 3.6 27B 추론 모델 정의 (고성능 오픈소스 다국어/코딩 모델)
+  groq_qwen_36_27b:
+    # LLM 제공 방식 (external: 외부 API 호환 전용)
+    provider: external
+    # 외부 LLM API 활성화 여부
+    enabled: true
+    # 인증 키를 로드할 환경변수 이름 (Groq API 키)
+    api_key_env: GROQ_API_KEY
+    # API 요청을 전송할 Groq 베이스 URL
+    base_url: https://api.groq.com/openai/v1
+    # 채팅 완성 API 상세 경로
+    chat_completions_path: /chat/completions
+    # 호출할 외부 오픈소스 LLM 모델명
+    model: qwen/qwen3.6-27b
+    # API 호출 시 타임아웃 제한 시간(초)
+    timeout_seconds: 60
+    # 생성할 최대 토큰 수
+    max_tokens: 4096
+    # 생성 다양성 템퍼러처
+    temperature: 0
+
+  # Groq 기반 GPT-OSS-20B 모델 정의 (경량화 고속 추론 및 폴백 전용)
+  groq_gpt_oss_20b:
+    # LLM 제공 방식 (external: 외부 API 호환 전용)
+    provider: external
+    # 외부 LLM API 활성화 여부
+    enabled: true
+    # 인증 키를 로드할 환경변수 이름 (Groq API 키)
+    api_key_env: GROQ_API_KEY
+    # API 요청을 전송할 Groq 베이스 URL
+    base_url: https://api.groq.com/openai/v1
+    # 채팅 완성 API 상세 경로
+    chat_completions_path: /chat/completions
+    # 호출할 외부 오픈소스 LLM 모델명
+    model: openai/gpt-oss-20b
+    # API 호출 시 타임아웃 제한 시간(초)
+    timeout_seconds: 60
+    # 생성할 최대 토큰 수
+    max_tokens: 4096
+    # 생성 다양성 템퍼러처
+    temperature: 0
 
   # Fabrix GPT-OSS 120B 외부 API 모델 정의 (kbonecloud GenAI 허브 전용)
   fabrix_gpt_oss_120b:
