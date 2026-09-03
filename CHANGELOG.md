@@ -1,5 +1,11 @@
 # 버전 변경 이력 (Changelog)
 
+### v0.4.21 (2026-09-03)
+- **`BigQueryClient.merge_table_from_json_data` 기본 청크 크기 하향 및 BigQuery API 413 Payload Too Large 방지**:
+  - `chunk_size_int` 기본값을 기존 `500`에서 안전한 `100`으로 하향 조정.
+  - BigQuery SQL 쿼리 파라미터(`@json_payload`) 크기 제한(1MB/1,024KB) 초과로 인한 HTTP `413 (Payload Too Large)` 에러를 원천 방지하고 대용량 비정형 메타데이터 MERGE 안정성 확보.
+  - 독스트링 기본값 설명 갱신.
+
 ### v0.4.20 (2026-09-02)
 - **`ProjectLogger` 에러 및 진행 건수 분류(성공/실패/제외) 집계, `log_summary` 요약 리포트 로거 고유 책임(SRP) 이전**:
   - `ProjectLogger.update(success_bool, excluded_bool, count_int)`, `record_result()`, `record_success()`, `record_failure()`, `record_excluded()` 및 `get_result_counts()`를 추가하여 진행 건수 분류 책임을 로거로 일원화.

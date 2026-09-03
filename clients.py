@@ -524,7 +524,7 @@ class BigQueryClient:
         column_types_dict: dict[str, str] | None = None,
         not_matched_condition_str: str | None = None,
         post_queries_list: list[dict[str, Any]] | None = None,
-        chunk_size_int: int = 500,
+        chunk_size_int: int = 100,
         timeout_int: int | None = None,
     ) -> None:
         """
@@ -538,7 +538,7 @@ class BigQueryClient:
         :param column_types_dict: 컬럼별 명시적 SQL 타입 매핑 딕셔너리 (예: {"size": "INT64", "meta": "JSON"}). 미지정 시 데이터 타입 기반 자동 추론
         :param not_matched_condition_str: WHEN NOT MATCHED 절에 추가할 조건식 (예: "AND S.status != 'DELETED'")
         :param post_queries_list: MERGE 완료 후 실행할 후속 쿼리 목록 ([{"sql": "UPDATE ...", "params": [...]}, ...])
-        :param chunk_size_int: 쿼리 파라미터 크기 제한을 고려한 청크 분할 단위 (기본값: 500)
+        :param chunk_size_int: 쿼리 파라미터 크기 제한을 고려한 청크 분할 단위 (기본값: 100)
         :param timeout_int: 쿼리 실행 타임아웃 제한 시간(초)
         :return: None
         :raises ValueError: 지원하지 않는 입력 데이터 타입일 경우 발생
