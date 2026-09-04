@@ -6,6 +6,8 @@
 - **`manual/kr/config_loader/02_readonly_dot_notation.md` 및 영문 문서 보강**:
   - 실제 `config/config.yml` 전체 예제 스키마 및 파이썬 점 표기법 1:1 매핑 가이드 추가.
   - 기본 경로(`config/config.yml`) 외 다른 사용자 정의 경로(`config_dir`) 지정 및 동적 경로 변경, 테스트용 인메모리 딕셔너리 전달 3가지 실전 패턴 가이드 신설.
+- **PyPI 설명 연동을 위한 README 매뉴얼 링크 GitHub 절대 경로 전환**:
+  - PyPI 패키지 페이지에서 매뉴얼 링크가 깨지지 않고 바로 열리도록 한국어/영어 12종 매뉴얼 링크를 GitHub 저장소 절대 URL(`https://github.com/...`)로 전환.
 
 ### v0.4.25 (2026-09-04)
 - **`config_loader` 주요 6대 기능별 상세 기술 매뉴얼(한국어/영어 총 12종) 신설 및 README/PyPI 연동**:

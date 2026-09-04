@@ -6,6 +6,8 @@
 - **Enhancement of `manual/en/config_loader/02_readonly_dot_notation.md` and Korean Manual**:
   - Added full reference `config/config.yml` example schema with 1:1 Python dot-notation mapping guide.
   - Documented 3 production patterns for custom configuration directories/paths (`config_dir`), dynamic directory switching, and in-memory test dictionaries.
+- **Conversion of README Manual Links to Absolute GitHub URLs for PyPI Rendering**:
+  - Updated all 12 manual links (both Korean and English) in `README.md` to absolute GitHub repository URLs (`https://github.com/...`) to ensure seamless navigation directly from PyPI's package description page.
 
 ### v0.4.25 (2026-09-04)
 - **Detailed Feature User Manuals for `config_loader` (12 documents in Korean & English) and README/PyPI Integration**:
