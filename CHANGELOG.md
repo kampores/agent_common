@@ -6,7 +6,8 @@
 - **`manual/kr/config_loader/06_ensure_config_self_healing.md` 및 영문 문서 핵심 철학 전면 보강**:
   - `ensure_config_file`의 본질적 주 목적을 '코드 내 모든 상수의 설정 파일화(외부화) 및 가시화'로 명문화하고, 자가 치유(Self-healing)는 이를 구현하는 부수적 메커니즘임을 명시.
   - 코드 맨 처음/최초 기동단(Entry Point)에서의 기본 스키마(`default_schema`) 정의 및 누락 상수 강제 주입(In-place injection) 패턴 가이드 전면 보강.
-  - Mermaid 상수 강제 주입 흐름도 갱신 및 `README.md` 매뉴얼 설명 최적화.
+  - 상수의 분산 정의 및 코드 중간 하드코딩 안티패턴 경고 추가 (스키마 외부에 상수를 따로 정의하거나 코드 중간에 선언하면 본 기능이 무의미해짐을 명시).
+  - Mermaid 상수 강제 주입 흐름도 갱신 및 `README.md` 매뉴얼 설명/계층 번호 체계(`1.1` ~ `1.6`) 최적화.
 
 ### v0.4.26 (2026-09-04)
 - **`manual/kr/config_loader/02_readonly_dot_notation.md` 및 영문 문서 보강**:

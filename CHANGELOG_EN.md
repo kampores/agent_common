@@ -6,7 +6,8 @@
 - **Comprehensive Refinement of `06_ensure_config_self_healing.md` (Korean & English) on Core Architecture Philosophy**:
   - Formalized that the primary objective of `ensure_config_file` is the externalization and visibility of all constants into configuration files, establishing that self-healing is merely the operational mechanism.
   - Added in-depth practical guidance for declaring baseline configuration schemas (`default_schema`) at the application entry point and in-place forcible injection of missing constants.
-  - Updated Mermaid constant injection workflow and refined manual descriptions in `README.md`.
+  - Added critical anti-pattern warning against defining standalone constants in-code or mid-stream, which negates the purpose of externalization.
+  - Updated Mermaid constant injection workflow and refined manual descriptions and hierarchical numbering (`1.1` ~ `1.6`) in `README.md`.
 
 ### v0.4.26 (2026-09-04)
 - **Enhancement of `manual/en/config_loader/02_readonly_dot_notation.md` and Korean Manual**:

@@ -26,6 +26,17 @@ This practice causes critical problems:
    - If a setting key is absent in `config.yml`, instead of silently falling back to in-memory code defaults, the system **forcibly writes (injects) the baseline constant value directly into the configuration file**.
    - As a result, simply opening the generated or updated configuration file allows developers and users to immediately discover every available constant and fine-tune its value.
 
+> [!CAUTION]
+> ### ⚠️ Critical Rule: Defining Constants Separately or in the Middle of Code Defeats This Feature!
+> The entire purpose of `ensure_config_file()` is to **"consolidate all system constants into a single entry-point schema and materialize them visibly into the configuration file."**  
+> If developers adopt the following practices, **the value and purpose of this feature are completely negated**:
+> 
+> - **Defining standalone constants inside functions, classes, or middle of business logic**
+> - **Declaring constants in separate files or variables without registering them in `default_schema`**
+> 
+> Any constant not declared in `default_schema` cannot be detected by `ensure_config_file()` and cannot be injected into `config.yml`, **leaving it as a hidden, unconfigurable black-box constant within the codebase**.  
+> Therefore, you must strictly follow the **Single Source of Truth** principle: **all constants must be declared exclusively in `default_schema` at the application entry point, and accessed at runtime strictly via the global `config` object**.
+
 ---
 
 ## 2. Method Signature & Parameters
@@ -126,6 +137,39 @@ logging:
 - Existing operator customizations (`max_workers_int: 8`) remain untouched.
 - All previously unknown or newly added constants are forcibly materialized into the file, making every tunable option immediately obvious and editable.
 
+### 4.3. ⚠️ Anti-Pattern: Defining Constants In-Code or Mid-Stream (Negates Feature Purpose)
+
+```python
+# ==============================================================================
+# ❌ [Critical Anti-Pattern] Defining separate constants mid-code despite using ensure_config_file
+# ==============================================================================
+def process_batches():
+    # Defining constants inside functions or modules without declaring them in default_schema
+    # prevents ensure_config_file from injecting them into config.yml.
+    DEFAULT_TIMEOUT_SECONDS = 60    # ❌ Still a hidden black-box constant in code!
+    MAX_BATCH_ROWS = 1000           # ❌ Operators cannot inspect or modify this from config.yml!
+    ...
+
+
+# ==============================================================================
+# ⭕ [Recommended Pattern] Centralize all constants in entry-point schema; access via config
+# ==============================================================================
+# 1) Declare all constants in default_schema at application entry point (e.g., app_schema.py)
+APP_DEFAULT_SCHEMA = {
+    "transfer": {
+        "timeout_seconds_int": 60,  # ⭕ Declared once at entry point
+        "batch_rows_int": 1000,     # ⭕ Forcibly injected into config.yml if missing
+    }
+}
+loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA)
+
+# 2) Access strictly via the global config object within business logic
+def process_batches():
+    timeout = config.transfer.timeout_seconds_int  # ⭕ Completely synchronized with config.yml
+    batch_rows = config.transfer.batch_rows_int    # ⭕ Instantly tunable without code modification
+    ...
+```
+
 ---
 
 ## 5. Architectural Benefits
@@ -138,3 +182,5 @@ logging:
    - Replaces implicit in-code defaults with explicit, physical values written to the configuration file, ensuring runtime consistency.
 4. **Automated Zero-Friction Upgrades**:
    - New framework or service constants introduced in upgrades are populated automatically without breaking existing environments or requiring manual file diffing.
+5. **Single Source of Truth for Constants**:
+   - Consolidates fragmented, scattered constants across modules into the entry-point schema and `config.yml`, preventing ad-hoc hardcoded constant creation.
