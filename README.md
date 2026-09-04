@@ -26,9 +26,11 @@
 - **1.6. [모든 상수의 설정 파일화 및 템플릿 보정 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/06_ensure_config_self_healing.md)**: 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정.
 
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
-- `SingleLineFlattenFormatter`: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화하여 중앙 로그 수집(Logstash, Fluentd 등)에 최적화
-- `ProjectLogger`: 콘솔 및 파일 로그 핸들러 동적 생성 및 일자별 로그 분리 관리
-- **다국어 로그 메시지 템플릿 사전 연동 (`logging_messages_ko.yml`, `logging_messages_en.yml`)**: `config.yml`의 `logging.language` (`KO` 또는 `EN`) 설정에 따라 한국어/영문 메시지 사전 자동 연동 및 런타임 동적 언어 전환 지원
+- **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출로 중앙 로그 수집(Logstash, Fluentd 등)에 최적화
+- **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 레벨별 파일 분기(`out_file`, `debug_file`) 및 서드파티 노이즈 억제
+- **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog.md)**: `config.yml`의 `logging.language` (`KO` 또는 `EN`) 설정에 따라 한국어/영문 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환
+- **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계
+- **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md)**: 소요 시간, 처리 속도, 전송량 및 에러/제외 사유별 상세 내역(`get_log_id_description`)이 포함된 표준 요약 블록 자동 출력
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
 - `EcsClient`: Dell ECS S3 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득
@@ -216,6 +218,11 @@ python -m twine upload dist/agent_common-0.4.27*
 | **1.4** | **Fail-Fast 필수 설정 검증** | [04_fail_fast_require_setting.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/04_fail_fast_require_setting.md) | 기동 초기 필수 설정 누락 감지, 상세 진단 로그 및 프로세스 안전 조기 종료 |
 | **1.5** | **네트워크 프록시 제어** | [05_network_proxy_control.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/05_network_proxy_control.md) | `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영 및 내부 통신 프록시 우회 |
 | **1.6** | **모든 상수의 설정 파일화 및 템플릿 보정** | [06_ensure_config_self_healing.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/06_ensure_config_self_healing.md) | 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정 |
+| **2.1** | **단일 행 평탄화 포매터 & 원천 추적** | [01_single_line_flatten_formatter.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter.md) | `SingleLineFlattenFormatter`, `[Origin: ...]` 프레임 추출, 중앙 로그 수집기 연동 최적화 |
+| **2.2** | **로깅 환경 일괄 구성 & 핸들러 제어** | [02_project_logger_configure.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure.md) | `ProjectLogger.configure()`, 콘솔/파일 핸들러 분기, 레벨별 파일 분리, 서드파티 노이즈 억제 |
+| **2.3** | **다국어 메시지 사전 & 코드 기반 로깅** | [03_multilingual_message_catalog.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog.md) | `logging_messages_ko.yml`/`en.yml`, 런타임 언어 전환, `safe_kwargs` 템플릿 치환 |
+| **2.4** | **작업 통계 & 에러/제외 실시간 집계** | [04_execution_result_and_error_tracking.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking.md) | 성공/실패/제외(Skip) 3단계 상태 분류, 인스턴스 및 클래스 전역 멀티스레드 집계 |
+| **2.5** | **작업 결과 요약 리포트 자동 생성** | [05_summary_report_generation.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md) | `ProjectLogger.log_summary()`, 80열 표준 요약 블록, 처리 속도/전송률, 에러 상세 해석 |
 
 ---
 
@@ -247,9 +254,11 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **1.6. [Externalizing All Constants & Self-Healing Templates (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/06_ensure_config_self_healing.md)**: Materializing all in-code constants to configuration files, automatic scaffolding, and in-place missing key injection.
 
 #### 2. Single-Line Log Formatter & Project Logger (`agent_common.logger`)
-- `SingleLineFlattenFormatter`: Flattens all log messages and exception tracebacks into a single line, optimized for centralized log collectors (Logstash, Fluentd, etc.).
-- `ProjectLogger`: Dynamic console and file log handler creation with date-based directory partitioning.
-- **Multi-language Logging Template Dictionaries (`logging_messages_ko.yml`, `logging_messages_en.yml`)**: Automated bilingual dictionary loading and dynamic runtime language switching based on `config.yml`'s `logging.language` (`KO` or `EN`).
+- **2.1. [Single-Line Flatten Formatter & Origin Tracking (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/01_single_line_flatten_formatter.md)**: Flattens log records, extracts `[Origin: ...]` caller frames, and optimizes for centralized log aggregators (Logstash, Fluentd, CloudWatch).
+- **2.2. [Batch Logging Configuration & Handler Control (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/02_project_logger_configure.md)**: Dynamic console/file handler initialization, date-based directories, level-based file routing (`out_file`, `debug_file`), and third-party noise suppression.
+- **2.3. [Multilingual Message Catalog & Code-Based Logging (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog.md)**: Dynamic bilingual dictionary loading (`KO`/`EN`), runtime language switching, and safe template parameter substitution.
+- **2.4. [Real-Time Metric Tracking & Error/Exclusion Classification (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/04_execution_result_and_error_tracking.md)**: Three-tier outcome model (Success, Failure, Excluded/Skip) and dual instance/class-global multithreaded telemetry.
+- **2.5. [Automatic Summary Report Generation (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation.md)**: Emits structured 80-column execution summary reports with duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
 
 #### 3. Storage and Database Infrastructure Clients (`agent_common.clients`)
 - `EcsClient`: Dell ECS S3 storage connection, object listing, metadata extraction, and in-memory streaming retrieval.
@@ -431,6 +440,11 @@ For comprehensive architecture details and practical code examples for each modu
 | **1.4** | **Fail-Fast Required Setting Validation** | [04_fail_fast_require_setting.md](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/04_fail_fast_require_setting.md) | Startup phase mandatory validation, diagnostic output, and fail-fast termination |
 | **1.5** | **Network Proxy Control** | [05_network_proxy_control.md](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/05_network_proxy_control.md) | Automatic synchronization of `NO_PROXY` from `proxy.no_proxy` configuration |
 | **1.6** | **Constant Externalization & Self-Healing Templates** | [06_ensure_config_self_healing.md](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/06_ensure_config_self_healing.md) | Materializing all in-code constants, automatic scaffolding, and in-place missing key injection |
+| **2.1** | **Single-Line Formatter & Origin Tracking** | [01_single_line_flatten_formatter.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/01_single_line_flatten_formatter.md) | `SingleLineFlattenFormatter`, `[Origin: ...]` frame extraction, centralized log collector optimization |
+| **2.2** | **Batch Logging Setup & Handler Control** | [02_project_logger_configure.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/02_project_logger_configure.md) | `ProjectLogger.configure()`, console/file handler routing, level-based paths, third-party noise suppression |
+| **2.3** | **Multilingual Catalog & Code-Based Logging** | [03_multilingual_message_catalog.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog.md) | `logging_messages_ko.yml`/`en.yml`, runtime language switching, safe template variable formatting |
+| **2.4** | **Result Telemetry & Error Classification** | [04_execution_result_and_error_tracking.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/04_execution_result_and_error_tracking.md) | Success/Failure/Exclusion 3-tier classification, instance & class-global multithreaded counters |
+| **2.5** | **Automatic Summary Report Generation** | [05_summary_report_generation.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation.md) | `ProjectLogger.log_summary()`, 80-column summary block, throughput/bandwidth, decoded error explanations |
 
 ---
 
