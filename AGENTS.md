@@ -52,8 +52,7 @@
 ```python
 # 작성일: YYYY-MM-DD
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 """
 이 파일의 목적과 주요 기능에 대한 상세한 한글 설명입니다.

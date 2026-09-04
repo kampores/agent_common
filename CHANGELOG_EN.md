@@ -2,10 +2,19 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.28 (2026-09-04)
+- **Sanitization of Internal GenAI Hub Endpoint Domain and Docstring in `llmpool.yml` and `llm.py`**:
+  - Sanitized internal private cloud domain and endpoint URLs in `src/agent_common/config/llmpool.yml` to standard sample endpoints (`https://genaihub.example.com/v1/messages`).
+  - Removed internal domain identifier from `_generate_fabrix` docstring in `src/agent_common/llm.py`.
+
 ### v0.4.27 (2026-09-04)
+- **Complete Sanitization of Proprietary Identifiers and Affiliation Removal for Public Release**:
+  - Sanitized closed-network private assets, internal IPs, private database table IDs, and internal storage paths across all manuals, code docstrings, and README examples in accordance with public open-source standards (GitHub / PyPI).
+  - Removed company affiliation and company email domain from all file headers and documentation, unifying contact info to personal developer email.
 - **Comprehensive Refinement of `06_ensure_config_self_healing.md` (Korean & English) on Core Architecture Philosophy**:
   - Formalized that the primary objective of `ensure_config_file` is the externalization and visibility of all constants into configuration files, establishing that self-healing is merely the operational mechanism.
   - Added in-depth practical guidance for declaring baseline configuration schemas (`default_schema`) at the application entry point and in-place forcible injection of missing constants.
+  - Added multi-program constant sharing and schema composition pattern (`app_schema.py`) guide for complex projects where multiple CLI entry points share common infrastructure constants under a single `config.yml`.
   - Added critical anti-pattern warning against defining standalone constants in-code or mid-stream, which negates the purpose of externalization.
   - Updated Mermaid constant injection workflow and refined manual descriptions and hierarchical numbering (`1.1` ~ `1.6`) in `README.md`.
 

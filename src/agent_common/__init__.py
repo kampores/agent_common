@@ -1,7 +1,6 @@
 # 작성일: 2026-06-18
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 """agent_common 패키지 초기화 모듈.
 

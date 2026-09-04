@@ -1,7 +1,6 @@
 # 작성일: 2026-06-15
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 # 사용할 수 있는 모든 로컬 및 외부 LLM 프로필 정의 관리 풀
 llm_pool:
@@ -89,7 +88,7 @@ llm_pool:
     # 생성 다양성 템퍼러처
     temperature: 0
 
-  # Fabrix GPT-OSS 120B 외부 API 모델 정의 (kbonecloud GenAI 허브 전용)
+  # Fabrix GPT-OSS 120B 외부 API 모델 정의 (사내 GenAI 허브 전용)
   fabrix_gpt_oss_120b:
     # LLM 제공 방식 (external: 외부 API 전용)
     provider: external
@@ -100,7 +99,7 @@ llm_pool:
     # 인증 키를 로드할 환경변수 이름 (x-openapi-token)
     api_key_env: X_OPENAPI_TOKEN
     # Fabrix GenAI 허브 채팅 메시지 엔드포인트 URL
-    base_url: https://stg-fabrix-catalog-apim-trnn-genaihub.kbonecloud.com/prod/kb0/chat_connector/1/openapi/chat/v1/messages
+    base_url: https://genaihub.example.com/v1/messages
     # 호출할 LLM 식별자 (GPT-OSS-120B = 159)
     llm_id: 159
     # 인증 헤더용 환경변수 (x-generative-ai-client)

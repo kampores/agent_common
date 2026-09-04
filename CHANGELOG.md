@@ -2,10 +2,19 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.28 (2026-09-04)
+- **`llmpool.yml` 및 `llm.py` 내 사내 GenAI 허브 엔드포인트 도메인 비식별화 및 보안 정제**:
+  - `src/agent_common/config/llmpool.yml` 내 사내 전용 클라우드 도메인 및 엔드포인트 URL을 표준 가상 엔드포인트(`https://genaihub.example.com/v1/messages`)로 비식별화.
+  - `src/agent_common/llm.py`의 `_generate_fabrix` 메서드 Docstring 내 사내 도메인 식별자 제거.
+
 ### v0.4.27 (2026-09-04)
+- **공개 배포를 위한 폐쇄망·사설 식별자 전면 비식별화 및 설계자 소속 정보 제거**:
+  - 공개 저장소(GitHub / PyPI) 배포 규격에 맞추어 사내 폐쇄망 자산 식별자, 내부 IP, 전용 테이블 ID, 내부 스토리지 경로를 가상의 표준 예제 규격(API/배치/스트리밍 등)으로 전면 정제.
+  - 소스코드 및 문서 헤더에서 설계자 소속 정보 및 사내 도메인 이메일을 전면 제거하고 개인 개발자 서식으로 일원화.
 - **`manual/kr/config_loader/06_ensure_config_self_healing.md` 및 영문 문서 핵심 철학 전면 보강**:
   - `ensure_config_file`의 본질적 주 목적을 '코드 내 모든 상수의 설정 파일화(외부화) 및 가시화'로 명문화하고, 자가 치유(Self-healing)는 이를 구현하는 부수적 메커니즘임을 명시.
   - 코드 맨 처음/최초 기동단(Entry Point)에서의 기본 스키마(`default_schema`) 정의 및 누락 상수 강제 주입(In-place injection) 패턴 가이드 전면 보강.
+  - 다중 프로그램 환경에서의 공통 상수 공유 및 스키마 합성 패턴(`app_schema.py`) 신설 (복수의 CLI 프로그램이 단일 `config.yml`과 인프라 상수를 공유하면서 프로그램별 고유 옵션을 DRY 원칙에 따라 조합하는 실전 아키텍처 가이드 추가).
   - 상수의 분산 정의 및 코드 중간 하드코딩 안티패턴 경고 추가 (스키마 외부에 상수를 따로 정의하거나 코드 중간에 선언하면 본 기능이 무의미해짐을 명시).
   - Mermaid 상수 강제 주입 흐름도 갱신 및 `README.md` 매뉴얼 설명/계층 번호 체계(`1.1` ~ `1.6`) 최적화.
 
@@ -181,18 +190,18 @@
 
 ### v0.4.0 (2026-08-21)
 - **`agent_common.tool_parser.ToolParser` 및 이원화된 Tool 디렉터리 계층 아키텍처 신설 (Major Update)**:
-  - `ToolParser` 클래스 신설: 이원화된 도구 계층(1순위: 내장 `agent_common/tool`, 2순위: 로컬 `medallion/tool`) 동적 로드 및 `{ }` 템플릿 구문 치환/평가 엔진 제공.
+  - `ToolParser` 클래스 신설: 이원화된 도구 계층(1순위: 내장 `agent_common/tool`, 2순위: 로컬 `app/tool`) 동적 로드 및 `{ }` 템플릿 구문 치환/평가 엔진 제공.
   - `agent_common/tool/date/` 내장 범용 도구 신설: `DateTimeUtils`, `get_now_compact` (14자리 일시), `get_today` (8자리 일자), `get_now_formatted` (포맷팅 일시).
   - 시스템 표준 네임스페이스 `sys` 확장 및 공통 스키마(`agent_common/schemas/sys.json`) 탑재: `{sys.now_compact}`, `{sys.timestamp_compact}` (14자리 일시) 기본 제공.
   - `agent_common` 최상위 패키지에서 `ToolParser` 노출 (`from agent_common import ToolParser`).
 
 ### v0.3.80 (2026-08-21)
-- **소스 코드 헤더 설계자(김유상) 및 설계자 소속(경포씨엔씨) 명칭 정정**:
-  - 모든 모듈 파일 헤더 내 저작권 및 설계자 정보 명칭을 '김유상/경포씨엔씨'로 통일 및 정정.
+- **소스 코드 헤더 설계자(김유상) 명칭 정정 및 표준화**:
+  - 모든 모듈 파일 헤더 내 저작권 및 설계자 정보 명칭을 표준 서식으로 통일 및 정정.
 
 ### v0.3.79 (2026-08-21)
 - **`BigQueryClient` 범용 SELECT 쿼리 메서드(`query`) 신설**:
-  - 임의의 SQL 쿼리를 실행하여 결과 행들을 `list[dict[str, Any]]` 형태로 반환하는 범용 `query()` 메서드 추가 (공통 코드 테이블 `TCTBICM02` 실시간 조회 등 지원).
+  - 임의의 SQL 쿼리를 실행하여 결과 행들을 `list[dict[str, Any]]` 형태로 반환하는 범용 `query()` 메서드 추가 (공통 코드 테이블 실시간 조회 등 지원).
 
 ### v0.3.78 (2026-08-20)
 - **`BigQueryClient` 입력 데이터(JSON dict/list) 정규화 및 분기 로직 간소화**:
@@ -201,20 +210,20 @@
 ### v0.3.77 (2026-08-20)
 - **BigQuery 적재 시 삭제 상태 자산(`asstStusCd == '09'`) 능동적 필터링 및 로그 템플릿 추가**:
   - `logging_messages.yml` 내 `bq_deleted_asst_stus_skipped`, `bq_all_rows_deleted_asst_stus_skipped` 경고 템플릿 등록.
-  - `EcsToBigQueryTransferManager._filter_payload_by_asst_stus` 구현: GCS 실체 검증 이전에 자산상태코드가 `'09'`인 행을 능동적으로 선제 필터링하여 BigQuery 적재 대상에서 제외.
+  - 삭제 상태코드 행을 능동적으로 선제 필터링하여 BigQuery 적재 대상에서 제외하는 로직 구현.
 
 ### v0.3.76 (2026-08-20)
 - **`ProgressTracker` 유틸리티 및 배치 실시간 진행률/최종 요약 리포트 시스템 구축**:
   - `ProgressTracker` 클래스 신설: 실시간 진행률(`[N/Total] (P%)`, 성공/실패/제외 카운트, 경과시간, 전송량) 추적.
   - 진행률 레벨 차등 출력: 일반 진행률은 `INFO` 레벨로 출력하되, `config.yml`의 `logging.progress_interval_percent`(기본값: `10%`) 배수 마일스톤 및 완료 시점은 `WARNING` 레벨로 승격 출력하여 `WARNING` 운영 모드에서도 모니터링 보장.
   - 최종 결과 요약(Summary Report) 블록을 `WARNING` 레벨로 출력.
-  - 세 메인 프로그램(`ecs_to_gcs.py`, `ecs_to_bigquery.py`, `ecs_to_gcsbigquery_merge.py`)에 `ProgressTracker` 및 Summary Report 전면 연동.
+  - 메인 파이프라인 프로그램들에 `ProgressTracker` 및 Summary Report 전면 연동.
 
 ### v0.3.75 (2026-08-20)
 - **로그 파일 생성 활성화/비활성화 제어 옵션(`logging.file_logging` 및 CLI `--file-log`/`--no-file-log`) 지원**:
   - `config.yml` 내 `logging.file_logging` (기본값: `true`) 설정 항목 추가.
   - `ProjectLogger.configure`에 `file_logging` 파라미터를 추가하여 파일 로깅 활성화 여부를 동적으로 제어(비활성화 시 FileHandler 생성을 건너뛰고 콘솔 출력만 유지).
-  - 세 메인 프로그램(`ecs_to_gcs.py`, `ecs_to_bigquery.py`, `ecs_to_gcsbigquery_merge.py`)의 CLI 옵션에 `--file-log` 및 `--no-file-log` 플래그 추가.
+  - 메인 CLI 프로그램들의 옵션에 `--file-log` 및 `--no-file-log` 플래그 추가.
 
 ### v0.3.74 (2026-08-20)
 - **BigQuery TIMESTAMP 타임존 오프셋 설정(`bigquery.timezone_offset`) 및 포맷팅 지원**:
@@ -224,7 +233,7 @@
 
 ### v0.3.73 (2026-08-20)
 - **`ProjectLogger` 실제 호출 원천 위치(파일명, 라인 번호, 함수명) 추적 개선**:
-  - `ProjectLogger` 래퍼 메서드(`info`, `warning`, `error`, `critical`, `debug`, `exception`, `log_msg`)에 `stacklevel=2`를 적용하여 어댑터 내부 위치(`logger.py:245 warning()`) 대신 실제 호출한 원천 소스코드 위치(예: `rule_evaluator.py:309 resolve_folder_and_post_dict()`, `ecs_to_bigquery.py:238 main()`)를 정확히 출력하도록 개선.
+  - `ProjectLogger` 래퍼 메서드(`info`, `warning`, `error`, `critical`, `debug`, `exception`, `log_msg`)에 `stacklevel=2`를 적용하여 어댑터 내부 위치(`logger.py:245 warning()`) 대신 실제 호출한 원천 소스코드 위치를 정확히 출력하도록 개선.
 
 ### v0.3.72 (2026-08-19)
 - **BigQuery 적재 모드 및 안전 확인 로그 메시지 템플릿 추가**:
@@ -241,8 +250,8 @@
 
 ### v0.3.69 (2026-08-18)
 - **`ConfigLoader.require_setting` 다중 경로 및 도메인 룰 파일 탐색 확장**:
-  - `require_setting`이 `config/` 디렉터리뿐만 아니라 `medallion/bronze/facts_rules.yml`, `medallion/gold/table_rules.yml` 등 프로젝트 내 임의의 상대/절대 파일 경로를 직접 지정받아 검증할 수 있도록 지원.
-  - `load_facts_rules`, `load_table_rules`, `load_column_codes`의 중복 파일 검증 로직을 `require_setting`으로 일원화(SRP/DRY 준수).
+  - `require_setting`이 `config/` 디렉터리뿐만 아니라 프로젝트 내 임의의 상대/절대 파일 경로를 직접 지정받아 검증할 수 있도록 지원.
+  - 중복 파일 검증 로직을 `require_setting`으로 일원화(SRP/DRY 준수).
 
 ### v0.3.68 (2026-08-18)
 - **`GcsClient` 로거 및 예외 처리 수정**:
@@ -258,7 +267,7 @@
 ### v0.3.66 (2026-08-17)
 - **`schemas/` 디렉터리 내 YAML 설정 자동 탐색 및 병합 지원**:
   - `ConfigLoader.get_settings`에서 `schemas/**/*.yml` 파일도 자동으로 탐색하여 `config` 계층 구조에 병합하도록 확장.
-  - 빅쿼리 테이블 룰 및 코드 정의 파일(`table_column_code.yml`, `table_rules.yml`, `TCTBIIG01_constraint.sql`, `TCTBIIG01_schema.json`)의 `schemas/bigquery/` 배치 지원.
+  - 빅쿼리 테이블 룰 및 코드 정의 파일(`table_column_code.yml`, `table_rules.yml`, `table_schema.json`)의 `schemas/bigquery/` 배치 지원.
 
 ### v0.3.65 (2026-08-17)
 - **`db_load_*` 배치/단건 적재 재시도 및 실패 로깅 템플릿 범용화**:

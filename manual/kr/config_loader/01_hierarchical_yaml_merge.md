@@ -67,7 +67,7 @@ def _deep_merge(target: dict[str, Any], incoming: dict[str, Any]) -> None:
 **패키지 기본 설정 (`agent_common/config/default_agent_common.yml`)**:
 ```yaml
 ecs:
-  endpoint_url: "http://10.200.10.10:9020"
+  endpoint_url: "https://storage.example.com"
   max_retries_int: 3
   timeout_int: 30
 
@@ -93,7 +93,7 @@ transfer:
 from agent_common.config_loader import config
 
 # 1) 패키지 기본값과 프로젝트 오버라이드가 결합된 최종 설정 확인
-print(config.ecs.endpoint_url)     # "http://10.200.10.10:9020" (패키지 기본값 유지)
+print(config.ecs.endpoint_url)     # "https://storage.example.com" (패키지 기본값 유지)
 print(config.ecs.max_retries_int)   # 5 (프로젝트 설정으로 오버라이드됨)
 print(config.ecs.timeout_int)       # 30 (패키지 기본값 유지)
 print(config.transfer.max_workers_int) # 8 (프로젝트 신규 설정 반영)

@@ -67,7 +67,7 @@ def _deep_merge(target: dict[str, Any], incoming: dict[str, Any]) -> None:
 **Package Base Configuration (`agent_common/config/default_agent_common.yml`)**:
 ```yaml
 ecs:
-  endpoint_url: "http://10.200.10.10:9020"
+  endpoint_url: "https://storage.example.com"
   max_retries_int: 3
   timeout_int: 30
 
@@ -93,7 +93,7 @@ transfer:
 from agent_common.config_loader import config
 
 # Access merged configuration
-print(config.ecs.endpoint_url)         # "http://10.200.10.10:9020" (Base default retained)
+print(config.ecs.endpoint_url)         # "https://storage.example.com" (Base default retained)
 print(config.ecs.max_retries_int)       # 5 (Overridden by project config)
 print(config.ecs.timeout_int)           # 30 (Base default retained)
 print(config.transfer.max_workers_int) # 8 (Project specific setting)

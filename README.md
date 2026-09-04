@@ -80,12 +80,12 @@ from agent_common.config_loader import config
 
 # 1) 타입 접미사에 따른 자동 형 변환 보증
 max_workers: int = config.transfer.max_workers_int       # int 타입 보증
-prefix: str = config.gcs.prefix_str                      # str 타입 및 .strip() 정제 보증
-is_ecscopy: bool = config.gcs.ecscopy_bool               # bool 타입 보증
+host: str = config.database.host_str                     # str 타입 및 .strip() 정제 보증
+is_active: bool = config.transfer.is_active_bool         # bool 타입 보증
 
 # 2) 계층적 속성 접근
-ecs_url: str = config.ecs.endpoint_url
-table_id: str = config.bigquery.table_id
+api_url: str = config.services.api_endpoint_url
+db_port: int = config.database.port_int
 ```
 
 #### 2. ToolParser를 통한 동적 룰 평가
@@ -97,14 +97,14 @@ tool_parser = ToolParser()
 
 # 컨텍스트 데이터 준비
 context_dict = {
-    "ecs": {"key": "/unstr_data/PAK/contentInfo/orgfile/20260804/12345.html.json"},
-    "contentInfo": {"enddate": "2024-12-31"},
+    "storage": {"key": "/data/incoming/20260804/sample_document.json"},
+    "document": {"expiry_date": "2024-12-31"},
     "sys": tool_parser.build_sys_context(),
 }
 
 # 1) 도구 함수 호출 템플릿 평가
-date_code = tool_parser.eval("{code.date_check_to_code(contentInfo.enddate)}", context_dict)
-# -> "09" (만료 판정)
+date_val = tool_parser.eval("{date.get_today_yyyymmdd()}", context_dict)
+# -> "20260824"
 
 # 2) 네임스페이스 및 내장 일시 템플릿 평가
 today_val = tool_parser.eval("{sys.today}", context_dict)
@@ -298,12 +298,12 @@ from agent_common.config_loader import config
 
 # 1) Guaranteed type coercion via type suffixes
 max_workers: int = config.transfer.max_workers_int       # Guaranteed int
-prefix: str = config.gcs.prefix_str                      # Guaranteed str with .strip()
-is_ecscopy: bool = config.gcs.ecscopy_bool               # Guaranteed bool
+host: str = config.database.host_str                     # Guaranteed str with .strip()
+is_active: bool = config.transfer.is_active_bool         # Guaranteed bool
 
 # 2) Hierarchical attribute access
-ecs_url: str = config.ecs.endpoint_url
-table_id: str = config.bigquery.table_id
+api_url: str = config.services.api_endpoint_url
+db_port: int = config.database.port_int
 ```
 
 #### 2. Dynamic Rule Evaluation via ToolParser
@@ -315,14 +315,14 @@ tool_parser = ToolParser()
 
 # Prepare context dictionary
 context_dict = {
-    "ecs": {"key": "/unstr_data/PAK/contentInfo/orgfile/20260804/12345.html.json"},
-    "contentInfo": {"enddate": "2024-12-31"},
+    "storage": {"key": "/data/incoming/20260804/sample_document.json"},
+    "document": {"expiry_date": "2024-12-31"},
     "sys": tool_parser.build_sys_context(),
 }
 
 # 1) Evaluate tool function call template
-date_code = tool_parser.eval("{code.date_check_to_code(contentInfo.enddate)}", context_dict)
-# -> "09" (Expiration status)
+date_val = tool_parser.eval("{date.get_today_yyyymmdd()}", context_dict)
+# -> "20260824"
 
 # 2) Evaluate system namespace & date templates
 today_val = tool_parser.eval("{sys.today}", context_dict)

@@ -119,7 +119,144 @@ config_path = loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT
 print(f"Configuration file materialized with all constants: {config_path}")
 ```
 
-### 4.2. File Output Before and After Reconciliation (`config/config.yml`)
+### 4.2. Multi-Program Constant Sharing & Schema Composition Pattern (`app_schema.py`)
+
+Production systems (data pipelines, microservices, etc.) frequently consist of not just a single program, but **multiple independent executable entry points (API server, batch worker, streaming consumer, etc.) sharing the same database or storage infrastructure**.
+
+> **Typical Multi-Service Architecture Example**:
+> 1. `api_server.py`: Real-time web API service handling incoming client requests
+> 2. `batch_worker.py`: Background batch program periodically aggregating and processing data
+> 3. `stream_consumer.py`: Streaming consumer subscribing to message broker events (e.g., Kafka) and syncing to storage
+
+In this setup, baseline infrastructure constants such as database connection settings (`database`), storage paths (`storage`), and common logging (`logging`) **must be shared across all programs**. On the other hand, service-specific parameters like port numbers (`port_int`), batch sizes (`batch_size_int`), or buffer limits (`buffer_size_int`) are **unique to each program**.
+
+Declaring isolated `default_schema` blocks within each CLI script causes severe constant duplication, violating the DRY (Don't Repeat Yourself) principle and creating a maintenance hazard where tuning a common default requires editing multiple files.
+
+The standard architectural solution is the **Schema Composition Pattern via a Dedicated Schema Module (`app/app_schema.py`)**.
+
+#### 1) Centralized Schema Definition (`app/app_schema.py`)
+
+Define reusable section schemas in dictionary objects, then compose program-specific schemas using Python's dictionary unpacking (`**`) operator:
+
+```python
+# app/app_schema.py
+"""
+Application common and program-specific configuration schema definition module.
+"""
+
+from typing import Any, Dict
+
+
+# ==============================================================================
+# 1. Base Section Schemas (DRY Principle)
+# ==============================================================================
+_BASE_DATABASE_SCHEMA: Dict[str, Any] = {
+    "host_str": "127.0.0.1",
+    "port_int": 5432,
+    "pool_size_int": 10,
+    "timeout_seconds_int": 30,
+    "auto_reconnect_bool": True,
+}
+
+_BASE_STORAGE_SCHEMA: Dict[str, Any] = {
+    "base_path_str": "/var/data/app",
+    "temp_dir_str": "temp",
+    "chunk_size_int": 1048576,  # 1MB
+    "max_retries_int": 3,
+}
+
+_BASE_LOGGING_SCHEMA: Dict[str, Any] = {
+    "language": "EN",
+    "file_logging": False,
+    "level": {
+        "api": "INFO",
+        "batch": "WARNING",
+        "consumer": "INFO",
+    },
+}
+
+
+# ==============================================================================
+# 2. Program-Specific Schemas (Composed from Base Schemas)
+# ==============================================================================
+
+# Program 1: Web API Backend Service
+API_SERVER_SCHEMA: Dict[str, Any] = {
+    "database": _BASE_DATABASE_SCHEMA,
+    "server": {
+        "port_int": 8080,
+        "max_connections_int": 500,
+        "enable_cors_bool": True,
+    },
+    "logging": _BASE_LOGGING_SCHEMA,
+}
+
+# Program 2: Background Batch Processing Worker
+BATCH_WORKER_SCHEMA: Dict[str, Any] = {
+    "database": _BASE_DATABASE_SCHEMA,
+    "storage": _BASE_STORAGE_SCHEMA,
+    "batch": {
+        "batch_size_int": 500,
+        "max_workers_int": 4,
+        "cron_schedule_str": "0 2 * * *",
+    },
+    "logging": _BASE_LOGGING_SCHEMA,
+}
+
+# Program 3: Event Stream Consumer
+STREAM_CONSUMER_SCHEMA: Dict[str, Any] = {
+    "database": _BASE_DATABASE_SCHEMA,
+    "storage": _BASE_STORAGE_SCHEMA,
+    "consumer": {
+        "group_id_str": "events-consumer-group",
+        "buffer_limit_int": 100,
+        "flush_interval_seconds_int": 5,
+    },
+    "logging": _BASE_LOGGING_SCHEMA,
+}
+```
+
+#### 2) Program Entry Point Implementation
+
+Each program entry point imports its specific composed schema from `app_schema.py` and calls `ensure_config_file()`:
+
+```python
+# bin/run_api_server.py (API server entry point)
+from agent_common.config_loader import ConfigLoader, config
+from app.app_schema import API_SERVER_SCHEMA
+
+loader = ConfigLoader()
+loader.register_schema(API_SERVER_SCHEMA)
+loader.ensure_config_file("config.yml", default_schema=API_SERVER_SCHEMA)
+
+# Safely access guaranteed values at runtime via global config
+port = config.server.port_int
+db_host = config.database.host_str
+```
+
+```python
+# bin/run_batch_worker.py (Batch worker entry point)
+from agent_common.config_loader import ConfigLoader, config
+from app.app_schema import BATCH_WORKER_SCHEMA
+
+loader = ConfigLoader()
+loader.register_schema(BATCH_WORKER_SCHEMA)
+loader.ensure_config_file("config.yml", default_schema=BATCH_WORKER_SCHEMA)
+
+# Safely access guaranteed values at runtime via global config
+batch_size = config.batch.batch_size_int
+max_workers = config.batch.max_workers_int
+```
+
+#### 3) Key Architectural Advantages
+- **Progressive, Non-Destructive Reconciliation**:
+  When `run_api_server.py` runs first, it writes the common baseline `database` settings and `server` constants to `config.yml`. When `run_batch_worker.py` runs later, it leaves existing keys intact and appends only the missing `storage` and `batch` constants with timestamped inline comments.
+- **Zero Constant Duplication (DRY)**: Infrastructure constants exist in exactly one place (`app_schema.py`), simplifying global tuning.
+- **Harmonious Coexistence in a Single `config.yml`**: Distinct log levels (`logging.level.api`, `logging.level.batch`, `logging.level.consumer`) and service parameters coexist cleanly within a single central configuration file.
+
+---
+
+### 4.3. File Output Before and After Reconciliation (`config/config.yml`)
 
 If an operator previously only configured `max_workers_int: 8` and was unaware of the other constants, executing `ensure_config_file` updates the file to:
 
@@ -137,7 +274,7 @@ logging:
 - Existing operator customizations (`max_workers_int: 8`) remain untouched.
 - All previously unknown or newly added constants are forcibly materialized into the file, making every tunable option immediately obvious and editable.
 
-### 4.3. ⚠️ Anti-Pattern: Defining Constants In-Code or Mid-Stream (Negates Feature Purpose)
+### 4.4. ⚠️ Anti-Pattern: Defining Constants In-Code or Mid-Stream (Negates Feature Purpose)
 
 ```python
 # ==============================================================================

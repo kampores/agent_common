@@ -1,7 +1,6 @@
 # 작성일: 2026-08-21
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 """
 표준화된 날짜, 시간 규격 포맷팅 및 타임스탬프 생성을 전담하는 agent_common 내장 Tool 클래스 모듈입니다.

@@ -1,7 +1,6 @@
 # 작성일: 2026-06-19
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 """외부 LLM API 및 로컬 GGUF 모델을 통합 제어하여 범용 텍스트 생성을 수행하는 공용 LLM 클라이언트 모듈입니다."""
 
@@ -265,7 +264,7 @@ class LlmClient:
         return str(content)
 
     def _generate_fabrix(self, prompt: str, system_prompt: str | None = None) -> str | None:
-        """Fabrix(kbonecloud) GenAI 허브 전용 API로 텍스트 생성을 요청한다."""
+        """Fabrix GenAI 허브 전용 API로 텍스트 생성을 요청한다."""
         enabled = self._external_llm_enabled()
         # 외부 API 키 조회 (x-openapi-token)
         api_key = self._external_api_key()

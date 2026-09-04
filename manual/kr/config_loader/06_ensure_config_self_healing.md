@@ -119,7 +119,144 @@ config_path = loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT
 print(f"모든 상수가 파일화되어 보정 완료된 경로: {config_path}")
 ```
 
-### 4.2. 보정 결과 파일 예시 (`config/config.yml`)
+### 4.2. 다중 프로그램 환경에서의 설정값(상수) 공유 및 스키마 합성 패턴 (`app_schema.py`)
+
+실무 프로젝트(데이터 파이프라인, 마이크로서비스 등)는 단일 프로그램이 아니라 **동일한 데이터베이스나 스토리지 인프라를 공유하는 여러 개의 독립 실행 프로그램(API 서버, 배치 워커, 스트리밍 컨슈머 등)**으로 구성되는 경우가 많습니다.
+
+> **일반적인 다중 서비스 구성 예시**:
+> 1. `api_server.py`: 클라이언트 요청을 수신하여 처리하는 실시간 웹 API 서비스
+> 2. `batch_worker.py`: 주기적으로 대량의 데이터를 수집·가공하는 백그라운드 배치 프로그램
+> 3. `stream_consumer.py`: 메시지 브로커(Kafka 등)의 이벤트를 구독하여 저장소에 동기화하는 스트리밍 컨슈머
+
+이때 데이터베이스 접속 정보(`database`), 저장소 경로(`storage`), 공통 로깅(`logging`)과 같은 시스템 상수는 **모든 프로그램이 동일하게 공유**해야 하지만, 포트 번호(`port_int`), 1회 배치 처리량(`batch_size_int`), 버퍼 크기(`buffer_size_int`) 등은 **프로그램마다 고유한 값**을 가집니다.
+
+만약 각 프로그램마다 스키마를 제각각 따로 작성하면 동일한 상수가 여러 파일에 중복 정의되어 `DRY`(Don't Repeat Yourself) 원칙을 위배하게 되고, 상수 수정 시 모든 스크립트를 찾아 고쳐야 하는 위험이 발생합니다.
+
+이를 깔끔하게 해결하는 표준 설계 패턴이 바로 **전용 스키마 모듈(`app/app_schema.py`)을 통한 스키마 합성(Composition) 패턴**입니다.
+
+#### 1) 전용 스키마 모듈 정의 (`app/app_schema.py`)
+
+공통 섹션별 기본 상수를 베이스 딕셔너리로 분리 정의한 뒤, 파이썬 딕셔너리 언패킹(`**`)을 통해 프로그램별 차이점만 간결하게 오버라이드하여 합성합니다:
+
+```python
+# app/app_schema.py
+"""
+애플리케이션 공통 및 프로그램별 기본 설정 스키마 정의 모듈.
+"""
+
+from typing import Any, Dict
+
+
+# ==============================================================================
+# 1. 공통 섹션별 베이스 스키마 정의 (DRY 원칙 준수)
+# ==============================================================================
+_BASE_DATABASE_SCHEMA: Dict[str, Any] = {
+    "host_str": "127.0.0.1",
+    "port_int": 5432,
+    "pool_size_int": 10,
+    "timeout_seconds_int": 30,
+    "auto_reconnect_bool": True,
+}
+
+_BASE_STORAGE_SCHEMA: Dict[str, Any] = {
+    "base_path_str": "/var/data/app",
+    "temp_dir_str": "temp",
+    "chunk_size_int": 1048576,  # 1MB
+    "max_retries_int": 3,
+}
+
+_BASE_LOGGING_SCHEMA: Dict[str, Any] = {
+    "language": "KO",
+    "file_logging": False,
+    "level": {
+        "api": "INFO",
+        "batch": "WARNING",
+        "consumer": "INFO",
+    },
+}
+
+
+# ==============================================================================
+# 2. 프로그램별 전용 스키마 (공통 베이스 상속 + 고유 옵션 오버라이드)
+# ==============================================================================
+
+# 프로그램 1: 웹 API 백엔드 서비스
+API_SERVER_SCHEMA: Dict[str, Any] = {
+    "database": _BASE_DATABASE_SCHEMA,
+    "server": {
+        "port_int": 8080,
+        "max_connections_int": 500,
+        "enable_cors_bool": True,
+    },
+    "logging": _BASE_LOGGING_SCHEMA,
+}
+
+# 프로그램 2: 백그라운드 배치 처리 워커
+BATCH_WORKER_SCHEMA: Dict[str, Any] = {
+    "database": _BASE_DATABASE_SCHEMA,
+    "storage": _BASE_STORAGE_SCHEMA,
+    "batch": {
+        "batch_size_int": 500,
+        "max_workers_int": 4,
+        "cron_schedule_str": "0 2 * * *",
+    },
+    "logging": _BASE_LOGGING_SCHEMA,
+}
+
+# 프로그램 3: 메시지 스트림 컨슈머
+STREAM_CONSUMER_SCHEMA: Dict[str, Any] = {
+    "database": _BASE_DATABASE_SCHEMA,
+    "storage": _BASE_STORAGE_SCHEMA,
+    "consumer": {
+        "group_id_str": "events-consumer-group",
+        "buffer_limit_int": 100,
+        "flush_interval_seconds_int": 5,
+    },
+    "logging": _BASE_LOGGING_SCHEMA,
+}
+```
+
+#### 2) 개별 프로그램 엔트리포인트에서의 활용
+
+각 실행 프로그램(CLI 진입점)에서는 중앙 `app_schema.py`로부터 자신의 전용 스키마를 가져와 `ensure_config_file`에 전달합니다:
+
+```python
+# bin/run_api_server.py (API 서버 진입점)
+from agent_common.config_loader import ConfigLoader, config
+from app.app_schema import API_SERVER_SCHEMA
+
+loader = ConfigLoader()
+loader.register_schema(API_SERVER_SCHEMA)
+loader.ensure_config_file("config.yml", default_schema=API_SERVER_SCHEMA)
+
+# 전역 config 객체로 타입 보증된 상수 참조
+port = config.server.port_int
+db_host = config.database.host_str
+```
+
+```python
+# bin/run_batch_worker.py (배치 워커 진입점)
+from agent_common.config_loader import ConfigLoader, config
+from app.app_schema import BATCH_WORKER_SCHEMA
+
+loader = ConfigLoader()
+loader.register_schema(BATCH_WORKER_SCHEMA)
+loader.ensure_config_file("config.yml", default_schema=BATCH_WORKER_SCHEMA)
+
+# 전역 config 객체로 타입 보증된 상수 참조
+batch_size = config.batch.batch_size_int
+max_workers = config.batch.max_workers_int
+```
+
+#### 3) 다중 프로그램 스키마 공유의 핵심 이점
+- **점진적 무손실 자가 치유 (Progressive Reconciliation)**:
+  `run_api_server.py`가 먼저 기동되면 공통 `database` 설정과 `server` 관련 상수가 `config.yml`에 생성되고, 이후 `run_batch_worker.py`가 기동되면 기존 설정은 그대로 유지한 채 `storage` 및 `batch` 관련 누락 상수 키들만 인라인 주석과 함께 파일에 **추가로 자동 보정(주입)**됩니다.
+- **상수 중복의 원천 배제 (DRY)**: 공통 데이터베이스 접속 포트, 타임아웃, 스토리지 버퍼 크기 등의 상수가 `app_schema.py` 한 곳에만 존재하므로, 기본값을 튜닝할 때 여러 소스 파일을 뒤져가며 수정할 필요가 없습니다.
+- **단일 설정 파일(`config.yml`) 내 조화로운 공존**: `logging.level.api`, `logging.level.batch`, `logging.level.consumer`처럼 각 서비스별 고유 설정이 단 하나의 `config.yml` 안에서 충돌 없이 깔끔하게 공존하고 중앙 제어됩니다.
+
+---
+
+### 4.3. 보정 결과 파일 예시 (`config/config.yml`)
 
 기존에 사용자가 `max_workers_int: 8`만 수동으로 적어두고 나머지 상수는 몰랐던 상태라면, 실행 직후 다음과 같이 모든 상수가 파일에 **강제 주입**됩니다:
 
@@ -137,7 +274,7 @@ logging:
 - 사용자가 정의한 기존 커스텀 값(`max_workers_int: 8`)은 안전하게 보존됩니다.
 - 미처 몰랐거나 새로 추가된 모든 상수값들이 파일에 기록되어, 사용자가 메모장이나 편집기로 열었을 때 **"아, 이런 상수가 있었구나!"** 하고 즉시 파악할 수 있게 됩니다.
 
-### 4.3. ⚠️ 안티패턴 비교: 코드 중간에서 독자 상수를 만들어 쓰는 경우 (기능 무의미화)
+### 4.4. ⚠️ 안티패턴 비교: 코드 중간에서 독자 상수를 만들어 쓰는 경우 (기능 무의미화)
 
 ```python
 # ==============================================================================

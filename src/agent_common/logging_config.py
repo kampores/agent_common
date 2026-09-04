@@ -1,7 +1,6 @@
 # 작성일: 2026-06-18
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 """
 하위 호환성을 위해 유지되는 agent_common.logging_config 모듈입니다.

@@ -1,7 +1,6 @@
 # 작성일: 2026-06-18
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 """
 설정 파일(.yml)을 로컬 및 원격 통합 경로에서 동적으로 읽어들이고 병합하는 설정 로더 클래스 및 모듈입니다.
@@ -476,7 +475,7 @@ class ConfigLoader:
 
     def setting(self, path: str, default: Any = None) -> Any:
         """
-        점 표기법 경로(예: 'api.port', 'transfer.lodin_dstlc_cd')를 사용해 병합된 설정값을 조회합니다.
+        점 표기법 경로(예: 'api.port', 'database.port_int')를 사용해 병합된 설정값을 조회합니다.
         설정 키 접미사(_int, _str, _bool, _float, _list, _dict)에 맞춰 타입을 자동 보증하여 반환합니다.
 
         :param path: 점 표기법 설정 경로 문자열

@@ -1,7 +1,6 @@
 # 작성일: 2026-09-04
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 # 시스템 전역 표준 범용 영문 로그 메시지 템플릿 사전 (agent_common 범용)
 # Standard Universal English Log Message Template Dictionary for agent_common
@@ -201,13 +200,13 @@ logging_messages:
       # Example: logger.warning("table_truncate_warning", service_name="BigQuery", table_name="TB_SAMPLE")
       table_truncate_warning: "All existing data in {service_name} table ({table_name}) will be deleted (TRUNCATE). Caution is required."
 
-      # Example: logger.warning("db_deleted_status_skipped", service_name="BigQuery", asst_id="S01123", status_cd="09", ecs_key="sushin/123.json")
+      # Example: logger.warning("db_deleted_status_skipped", service_name="BigQuery", asst_id="DOC001", status_cd="09", ecs_key="data/sample.json")
       db_deleted_status_skipped: "Actively skipping from {service_name} load target due to deleted status code ({status_cd}): [ID={asst_id}] [Key={ecs_key}]"
 
-      # Example: logger.warning("db_all_rows_deleted_status_skipped", service_name="BigQuery", ecs_key="sushin/123.json", context_info="...")
+      # Example: logger.warning("db_all_rows_deleted_status_skipped", service_name="BigQuery", ecs_key="data/sample.json", context_info="...")
       db_all_rows_deleted_status_skipped: "All rows determined as deleted status code. Skipping {service_name} load: [Key={ecs_key}] {context_info}"
 
-      # Example: logger.warning("db_duplicate_pk_skipped", service_name="BigQuery", asst_id="S01123", ecs_key="sushin/123.json", context_info="...")
+      # Example: logger.warning("db_duplicate_pk_skipped", service_name="BigQuery", asst_id="DOC001", ecs_key="data/sample.json", context_info="...")
       db_duplicate_pk_skipped: "Already existing or duplicate primary key (PK={asst_id}) in {service_name}. Skipping from load target: [Key={ecs_key}] {context_info}"
 
   ERROR:

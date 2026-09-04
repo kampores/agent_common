@@ -50,11 +50,11 @@ Configure the `proxy` block in `config/config.yml`:
 ```yaml
 proxy:
   # Outbound proxies for external connectivity (if required)
-  http_proxy: "http://proxy.company.com:8080"
-  https_proxy: "http://proxy.company.com:8080"
+  http_proxy: "http://proxy.example.com:8080"
+  https_proxy: "http://proxy.example.com:8080"
   
   # Comma-separated list of internal hosts, IPs, and domain suffixes to bypass
-  no_proxy: "localhost,127.0.0.1,10.200.10.10,10.200.10.11,.internal.company.com"
+  no_proxy: "localhost,127.0.0.1,192.168.1.100,192.168.1.101,.internal.example.com"
 ```
 
 ---
@@ -68,16 +68,14 @@ from agent_common.config_loader import config
 # 1. NO_PROXY is automatically synchronized upon importing config
 active_no_proxy = os.environ.get("NO_PROXY")
 print(f"Active NO_PROXY: {active_no_proxy}")
-# Output: localhost,127.0.0.1,10.200.10.10,10.200.10.11,.internal.company.com
+# Output: localhost,127.0.0.1,192.168.1.100,192.168.1.101,.internal.example.com
 
-# 2. Network calls to 10.200.10.10 connect directly without proxy overhead
-from agent_common.clients import EcsClient
-ecs = EcsClient()
+# 2. Network calls to internal destinations connect directly without proxy overhead
 ```
 
 ---
 
 ## 5. Operational Best Practices
 
-- **Avoid Broad CIDR Notations**: Because some standard Python networking components do not natively parse CIDR notations (e.g. `10.200.0.0/16`), prefer using specific IP addresses or domain suffixes (e.g. `.company.com`).
+- **Avoid Broad CIDR Notations**: Because some standard Python networking components do not natively parse CIDR notations (e.g. `192.168.0.0/16`), prefer using specific IP addresses or domain suffixes (e.g. `.example.com`, `192.168.1.100`).
 - **Always Include Loopback Addresses**: Ensure `localhost,127.0.0.1` are included to avoid breaking local inter-process communication.

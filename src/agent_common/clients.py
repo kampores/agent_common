@@ -1,7 +1,6 @@
 # 작성일: 2026-07-20
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 """
 Dell ECS(S3), Google Cloud Storage(GCS), Google Cloud BigQuery(BQ) 등 
@@ -479,7 +478,7 @@ class BigQueryClient:
 
     def query(self, query_str: str, timeout: int | None = None) -> list[dict[str, Any]]:
         """
-        임의의 BigQuery SQL 쿼리(예: 공통 코드 테이블 TCTBICM02 SELECT 등)를 실행하고,
+        임의의 BigQuery SQL 쿼리(예: 공통 코드 테이블 SELECT 등)를 실행하고,
         조회된 결과 행들을 딕셔너리 리스트([dict, ...])로 반환합니다.
 
         :param query_str: 실행할 SQL 쿼리 문자열

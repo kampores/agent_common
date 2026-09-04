@@ -50,11 +50,11 @@ def _apply_no_proxy(self, settings: dict[str, Any]) -> None:
 ```yaml
 proxy:
   # 외부 통신용 프록시 (필요시 명시)
-  http_proxy: "http://proxy.company.com:8080"
-  https_proxy: "http://proxy.company.com:8080"
+  http_proxy: "http://proxy.example.com:8080"
+  https_proxy: "http://proxy.example.com:8080"
   
   # 프록시를 타지 않고 직접 연결할 내부 호스트/IP 목록 (쉼표로 구분)
-  no_proxy: "localhost,127.0.0.1,10.200.10.10,10.200.10.11,.internal.company.com"
+  no_proxy: "localhost,127.0.0.1,192.168.1.100,192.168.1.101,.internal.example.com"
 ```
 
 ---
@@ -68,17 +68,15 @@ from agent_common.config_loader import config
 # 1. config 로드 시점에 _apply_no_proxy 가 자동 실행됨
 current_no_proxy = os.environ.get("NO_PROXY")
 print(f"현재 적용된 NO_PROXY: {current_no_proxy}")
-# 출력: localhost,127.0.0.1,10.200.10.10,10.200.10.11,.internal.company.com
+# 출력: localhost,127.0.0.1,192.168.1.100,192.168.1.101,.internal.example.com
 
-# 2. 내부 ECS 스토리지 통신 테스트
-# Boto3/EcsClient 호출 시 OS NO_PROXY 에 등록된 10.200.10.10 은 프록시를 타지 않고 직접 고속 통신함
-from agent_common.clients import EcsClient
-ecs = EcsClient()
+# 2. 내부 스토리지/API 직접 통신
+# 호출 시 OS NO_PROXY에 등록된 내부 IP/호스트는 프록시를 거치지 않고 직접 고속 통신함
 ```
 
 ---
 
 ## 5. 운영 베스트 프랙티스
 
-- **CIDR 대역 표기 주의**: 일부 파이썬 라이브러리(`urllib`)는 `10.200.0.0/16` 형태의 CIDR 표기를 완벽히 지원하지 못할 수 있으므로, 명시적인 IP 접두사(예: `.company.com`, `10.200.10.10`) 형태로 기재하는 것이 가장 안전합니다.
+- **CIDR 대역 표기 주의**: 일부 파이썬 라이브러리(`urllib`)는 `192.168.0.0/16` 형태의 CIDR 표기를 완벽히 지원하지 못할 수 있으므로, 명시적인 IP 접두사(예: `.example.com`, `192.168.1.100`) 형태로 기재하는 것이 가장 안전합니다.
 - **로컬 호스트 필수 포함**: `localhost,127.0.0.1`은 시스템 루프백 통신 장애를 방지하기 위해 항상 `no_proxy` 목록 맨 앞에 포함하십시오.

@@ -1,7 +1,6 @@
 # 작성일: 2026-08-09
 # 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자 이메일: bakkus@daum.net
 
 # 시스템 전역 표준 범용 로그 메시지 템플릿 사전 (agent_common 범용)
 # 
@@ -200,13 +199,13 @@ logging_messages:
       # 예시: logger.warning("table_truncate_warning", service_name="BigQuery", table_name="TB_SAMPLE")
       table_truncate_warning: "{service_name} 테이블({table_name})의 기존 모든 데이터가 삭제(TRUNCATE)됩니다. 주의가 필요합니다."
 
-      # 예시: logger.warning("db_deleted_status_skipped", service_name="BigQuery", asst_id="S01123", status_cd="09", ecs_key="sushin/123.json")
+      # 예시: logger.warning("db_deleted_status_skipped", service_name="BigQuery", asst_id="DOC001", status_cd="09", ecs_key="data/sample.json")
       db_deleted_status_skipped: "삭제 상태코드({status_cd})로 인해 {service_name} 적재 대상에서 능동적으로 제외(Skip)합니다: [식별ID={asst_id}] [Key={ecs_key}]"
 
-      # 예시: logger.warning("db_all_rows_deleted_status_skipped", service_name="BigQuery", ecs_key="sushin/123.json", context_info="...")
+      # 예시: logger.warning("db_all_rows_deleted_status_skipped", service_name="BigQuery", ecs_key="data/sample.json", context_info="...")
       db_all_rows_deleted_status_skipped: "모든 행이 삭제 상태코드로 판정되어 {service_name} 적재를 제외(Skip)합니다: [Key={ecs_key}] {context_info}"
 
-      # 예시: logger.warning("db_duplicate_pk_skipped", service_name="BigQuery", asst_id="S01123", ecs_key="sushin/123.json", context_info="...")
+      # 예시: logger.warning("db_duplicate_pk_skipped", service_name="BigQuery", asst_id="DOC001", ecs_key="data/sample.json", context_info="...")
       db_duplicate_pk_skipped: "{service_name}에 이미 존재하거나 중복된 기본키(PK={asst_id})이므로 적재 대상에서 제외(Skip)합니다: [Key={ecs_key}] {context_info}"
 
   ERROR:

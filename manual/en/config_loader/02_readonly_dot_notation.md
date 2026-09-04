@@ -23,14 +23,14 @@ Traditional dictionary-based configuration access (`config['ecs']['endpoint_url'
 ```yaml
 # config/config.yml (Project Configuration File)
 ecs:
-  endpoint_url: "http://10.200.10.10:9020"
-  bucket_name_str: "pak-unstr-prod"
+  endpoint_url: "https://storage.example.com"
+  bucket_name_str: "app-storage-bucket"
   max_retries_int: 3
   timeout_seconds_int: 30
 
 gcs:
   bucket_name_str: "gcp-prod-data-lake"
-  prefix_str: "raw_data/pak"
+  prefix_str: "raw_data/events"
   ecscopy_bool: true
 
 bigquery:
@@ -91,7 +91,7 @@ def __delitem__(self, key: str) -> None:
 from agent_common.config_loader import config
 
 # 1. Dot-notation attribute access (Mapped from Section 2 config.yml)
-endpoint_str: str = config.ecs.endpoint_url          # "http://10.200.10.10:9020"
+endpoint_str: str = config.ecs.endpoint_url          # "https://storage.example.com"
 bucket_str: str = config.gcs.bucket_name_str         # "gcp-prod-data-lake"
 max_workers: int = config.transfer.max_workers_int    # 8 (int guaranteed)
 is_active: bool = config.transfer.is_active_bool     # True (bool guaranteed)
@@ -191,7 +191,7 @@ from agent_common.config_loader import ReadOnlyConfig
 # Mock data for unit tests
 mock_data = {
     "ecs": {
-        "endpoint_url": "http://mock-ecs:9020",
+        "endpoint_url": "https://mock-storage.example.com",
         "timeout_seconds_int": 5
     },
     "transfer": {
@@ -204,7 +204,7 @@ mock_data = {
 test_config = ReadOnlyConfig(mock_data)
 
 # Leverage identical dot-notation and type guarantees as in production
-assert test_config.ecs.endpoint_url == "http://mock-ecs:9020"
+assert test_config.ecs.endpoint_url == "https://mock-storage.example.com"
 assert test_config.transfer.max_workers_int == 2
 assert test_config.transfer.dry_run_bool is True
 ```
