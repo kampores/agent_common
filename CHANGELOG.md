@@ -4,6 +4,20 @@
 
 ---
 
+### v0.4.24 (2026-09-04)
+- **다국어 로그 메시지 템플릿 사전(`logging_messages_en.yml`) 및 설정 기반 언어 선택(`logging.language`) 지원**:
+  - 영문 로그 메시지 템플릿 사전(`src/agent_common/config/logging_messages_en.yml`)을 신규 제작하여 모든 로그 레벨(`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) 및 도메인 메시지의 자연스럽고 전문적인 영문 템플릿 제공.
+  - 기존 `logging_messages.yml`을 `logging_messages_ko.yml`로 정비하여 한국어/영문 사전 체계를 명확히 분리.
+  - `config.yml`의 `logging.language`(또는 `logging.lang`) 옵션을 통해 `"KO"`(한국어, 기본값) 또는 `"EN"`(영어, 대소문자 무관)을 자유롭게 선택하여 사용할 수 있도록 `ConfigLoader` 로직 개편.
+  - `ConfigLoader.set_language()` 및 `ProjectLogger.set_language()` 메서드/프로퍼티를 지원하여 런타임 동적 언어 전환 지원.
+  - 개별 프로젝트의 고유 템플릿 사전(`config/logging_messages_en.yml`, `config/logging_messages_ko.yml`, `config/logging_messages.yml`) 오버라이드 병합 연동 완벽 보장.
+- **`ProjectLogger` 처리 제외(Skip) 로그 ID 기반 상세 내역 집계 및 요약 리포트(`log_summary`) 고도화**:
+  - `ProjectLogger`에 제외 식별자(로그 ID)별 발생 건수를 누적하는 `record_exclusion()`, `get_excluded_counts()`, `reset_excluded_counts()` 및 클래스 전역 집계(`_excluded_counts_dict`) 메서드 추가.
+  - `record_excluded(log_id_or_count, count_int)` 및 `update(..., log_id_str)`를 개선하여 제외 로그 ID 인자 전달 시 내부 제외 딕셔너리에 자동 분기 집계 지원 (기존 호출부와 100% 하위 호환).
+  - 모듈 간(예: `TableDataTransformer` -> `EcsToBigquery`) 멀티 로거 인스턴스 환경에서도 누락 없이 통합 집계되도록 `get_error_counts()` 및 `get_excluded_counts()`의 전역 집계 우선 반환 로직 정돈.
+  - 최종 실행 요약 리포트(`log_summary`)에 `- 처리 제외 세부 내역 (총 N건):` 블록을 추가하여, `logging_messages_*.yml` 메시지 템플릿으로부터 요약 설명을 동적으로 추출하여 `* 로그ID (설명): N 건` 형식으로 상세 출력 지원.
+  - `ProgressTracker.log_summary()`에 `excluded_counts_dict`, `error_counts_dict` 파라미터 전달 연동 지원.
+
 ### v0.4.23 (2026-09-03)
 - **README 및 CHANGELOG 한/영 이원화(다국어 지원) 및 GitHub 연동**:
   - `README.md` 상단에 한국어/영문 점프 앵커 링크([ 🇰🇷 한국어 ] / [ 🇺🇸 English ])를 도입하여 PyPI 및 GitHub 가독성 개선.

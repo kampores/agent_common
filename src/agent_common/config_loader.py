@@ -191,6 +191,9 @@ class ConfigLoader:
     # agent_common 패키지 자체의 루트 디렉토리 경로를 계산합니다.
     PACKAGE_DIR: Path = Path(__file__).resolve().parent
 
+    # 전역 런타임 언어 강제 설정값 ('KO' 또는 'EN')
+    _global_language_override_str: Optional[str] = None
+
     def __init__(self, config_dir: str | Path | None = None):
         """ConfigLoader 인스턴스를 생성하고 self.logger 및 설정 디렉토리를 초기화합니다."""
         from agent_common.logger import ProjectLogger
@@ -198,6 +201,31 @@ class ConfigLoader:
         self._config_dir: Path = self.project_path(config_dir) if config_dir else self.ROOT / "config"
         self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         self._registered_schemas: dict[str, Any] = {}
+        self._cached_lang_str: Optional[str] = None
+
+    @classmethod
+    def set_language(cls, lang_str: str) -> None:
+        """전역 로그 메시지 언어를 'KO' 또는 'EN'으로 설정합니다.
+
+        :param lang_str: 설정할 언어 코드 ('KO' 또는 'EN', 대소문자 무관)
+        """
+        clean_lang_str: str = str(lang_str).strip().upper()
+        cls._global_language_override_str = "EN" if clean_lang_str == "EN" else "KO"
+
+    @property
+    def language(self) -> str:
+        """현재 적용 중인 로그 메시지 언어 코드 ('KO' 또는 'EN')를 반환합니다 (Getter)."""
+        settings_dict: dict[str, Any] = self.get_settings()
+        return str(settings_dict.get("logging", {}).get("language", "KO")).upper()
+
+    @language.setter
+    def language(self, lang_str: str) -> None:
+        """로그 메시지 언어 코드를 동적으로 설정합니다 (Setter).
+
+        :param lang_str: 설정할 언어 코드 ('KO' 또는 'EN', 대소문자 무관)
+        """
+        self.set_language(lang_str)
+        self._cached_settings = None
 
     def config_dir_set(self, config_dir: str | Path) -> None:
         """설정 디렉토리 경로를 세팅하고 설정값 캐시를 초기화합니다 (Setter)."""
@@ -307,23 +335,85 @@ class ConfigLoader:
         self._cached_settings = None
         return target_path
 
+    def _resolve_language(self, settings_dict: dict[str, Any]) -> str:
+        """설정 또는 환경 변수로부터 로그 메시지 언어('KO' 또는 'EN')를 결정합니다.
+
+        :param settings_dict: 현재 로드된 설정 딕셔너리
+        :return: 정규화된 언어 코드 ('KO' 또는 'EN')
+        """
+        if self._global_language_override_str:
+            return self._global_language_override_str
+        env_lang_str: Optional[str] = os.environ.get("AGENT_LOG_LANGUAGE") or os.environ.get("LOGGING_LANGUAGE")
+        if env_lang_str:
+            return "EN" if env_lang_str.strip().upper() == "EN" else "KO"
+        logging_sec = settings_dict.get("logging")
+        if isinstance(logging_sec, dict):
+            cfg_lang_str = logging_sec.get("language") or logging_sec.get("lang")
+            if cfg_lang_str:
+                return "EN" if str(cfg_lang_str).strip().upper() == "EN" else "KO"
+        return "KO"
+
+    def _resolve_logging_messages_file(self, config_dir_path: Path, lang_str: str) -> Optional[Path]:
+        """지정된 디렉토리에서 언어에 부합하는 logging_messages_*.yml 파일을 탐색합니다.
+
+        :param config_dir_path: 탐색할 디렉토리 Path 객체
+        :param lang_str: 언어 코드 ('KO' 또는 'EN')
+        :return: 발견된 템플릿 파일 Path 객체 (미발견 시 None)
+        """
+        suffix_str: str = lang_str.lower()
+        target_path: Path = config_dir_path / f"logging_messages_{suffix_str}.yml"
+        if target_path.exists():
+            return target_path
+        target_yaml_path: Path = config_dir_path / f"logging_messages_{suffix_str}.yaml"
+        if target_yaml_path.exists():
+            return target_yaml_path
+        fallback_path: Path = config_dir_path / "logging_messages.yml"
+        if fallback_path.exists():
+            return fallback_path
+        fallback_yaml_path: Path = config_dir_path / "logging_messages.yaml"
+        if fallback_yaml_path.exists():
+            return fallback_yaml_path
+        return None
+
+    def _resolve_project_logging_messages_file(self, project_files_list: list[Path], lang_str: str) -> Optional[Path]:
+        """프로젝트의 logging_messages 파일 목록에서 언어에 부합하는 파일을 선택합니다.
+
+        :param project_files_list: 프로젝트 config 디렉토리 내 logging_messages 관련 파일 리스트
+        :param lang_str: 언어 코드 ('KO' 또는 'EN')
+        :return: 선택된 파일 Path 객체 (미발견 시 None)
+        """
+        suffix_str: str = lang_str.lower()
+        for p in project_files_list:
+            if p.name.lower() in (f"logging_messages_{suffix_str}.yml", f"logging_messages_{suffix_str}.yaml"):
+                return p
+        for p in project_files_list:
+            if p.name.lower() in ("logging_messages.yml", "logging_messages.yaml"):
+                return p
+        return None
+
     def get_settings(self) -> dict[str, Any]:
         """설정 디렉토리 하위의 모든 YAML 설정 파일을 알파벳 순서로 병합하여 반환한다.
         
         1차: agent_common 패키지 내부 기본 설정 (agent_common/config)
         2차: 등록된 도메인 스키마 기본값 (register_schema)
         3차: 개별 프로젝트 config 디렉토리의 YAML 파일들 (Deep Merge Override)
+        4차: 언어(KO/EN)에 대응하는 logging_messages 템플릿 사전 병합
         """
         if getattr(self, "_cached_settings", None) is not None:
-            return self._cached_settings  # type: ignore
+            expected_lang_str: str = self._resolve_language(self._cached_settings)  # type: ignore
+            if getattr(self, "_cached_lang_str", None) == expected_lang_str:
+                return self._cached_settings  # type: ignore
 
         settings: dict[str, Any] = {}
         loaded_files: list[str] = []
         
         # 1. agent_common 패키지 내부 기본 설정 로드 (agent_common/config)
-        common_config_dir = self.PACKAGE_DIR / "config"
+        # 단, logging_messages_*.yml 파일은 언어 판별 후 4차에서 선택 병합
+        common_config_dir: Path = self.PACKAGE_DIR / "config"
         if common_config_dir.exists():
             for path in sorted(common_config_dir.glob("*.yml")):
+                if path.name.startswith("logging_messages"):
+                    continue
                 mapping = self._load_yaml_mapping(path)
                 self._deep_merge(settings, mapping)
 
@@ -332,19 +422,46 @@ class ConfigLoader:
             self._deep_merge(settings, self._registered_schemas)
                 
         # 3. 호출 프로젝트 고유 설정 로드 및 오버라이드 (.yml 및 .yaml 확장자 모두 탐색)
+        project_logging_msg_files: list[Path] = []
         if self.config_dir.exists():
             yml_files = sorted(set(list(self.config_dir.glob("*.yml")) + list(self.config_dir.glob("*.yaml"))))
             for path in yml_files:
+                if path.name.startswith("logging_messages"):
+                    project_logging_msg_files.append(path)
+                    continue
                 mapping = self._load_yaml_mapping(path)
                 loaded_files.append(f"{path.name}:{list(mapping.keys())}")
                 self._deep_merge(settings, mapping)
 
+        # 4. 언어 판별 (KO 또는 EN, 기본값: KO)
+        selected_lang_str: str = self._resolve_language(settings)
+        if "logging" not in settings or not isinstance(settings["logging"], dict):
+            settings["logging"] = {}
+        settings["logging"]["language"] = selected_lang_str
+
+        # 5. 선택된 언어에 부합하는 logging_messages 템플릿 사전 병합
+        # 5-1. agent_common 패키지 기본 템플릿 로드
+        base_msg_file = self._resolve_logging_messages_file(common_config_dir, selected_lang_str)
+        if base_msg_file and base_msg_file.exists():
+            base_mapping = self._load_yaml_mapping(base_msg_file)
+            self._deep_merge(settings, base_mapping)
+            loaded_files.append(f"{base_msg_file.name}:{list(base_mapping.keys())}")
+
+        # 5-2. 프로젝트 고유 logging_messages 템플릿 오버라이드 (해당 언어 우선 매핑)
+        if project_logging_msg_files:
+            proj_msg_file = self._resolve_project_logging_messages_file(project_logging_msg_files, selected_lang_str)
+            if proj_msg_file and proj_msg_file.exists():
+                proj_mapping = self._load_yaml_mapping(proj_msg_file)
+                self._deep_merge(settings, proj_mapping)
+                loaded_files.append(f"{proj_msg_file.name}:{list(proj_mapping.keys())}")
+
         self._loaded_files_summary: str = ", ".join(loaded_files) if loaded_files else "읽어들인 YAML 파일 없음"
 
-        # 4. proxy, no_proxy 설정을 NO_PROXY 환경 변수로 적용한다.
+        # 6. proxy, no_proxy 설정을 NO_PROXY 환경 변수로 적용한다.
         self._apply_no_proxy(settings)
 
         self._cached_settings = settings
+        self._cached_lang_str = selected_lang_str
         return settings
 
     def _apply_no_proxy(self, settings: dict[str, Any]) -> None:

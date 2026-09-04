@@ -7,6 +7,7 @@ logging:
   level: "INFO"
   format: "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d %(funcName)s()] %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
+  language: "KO"  # 로그 메시지 언어 (KO: 한국어 [기본값], EN: 영어)
 
 transfer:
   timeout_seconds: 120

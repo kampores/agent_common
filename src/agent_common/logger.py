@@ -69,11 +69,12 @@ class ProjectLogger:
 
     # 중복 basicConfig 호출로 handler가 겹치지 않도록 로깅 초기화 여부를 기억합니다.
     _configured = False
-    # 클래스 전역 결과 건수 및 에러 집계
+    # 클래스 전역 결과 건수 및 에러/제외 집계
     _success_count_int: int = 0
     _failure_count_int: int = 0
     _excluded_count_int: int = 0
     _error_counts_dict: dict[str, int] = {}
+    _excluded_counts_dict: dict[str, int] = {}
 
     def __init__(self, name: str | logging.Logger, config_dir: str | Path | None = None):
         self._config_loader: ConfigLoader | None = None
@@ -81,6 +82,7 @@ class ProjectLogger:
         self.failure_count_int: int = 0
         self.excluded_count_int: int = 0
         self.error_counts_dict: dict[str, int] = {}
+        self.excluded_counts_dict: dict[str, int] = {}
         if config_dir:
             self.config_loader.config_dir_set(config_dir)
 
@@ -232,6 +234,27 @@ class ProjectLogger:
 
         ProjectLogger._configured = True
 
+    @classmethod
+    def set_language(cls, lang_str: str) -> None:
+        """전역 로그 메시지 언어를 'KO' 또는 'EN'으로 설정합니다.
+
+        :param lang_str: 설정할 언어 코드 ('KO' 또는 'EN', 대소문자 무관)
+        """
+        from agent_common.config_loader import ConfigLoader
+        ConfigLoader.set_language(lang_str)
+
+    def language_set(self, lang_str: str) -> None:
+        """로그 메시지 언어를 'KO' 또는 'EN'으로 설정합니다 (Setter).
+
+        :param lang_str: 설정할 언어 코드 ('KO' 또는 'EN', 대소문자 무관)
+        """
+        self.set_language(lang_str)
+
+    @property
+    def language(self) -> str:
+        """현재 적용 중인 로그 메시지 언어 코드를 반환합니다 (Getter)."""
+        return self.config_loader.language
+
     def _search_template_in_level(self, target_lvl_str: str, target_code_str: str) -> str | None:
         """
         지정된 로그 레벨 섹션 또는 하위 카테고리에서 메시지 코드 템플릿을 탐색합니다.
@@ -253,7 +276,7 @@ class ProjectLogger:
         return None
 
     def get_log_msg(self, level_str: str, msg_code_str: str, default_str: str = "", **kwargs: Any) -> str:
-        """logging_messages.yml 파일에 정의된 로그 레벨(level_str)과 메시지 코드(msg_code_str) 템플릿을 포매팅하여 반환합니다.
+        """logging_messages_ko.yml 또는 logging_messages_en.yml에 정의된 로그 레벨(level_str)과 메시지 코드(msg_code_str) 템플릿을 포매팅하여 반환합니다.
 
         :param level_str: 로그 레벨 문자열 (INFO, WARNING, ERROR 등)
         :param msg_code_str: 메시지 식별 코드
@@ -303,16 +326,29 @@ class ProjectLogger:
         self.error_counts_dict[clean_code_str] = self.error_counts_dict.get(clean_code_str, 0) + max(1, count_int)
         ProjectLogger._error_counts_dict[clean_code_str] = ProjectLogger._error_counts_dict.get(clean_code_str, 0) + max(1, count_int)
 
+    def record_exclusion(self, exclusion_type_str: str, count_int: int = 1) -> None:
+        """
+        발생한 제외 사유 또는 제외 식별자(로그 ID)의 발생 건수를 누적 기록합니다.
+
+        :param exclusion_type_str: 제외 식별 코드(로그 ID) 또는 사유 문자열
+        :param count_int: 누적할 발생 건수 (기본값: 1)
+        """
+        if not exclusion_type_str:
+            exclusion_type_str = "UnknownExclusion"
+        clean_code_str: str = str(exclusion_type_str).strip()
+        self.excluded_counts_dict[clean_code_str] = self.excluded_counts_dict.get(clean_code_str, 0) + max(1, count_int)
+        ProjectLogger._excluded_counts_dict[clean_code_str] = ProjectLogger._excluded_counts_dict.get(clean_code_str, 0) + max(1, count_int)
+
     def get_error_counts(self) -> dict[str, int]:
         """
         누적된 에러 유형/로그 ID별 발생 건수 딕셔너리를 반환합니다.
-        인스턴스에 기록된 건수가 없을 경우 클래스 전역 집계 건수를 반환합니다.
+        클래스 전역 집계가 존재할 경우 이를 우선 반환하여 모듈 간 집계를 통합합니다.
 
         :return: 에러 코드별 발생 건수 딕셔너리
         """
-        if self.error_counts_dict:
-            return dict(self.error_counts_dict)
-        return dict(ProjectLogger._error_counts_dict)
+        if ProjectLogger._error_counts_dict:
+            return dict(ProjectLogger._error_counts_dict)
+        return dict(self.error_counts_dict)
 
     def reset_error_counts(self) -> None:
         """현재 인스턴스 및 클래스 전역 에러 건수 집계를 초기화합니다."""
@@ -329,11 +365,38 @@ class ProjectLogger:
         """클래스 전역 에러 건수 집계를 초기화합니다."""
         cls._error_counts_dict.clear()
 
+    def get_excluded_counts(self) -> dict[str, int]:
+        """
+        누적된 제외 사유/로그 ID별 발생 건수 딕셔너리를 반환합니다.
+        클래스 전역 집계가 존재할 경우 이를 우선 반환하여 모듈 간 집계를 통합합니다.
+
+        :return: 제외 코드별 발생 건수 딕셔너리
+        """
+        if ProjectLogger._excluded_counts_dict:
+            return dict(ProjectLogger._excluded_counts_dict)
+        return dict(self.excluded_counts_dict)
+
+    def reset_excluded_counts(self) -> None:
+        """현재 인스턴스 및 클래스 전역 제외 건수 집계를 초기화합니다."""
+        self.excluded_counts_dict.clear()
+        ProjectLogger._excluded_counts_dict.clear()
+
+    @classmethod
+    def get_global_excluded_counts(cls) -> dict[str, int]:
+        """클래스 전역으로 누적된 모든 제외 건수 딕셔너리를 반환합니다."""
+        return dict(cls._excluded_counts_dict)
+
+    @classmethod
+    def reset_global_excluded_counts(cls) -> None:
+        """클래스 전역 제외 건수 집계를 초기화합니다."""
+        cls._excluded_counts_dict.clear()
+
     def update(
         self,
         success_bool: bool = True,
         excluded_bool: bool = False,
         count_int: int = 1,
+        log_id_str: str = "",
     ) -> None:
         """
         작업 진행 건수의 결과 유형(성공/실패/제외)을 분류하여 누적 기록합니다.
@@ -341,38 +404,55 @@ class ProjectLogger:
         :param success_bool: 성공 여부
         :param excluded_bool: 제외 대상 여부 (예: 자산상태코드 09, 중복 PK 등)
         :param count_int: 누적할 건수 (기본값: 1)
+        :param log_id_str: 실패 또는 제외 발생 시 연계할 로그 ID 식별 코드 (선택)
         """
         inc_int: int = max(1, count_int)
         if excluded_bool:
             self.excluded_count_int += inc_int
             ProjectLogger._excluded_count_int += inc_int
+            if log_id_str:
+                self.record_exclusion(log_id_str, count_int=inc_int)
         elif success_bool:
             self.success_count_int += inc_int
             ProjectLogger._success_count_int += inc_int
         else:
             self.failure_count_int += inc_int
             ProjectLogger._failure_count_int += inc_int
+            if log_id_str:
+                self.record_error(log_id_str, count_int=inc_int)
 
     def record_result(
         self,
         success_bool: bool = True,
         excluded_bool: bool = False,
         count_int: int = 1,
+        log_id_str: str = "",
     ) -> None:
         """진행 건수 분류 기록의 명시적 별칭 메서드입니다."""
-        self.update(success_bool=success_bool, excluded_bool=excluded_bool, count_int=count_int)
+        self.update(success_bool=success_bool, excluded_bool=excluded_bool, count_int=count_int, log_id_str=log_id_str)
 
     def record_success(self, count_int: int = 1) -> None:
         """성공 건수를 누적 기록합니다."""
         self.update(success_bool=True, excluded_bool=False, count_int=count_int)
 
-    def record_failure(self, count_int: int = 1) -> None:
+    def record_failure(self, count_int: int = 1, log_id_str: str = "") -> None:
         """실패 건수를 누적 기록합니다."""
-        self.update(success_bool=False, excluded_bool=False, count_int=count_int)
+        self.update(success_bool=False, excluded_bool=False, count_int=count_int, log_id_str=log_id_str)
 
-    def record_excluded(self, count_int: int = 1) -> None:
-        """제외 건수를 누적 기록합니다."""
-        self.update(success_bool=False, excluded_bool=True, count_int=count_int)
+    def record_excluded(self, log_id_or_count: str | int = "", count_int: int = 1) -> None:
+        """
+        제외 건수 및 제외 식별자(로그 ID)를 누적 기록합니다.
+
+        :param log_id_or_count: 제외 식별 코드(로그 ID) 또는 기존 호환용 누적 건수
+        :param count_int: 누적할 건수 (기본값: 1, 첫 번째 인자가 정수일 경우 무시)
+        """
+        if isinstance(log_id_or_count, int):
+            eff_count_int: int = log_id_or_count
+            eff_code_str: str = ""
+        else:
+            eff_count_int = count_int
+            eff_code_str = str(log_id_or_count).strip()
+        self.update(success_bool=False, excluded_bool=True, count_int=eff_count_int, log_id_str=eff_code_str)
 
     def get_result_counts(self) -> dict[str, int]:
         """성공, 실패, 제외 건수 딕셔너리를 반환합니다."""
@@ -384,20 +464,22 @@ class ProjectLogger:
         }
 
     def reset_result_counts(self) -> None:
-        """진행 건수 분류 통계를 초기화합니다."""
+        """진행 건수 분류 통계 및 에러/제외 집계를 초기화합니다."""
         self.success_count_int = 0
         self.failure_count_int = 0
         self.excluded_count_int = 0
         ProjectLogger._success_count_int = 0
         ProjectLogger._failure_count_int = 0
         ProjectLogger._excluded_count_int = 0
+        self.reset_error_counts()
+        self.reset_excluded_counts()
 
     def get_log_id_description(self, log_id_str: str) -> str:
         """
-        로그 ID(메시지 코드)에 대응하는 직관적인 한글 설명 문자열을 logging_messages.yml 설정으로부터 동적으로 조회하고 정제하여 반환합니다.
+        로그 ID(메시지 코드)에 대응하는 직관적인 설명 문자열을 logging_messages 설정(KO/EN)으로부터 동적으로 조회하고 정제하여 반환합니다.
 
         :param log_id_str: 로그 메시지 식별 코드
-        :return: 정제된 한글 설명 문자열 (미매핑 시 빈 문자열)
+        :return: 정제된 설명 문자열 (미매핑 시 빈 문자열)
         """
         if not log_id_str:
             return ""
@@ -419,7 +501,15 @@ class ProjectLogger:
 
         # 상세 파라미터 구분자(:, [ 등) 이전의 핵심 요약문 추출
         import re
-        title_str: str = template_val.split(":")[0].split("[")[0].strip()
+        title_str: str = template_val.split(":")[0].strip()
+        if "[" in title_str:
+            if title_str.startswith("[") and "]" in title_str:
+                closing_bracket_idx_int: int = title_str.find("]")
+                after_tag_str: str = title_str[closing_bracket_idx_int + 1:]
+                if "[" in after_tag_str:
+                    title_str = title_str[:closing_bracket_idx_int + 1] + after_tag_str.split("[")[0]
+            else:
+                title_str = title_str.split("[")[0].strip()
 
         # 기본 서비스/스토리지 컨텍스트 치환 (설정 파일 기반 감지)
         try:
@@ -549,6 +639,7 @@ class ProjectLogger:
         start_datetime_str: str | None = None,
         total_bytes_int: int = 0,
         error_counts_dict: dict[str, int] | None = None,
+        excluded_counts_dict: dict[str, int] | None = None,
         extra_lines_list: list[str] | None = None,
         tracker_obj: Any = None,
     ) -> None:
@@ -564,6 +655,7 @@ class ProjectLogger:
         :param start_datetime_str: 작업 시작 일시 문자열 (YYYY-MM-DD HH:MM:SS)
         :param total_bytes_int: 전송/처리된 총 바이트 수
         :param error_counts_dict: 에러 코드별 발생 건수 딕셔너리 (미지정 시 로거 자동 집계 사용)
+        :param excluded_counts_dict: 제외 코드별 발생 건수 딕셔너리 (미지정 시 로거 자동 집계 사용)
         :param extra_lines_list: 요약 블록에 추가할 커스텀 상세 정보 행 리스트
         :param tracker_obj: 메트릭을 추출할 ProgressTracker 인스턴스 (지정 시 다른 메트릭 인자 자동 추출)
         """
@@ -618,6 +710,22 @@ class ProjectLogger:
         elif eff_failure_count_int > 0:
             lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {eff_failure_count_int:,}건):")
             lines_list.append(f"  * 기타 미분류 실패: {eff_failure_count_int:,} 건")
+
+        # 제외 통계 조회: 인자로 전달된 excluded_counts_dict 우선, 없으면 로거의 get_excluded_counts() 사용
+        excluded_map: dict[str, int] = excluded_counts_dict if excluded_counts_dict is not None else self.get_excluded_counts()
+
+        if excluded_map:
+            total_excluded_items_int: int = sum(excluded_map.values())
+            lines_list.append(f"- 처리 제외 세부 내역 (총 {total_excluded_items_int:,}건):")
+            for excl_log_id_str, excl_cnt_int in sorted(excluded_map.items(), key=lambda x: (-x[1], x[0])):
+                desc_str: str = self.get_log_id_description(excl_log_id_str)
+                if desc_str:
+                    lines_list.append(f"  * {excl_log_id_str} ({desc_str}): {excl_cnt_int:,} 건")
+                else:
+                    lines_list.append(f"  * {excl_log_id_str}: {excl_cnt_int:,} 건")
+        elif eff_excluded_count_int > 0:
+            lines_list.append(f"- 처리 제외 세부 내역 (총 {eff_excluded_count_int:,}건):")
+            lines_list.append(f"  * 기타 미분류 제외: {eff_excluded_count_int:,} 건")
 
         if total_bytes_int > 0:
             mb_val_float: float = total_bytes_int / (1024 * 1024)

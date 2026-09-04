@@ -28,8 +28,7 @@
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - `SingleLineFlattenFormatter`: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화하여 중앙 로그 수집(Logstash, Fluentd 등)에 최적화
 - `ProjectLogger`: 콘솔 및 파일 로그 핸들러 동적 생성 및 일자별 로그 분리 관리
-- **프로그램별 차등 로깅 레벨 지원 (`logging.level.<app_name>`)**: 설정 파일에서 프로그램별로 세분화된 로그 레벨 지정 지원
-- `logging_messages.yml` 사전 기반 한글 포맷 템플릿 연동 로깅 지원
+- **다국어 로그 메시지 템플릿 사전 연동 (`logging_messages_ko.yml`, `logging_messages_en.yml`)**: `config.yml`의 `logging.language` (`KO` 또는 `EN`) 설정에 따라 한국어/영문 메시지 사전 자동 연동 및 런타임 동적 언어 전환 지원
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
 - `EcsClient`: Dell ECS S3 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득
@@ -183,7 +182,7 @@ python -m build agent_common --wheel -o whls/
 pip install -e agent_common
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.23-py3-none-any.whl
+pip install dist/agent_common-0.4.24-py3-none-any.whl
 ```
 
 #### PyPI 공공 배포 가이드
@@ -200,7 +199,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.23*
+python -m twine upload dist/agent_common-0.4.24*
 ```
 
 ---
@@ -235,8 +234,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 #### 2. Single-Line Log Formatter & Project Logger (`agent_common.logger`)
 - `SingleLineFlattenFormatter`: Flattens all log messages and exception tracebacks into a single line, optimized for centralized log collectors (Logstash, Fluentd, etc.).
 - `ProjectLogger`: Dynamic console and file log handler creation with date-based directory partitioning.
-- **Program-specific Differentiated Logging Levels (`logging.level.<app_name>`)**: Granular logging level configuration per application.
-- Template-driven logging mapped to predefined message templates in `logging_messages.yml`.
+- **Multi-language Logging Template Dictionaries (`logging_messages_ko.yml`, `logging_messages_en.yml`)**: Automated bilingual dictionary loading and dynamic runtime language switching based on `config.yml`'s `logging.language` (`KO` or `EN`).
 
 #### 3. Storage and Database Infrastructure Clients (`agent_common.clients`)
 - `EcsClient`: Dell ECS S3 storage connection, object listing, metadata extraction, and in-memory streaming retrieval.
@@ -384,7 +382,7 @@ python -m build agent_common --wheel -o whls/
 pip install -e agent_common
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.23-py3-none-any.whl
+pip install dist/agent_common-0.4.24-py3-none-any.whl
 ```
 
 #### PyPI Public Distribution Guide
@@ -401,7 +399,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.23*
+python -m twine upload dist/agent_common-0.4.24*
 ```
 
 ---

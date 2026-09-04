@@ -4,6 +4,20 @@
 
 ---
 
+### v0.4.24 (2026-09-04)
+- **Multi-language Logging Template Dictionary (`logging_messages_en.yml`) and Config-driven Language Selection (`logging.language`)**:
+  - Authored a dedicated English log message template dictionary (`src/agent_common/config/logging_messages_en.yml`) covering all log levels (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) and domain groups with natural, professional translations.
+  - Reorganized `logging_messages.yml` into explicit `logging_messages_ko.yml` to clearly establish bilingual dictionary assets.
+  - Enhanced `ConfigLoader` to dynamically load either `"KO"` (Korean, default) or `"EN"` (English, case-insensitive) template dictionaries based on `config.yml`'s `logging.language` (or `logging.lang`).
+  - Added `ConfigLoader.set_language()` and `ProjectLogger.set_language()` methods/properties for dynamic runtime language switching.
+  - Supported project-level dictionary override merging with `config/logging_messages_en.yml`, `config/logging_messages_ko.yml`, and `config/logging_messages.yml`.
+- **`ProjectLogger` Exclusion (Skip) Tracking by Log ID and Enhanced Summary Report (`log_summary`)**:
+  - Added `record_exclusion()`, `get_excluded_counts()`, `reset_excluded_counts()`, and global aggregation (`_excluded_counts_dict`) in `ProjectLogger` to track exclusions by log ID.
+  - Enhanced `record_excluded(log_id_or_count, count_int)` and `update(..., log_id_str)` to automatically track exclusion log IDs while maintaining 100% backward compatibility.
+  - Refined `get_error_counts()` and `get_excluded_counts()` to prioritize global aggregation across multi-logger component instances (e.g., `TableDataTransformer` -> `EcsToBigquery`).
+  - Added `- 처리 제외 세부 내역 (총 N건):` section to `log_summary()`, dynamically querying `logging_messages_*.yml` message templates to output `* <log_id> (<description>): N items`.
+  - Added `excluded_counts_dict` and `error_counts_dict` forwarding to `ProgressTracker.log_summary()`.
+
 ### v0.4.23 (2026-09-03)
 - **Bilingual Documentation (Korean/English) & GitHub Integration for README/CHANGELOG**:
   - Added language jump anchor links (`[ 🇰🇷 한국어 ]` / `[ 🇺🇸 English ]`) at the top of `README.md` to enhance navigation on PyPI and GitHub.

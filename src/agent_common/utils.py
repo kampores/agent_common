@@ -92,18 +92,35 @@ class ProgressTracker:
             else:
                 self.logger.info("progress_update", message=progress_msg_str)
 
-    def log_summary(self, extra_lines_list: Optional[list[str]] = None) -> None:
+    def log_summary(
+        self,
+        extra_lines_list: Optional[list[str]] = None,
+        error_counts_dict: Optional[dict[str, int]] = None,
+        excluded_counts_dict: Optional[dict[str, int]] = None,
+    ) -> None:
         """
         작업 종료 시 로거(ProjectLogger)에 위임하여 최종 처리 결과 요약 리포트(Summary Report)를 출력합니다.
 
         :param extra_lines_list: 요약 블록에 추가할 커스텀 상세 정보 행 리스트 (옵션)
+        :param error_counts_dict: 에러 코드별 발생 건수 딕셔너리 (옵션)
+        :param excluded_counts_dict: 제외 코드별 발생 건수 딕셔너리 (옵션)
         """
         if self.logger and hasattr(self.logger, "log_summary"):
-            self.logger.log_summary(tracker_obj=self, extra_lines_list=extra_lines_list)
+            self.logger.log_summary(
+                tracker_obj=self,
+                extra_lines_list=extra_lines_list,
+                error_counts_dict=error_counts_dict,
+                excluded_counts_dict=excluded_counts_dict,
+            )
         elif self.logger:
             from agent_common.logger import ProjectLogger
             temp_logger = ProjectLogger(getattr(self.logger, "name", "ProgressTracker"))
-            temp_logger.log_summary(tracker_obj=self, extra_lines_list=extra_lines_list)
+            temp_logger.log_summary(
+                tracker_obj=self,
+                extra_lines_list=extra_lines_list,
+                error_counts_dict=error_counts_dict,
+                excluded_counts_dict=excluded_counts_dict,
+            )
         else:
             elapsed_float: float = time.time() - self.start_time_float
             print(f"[{self.task_name_str} 작업 완료] 총 {self.total_items_int:,}건 중 {self.current_count_int:,}건 진행 (소요: {elapsed_float:.2f}초)")
