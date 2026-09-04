@@ -1,5 +1,0 @@
-transfer:
-  timeout_seconds: 120
-
-bigquery:
-  ignore_unknown_values: true

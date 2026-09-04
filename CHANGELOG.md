@@ -1,5 +1,23 @@
 # 버전 변경 이력 (Changelog)
 
+> [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
+
+---
+
+### v0.4.23 (2026-09-03)
+- **README 및 CHANGELOG 한/영 이원화(다국어 지원) 및 GitHub 연동**:
+  - `README.md` 상단에 한국어/영문 점프 앵커 링크([ 🇰🇷 한국어 ] / [ 🇺🇸 English ])를 도입하여 PyPI 및 GitHub 가독성 개선.
+  - 영문 버전 문서화 대칭 구성 및 영문 전용 변경 이력(`CHANGELOG_EN.md`) 신설.
+  - PyPI 설명란 내 상대 경로로 깨지던 `CHANGELOG.md` 링크를 공식 GitHub 원격 저장소 링크로 수정.
+  - `pyproject.toml` 내 `project.urls`(Repository, Changelog) 메타데이터 등록 및 배포 패키지(`MANIFEST.in`) 동기화.
+
+### v0.4.22 (2026-09-03)
+- **PyPI 공공 배포를 위한 표준 `src` 레이아웃 전환 및 패키지 용량 최적화**:
+  - 패키지 소스 코드(`*.py`) 및 리소스(`config/`, `schemas/`, `tool/`)를 `src/agent_common/` 표준 하위 구조로 격리 배치.
+  - `pyproject.toml` 설정을 `[tool.setuptools.packages.find] where = ["src"]` 표준 자동 탐색 방식으로 전환.
+  - `MANIFEST.in` 최신화 및 `whls/`, `dist/`, `build/` 등 대용량 아티팩트의 배포 아카이브 유입 원천 차단(prune) 적용.
+  - 불필요한 바이너리/의존성 파일 배제(약 수십 MB -> 수십 KB 수준)로 PyPI 공공 배포 안정성 및 설치 경량화 달성.
+
 ### v0.4.21 (2026-09-03)
 - **`BigQueryClient.merge_table_from_json_data` 기본 청크 크기 하향 및 BigQuery API 413 Payload Too Large 방지**:
   - `chunk_size_int` 기본값을 기존 `500`에서 안전한 `100`으로 하향 조정.

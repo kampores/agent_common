@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent_common"
-version = "0.4.21"
+version = "0.4.23"
 description = "중앙 에이전트 및 하위 SQL 생성 서비스를 위한 공통 로깅/설정 모듈"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,9 +13,14 @@ dependencies = [
     "requests"
 ]
 
-[tool.setuptools]
-package-dir = {"agent_common" = "."}
-packages = ["agent_common", "agent_common.tool", "agent_common.tool.date"]
+[project.urls]
+"Homepage" = "https://github.com/kampores/agent_common"
+"Repository" = "https://github.com/kampores/agent_common"
+"Changelog" = "https://github.com/kampores/agent_common/blob/main/CHANGELOG.md"
+"Changelog (English)" = "https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 agent_common = ["*.yml", "config/*.yml", "schemas/*.json", "tool/**/*.py"]

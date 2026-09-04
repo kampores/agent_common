@@ -1,12 +1,18 @@
-# agent_common 패키지
+# agent_common
+
+> [ 🇰🇷 한국어 설명 ](#-agent_common-패키지-한국어) | [ 🇺🇸 English Description ](#-agent_common-package-english)
+
+---
+
+## 🇰🇷 agent_common 패키지 (한국어)
 
 중앙 에이전트 및 데이터 이관/생성 서비스를 위한 공통 로깅, 설정 로더, 인프라 클라이언트, 동적 도구(Tool) 파서 및 에러 처리 라이브러리 패키지입니다.
 
 ---
 
-## 📌 주요 제공 기능
+### 📌 주요 제공 기능
 
-### 1. 설정 로더 및 불변 설정 객체 (`agent_common.config_loader`)
+#### 1. 설정 로더 및 불변 설정 객체 (`agent_common.config_loader`)
 - **계층적 YAML 설정 해석 및 병합 (Deep Merge)**: 패키지 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정(`config/*.yml`) 동적 병합.
 - **불변 점 표기법 조회 (`ReadOnlyConfig`)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 형태로 직관적 속성 접근 및 런타임 변조 방지.
 - **타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion - v0.4.14)**:
@@ -19,18 +25,18 @@
 - **네트워크 프록시 제어**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
 - **설정 파일 템플릿 보정 (`ensure_config_file()`)**: 프로젝트 설정 누락 시 기본 스키마 기반 자동 생성 및 자가 치유(Self-healing).
 
-### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
+#### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - `SingleLineFlattenFormatter`: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화하여 중앙 로그 수집(Logstash, Fluentd 등)에 최적화
 - `ProjectLogger`: 콘솔 및 파일 로그 핸들러 동적 생성 및 일자별 로그 분리 관리
 - **프로그램별 차등 로깅 레벨 지원 (`logging.level.<app_name>`)**: 설정 파일에서 프로그램별로 세분화된 로그 레벨 지정 지원
 - `logging_messages.yml` 사전 기반 한글 포맷 템플릿 연동 로깅 지원
 
-### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
+#### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
 - `EcsClient`: Dell ECS S3 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득
 - `GcsClient`: Google Cloud Storage 연결, 파일 존재 검증 및 대용량 멀티스레드 스트리밍 업로드
 - `BigQueryClient`: Google Cloud BigQuery 연결, JSON 데이터 스트리밍 입력(`insert_rows_json`), 배치 로드(`load_table_from_json_data`), 인라인 MERGE(`merge_table_from_json_data` - 한글/특수문자/예약어 컬럼 백틱 지원 및 413 방지 기본 청크 100건 분할), 범용 SQL 쿼리(`query`)
 
-### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
+#### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
 - **이원화된 Tool 디렉터리 계층 탐색**:
   - **1순위 (내장 도구)**: `agent_common/tool/` 하위 모듈 (전사 표준 내장 도구)
   - **2순위 (프로젝트 도구)**: `config.yml`의 `transfer.tool_dir`에 지정된 로컬 경로 (예: `medallion/tool/`)
@@ -47,14 +53,14 @@
 - **시스템 컨텍스트 스키마 (`agent_common.schemas.sys.json`)**:
   - `{sys.today}`, `{sys.now_compact}`, `{sys.timestamp_compact}`, `{sys.env}` 등 기본 자동 제공
 
-### 5. 진행률 트래커 및 공용 유틸리티 (`agent_common.utils`)
+#### 5. 진행률 트래커 및 공용 유틸리티 (`agent_common.utils`)
 - `ProgressTracker`: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도 및 남은 시간 예측, 마일스톤 경고 승격 로깅, 최종 요약 리포트(Summary Report) 생성
 - `DateTimeUtils`: 전역 일시 헬퍼 함수군
 
-### 6. 공용 에러 및 예외 핸들러 (`agent_common.error_handler`)
+#### 6. 공용 에러 및 예외 핸들러 (`agent_common.error_handler`)
 - 네트워크 장애, 설정 오류, 런타임 예외에 대한 일관된 로깅 및 핸들링 제공
 
-### 7. 통합 LLM 클라이언트 및 추론 엔진 (`agent_common.llm`)
+#### 7. 통합 LLM 클라이언트 및 추론 엔진 (`agent_common.llm`)
 - **다중 프로바이더 통합 지원 (`LlmClient`)**:
   - **외부 LLM API**: OpenAI 호환 표준 API (`/chat/completions`) 및 Fabrix 전용 API 형식 지원
   - **로컬 GGUF 모델**: `llama-cpp-python` 기반 로컬 CPU/GPU 가속 추론 및 인메모리 모델 캐싱(`_LOCAL_LLMS`)
@@ -67,9 +73,9 @@
 
 ---
 
-## 🛠️ 사용 예시 (Usage Examples)
+### 🛠️ 사용 예시 (Usage Examples)
 
-### 1. 전역 `config` 점 표기법 및 타입 보증 활용
+#### 1. 전역 `config` 점 표기법 및 타입 보증 활용
 ```python
 from agent_common.config_loader import config
 
@@ -83,7 +89,7 @@ ecs_url: str = config.ecs.endpoint_url
 table_id: str = config.bigquery.table_id
 ```
 
-### 2. ToolParser를 통한 동적 룰 평가
+#### 2. ToolParser를 통한 동적 룰 평가
 ```python
 from agent_common.tool_parser import ToolParser
 
@@ -106,7 +112,7 @@ today_val = tool_parser.eval("{sys.today}", context_dict)
 # -> "20260824"
 ```
 
-### 3. ProgressTracker 실시간 진행률 추적
+#### 3. ProgressTracker 실시간 진행률 추적
 ```python
 from agent_common.utils import ProgressTracker
 from agent_common.logger import ProjectLogger
@@ -125,7 +131,7 @@ for file_info in file_list:
 tracker.log_summary()
 ```
 
-### 4. LlmClient를 통한 통합 텍스트/SQL 생성
+#### 4. LlmClient를 통한 통합 텍스트/SQL 생성
 ```python
 from agent_common.llm import LlmClient
 
@@ -144,13 +150,13 @@ print(f"생성된 결과 ({llm_client.last_generated_by}):\n{response_str}")
 
 ---
 
-## 🚀 설치 및 빌드 방법
+### 🚀 설치 및 빌드 방법
 
-### 📦 Wheel 패키지 빌드 (.whl 생성)
+#### 📦 Wheel 패키지 빌드 (.whl 생성)
 
 새로운 버전으로 패키징하여 `.whl` 파일을 빌드할 경우 `scripts/build_agent_common_whl.py` 또는 `agent_common` 디렉터리 내에서 아래 명령을 실행합니다.
 
-#### 1. 사내 폐쇄망 환경 (인터넷 차단, 완전히 오프라인 빌드)
+##### 1. 사내 폐쇄망 환경 (인터넷 차단, 완전히 오프라인 빌드)
 외부 PyPI 접속을 완전히 차단하기 위해 `--no-index`, `--no-build-isolation`, `--no-deps` 옵션을 지정합니다.
 
 ```bash
@@ -161,7 +167,7 @@ python scripts/build_agent_common_whl.py
 pip wheel ./agent_common --no-index --no-build-isolation --no-deps -w whls/
 ```
 
-#### 2. 인터넷 연동망 환경 (온라인 빌드)
+##### 2. 인터넷 연동망 환경 (온라인 빌드)
 
 ```bash
 # pip wheel 이용
@@ -171,17 +177,235 @@ pip wheel ./agent_common --no-deps -w whls/
 python -m build agent_common --wheel -o whls/
 ```
 
-### Wheel 패키지 설치
+#### Wheel 패키지 설치
 ```bash
 # 개발 환경 (Editable 모드)
 pip install -e agent_common
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install whls/agent_common-0.4.14-py3-none-any.whl
+pip install dist/agent_common-0.4.23-py3-none-any.whl
+```
+
+#### PyPI 공공 배포 가이드
+본 패키지는 표준 `src/` 레이아웃으로 구성되어 소스 배포판(`sdist`) 및 휠(`wheel`) 파일 용량이 약 50KB 수준으로 최소화되어 있습니다.
+
+```bash
+# 1. 빌드 도구 설치
+pip install build twine
+
+# 2. 패키지 빌드 (sdist 및 wheel 동시 생성)
+python -m build
+
+# 3. 배포 아카이브 검증
+python -m twine check dist/*
+
+# 4. PyPI 업로드
+python -m twine upload dist/agent_common-0.4.23*
 ```
 
 ---
 
-## 📋 버전 변경 이력 (Changelog)
+### 📋 버전 변경 이력 (Changelog)
 
-자세한 버전 변경 이력은 [CHANGELOG.md](CHANGELOG.md) 파일을 참고하세요.
+자세한 버전 변경 이력은 [GitHub CHANGELOG.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md) 파일을 참고하세요.
+
+---
+
+## 🇺🇸 agent_common Package (English)
+
+A comprehensive Python common library providing unified logging, hierarchical configuration loaders, cloud and database infrastructure clients, dynamic tool parsers, and centralized error handling for enterprise agent services and data migration pipelines.
+
+---
+
+### 📌 Key Features
+
+#### 1. Configuration Loader & Immutable Config Object (`agent_common.config_loader`)
+- **Hierarchical YAML Parsing & Deep Merge**: Dynamically merges base package configurations (`agent_common/config/*.yml`) with project-specific configurations (`config/*.yml`).
+- **Immutable Dot-Notation Access (`ReadOnlyConfig`)**: Intuitive attribute-based lookup (`config.ecs.endpoint_url`, `config.transfer.max_workers_int`) while preventing unintended runtime mutations.
+- **Type Guarantee & Automatic Coercion via Type Suffixes (v0.4.14)**:
+  - `_int`: Automatic integer conversion and type guarantee.
+  - `_float`: Automatic floating-point conversion and type guarantee.
+  - `_bool`: Automatic boolean conversion (`"true"`, `"false"`, `1`, `0`, etc.).
+  - `_str`: Automatic string conversion and `.strip()` whitespace trimming.
+  - `_list` / `_dict`: Guaranteed list / immutable dictionary (`ReadOnlyConfig`) wrapping.
+- **Fail-Fast Required Setting Validation (`require_setting()`)**: Immediate process termination with diagnostic output if required settings are missing during startup.
+- **Network Proxy Control**: Automatic synchronization of `NO_PROXY` environment variable from `proxy.no_proxy` configuration.
+- **Self-Healing Configuration Templates (`ensure_config_file()`)**: Automatic generation and missing-key repair based on default schemas.
+
+#### 2. Single-Line Log Formatter & Project Logger (`agent_common.logger`)
+- `SingleLineFlattenFormatter`: Flattens all log messages and exception tracebacks into a single line, optimized for centralized log collectors (Logstash, Fluentd, etc.).
+- `ProjectLogger`: Dynamic console and file log handler creation with date-based directory partitioning.
+- **Program-specific Differentiated Logging Levels (`logging.level.<app_name>`)**: Granular logging level configuration per application.
+- Template-driven logging mapped to predefined message templates in `logging_messages.yml`.
+
+#### 3. Storage and Database Infrastructure Clients (`agent_common.clients`)
+- `EcsClient`: Dell ECS S3 storage connection, object listing, metadata extraction, and in-memory streaming retrieval.
+- `GcsClient`: Google Cloud Storage connection, blob existence verification, and high-throughput multithreaded streaming uploads.
+- `BigQueryClient`: Google Cloud BigQuery client supporting streaming ingestion (`insert_rows_json`), batch loading (`load_table_from_json_data`), inline MERGE (`merge_table_from_json_data` with backtick escaping and 100-record chunking to prevent HTTP 413), and general SQL execution (`query`).
+
+#### 4. Dynamic Tool Loader & Template Evaluator (`agent_common.tool_parser`) & Built-in Tools (`agent_common.tool`)
+- **Dual Tool Hierarchy Discovery**:
+  - **Priority 1 (Built-in Tools)**: Modules under `agent_common/tool/` (standard enterprise tools).
+  - **Priority 2 (Project Tools)**: Local path configured in `config.yml` under `transfer.tool_dir` (e.g., `medallion/tool/`).
+- **Declarative Template Replacement & Expression Evaluation (`ToolParser.eval`)**:
+  - Variable namespace binding: `{ecs.key}`, `{sys.today}`, `{json.title}`
+  - Dynamic tool function invocation: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`
+  - String slicing & fallback methods: `"{raw_key.lstrip('/')}"`, `"{raw_size|0}"`
+- **Safe Namespace Lookup (`_SafeNamespace`)**:
+  - Case-insensitive lookups returning empty strings (`""`) without raising `KeyError` on missing keys.
+- **Built-in Common Utilities (`agent_common.tool.date.DateTimeUtils`)**:
+  - `get_today_yyyymmdd()`: Returns 8-digit date string (e.g., `20260824`).
+  - `get_now_compact()`: Returns 14-digit timestamp string (e.g., `20260824110500`).
+  - `get_now_formatted(fmt)`: Returns standard KST formatted datetime string (`YYYY-MM-DD HH:MM:SS+09:00`).
+- **Standard System Context Schema (`agent_common.schemas.sys.json`)**:
+  - Automatically provides `{sys.today}`, `{sys.now_compact}`, `{sys.timestamp_compact}`, `{sys.env}`, etc.
+
+#### 5. Progress Tracker & Common Utilities (`agent_common.utils`)
+- `ProgressTracker`: Real-time multithreaded progress tracking (`[N/Total] (P%)`), throughput/ETA calculation, milestone log level elevation, and summary report generation.
+- `DateTimeUtils`: Global date/time helper functions.
+
+#### 6. Common Error & Exception Handler (`agent_common.error_handler`)
+- Consistent exception logging and handling for network failures, configuration errors, and runtime exceptions.
+
+#### 7. Unified LLM Client & Inference Engine (`agent_common.llm`)
+- **Multi-Provider Support (`LlmClient`)**:
+  - **External LLM APIs**: Standard OpenAI-compatible API (`/chat/completions`) and Fabrix API format.
+  - **Local GGUF Models**: Local CPU/GPU accelerated inference via `llama-cpp-python` with in-memory caching (`_LOCAL_LLMS`).
+- **Pool-based Model Profile Management**: Dynamic configuration via `llmpool.yml` and `config.yml`.
+- **Auto Failover**: Seamless automatic fallback to local GGUF models if external API calls fail (`provider: auto`).
+- **Unified Inference Error Handling (`LlmInferenceError`)**: Centralized exception handling for API key errors, timeouts, and model load failures.
+
+---
+
+### 🛠️ Usage Examples
+
+#### 1. Dot-Notation Global `config` & Type Guarantees
+```python
+from agent_common.config_loader import config
+
+# 1) Guaranteed type coercion via type suffixes
+max_workers: int = config.transfer.max_workers_int       # Guaranteed int
+prefix: str = config.gcs.prefix_str                      # Guaranteed str with .strip()
+is_ecscopy: bool = config.gcs.ecscopy_bool               # Guaranteed bool
+
+# 2) Hierarchical attribute access
+ecs_url: str = config.ecs.endpoint_url
+table_id: str = config.bigquery.table_id
+```
+
+#### 2. Dynamic Rule Evaluation via ToolParser
+```python
+from agent_common.tool_parser import ToolParser
+
+# Initialize ToolParser (auto-discovers built-in and project tools)
+tool_parser = ToolParser()
+
+# Prepare context dictionary
+context_dict = {
+    "ecs": {"key": "/unstr_data/PAK/contentInfo/orgfile/20260804/12345.html.json"},
+    "contentInfo": {"enddate": "2024-12-31"},
+    "sys": tool_parser.build_sys_context(),
+}
+
+# 1) Evaluate tool function call template
+date_code = tool_parser.eval("{code.date_check_to_code(contentInfo.enddate)}", context_dict)
+# -> "09" (Expiration status)
+
+# 2) Evaluate system namespace & date templates
+today_val = tool_parser.eval("{sys.today}", context_dict)
+# -> "20260824"
+```
+
+#### 3. Real-time Progress Tracking with ProgressTracker
+```python
+from agent_common.utils import ProgressTracker
+from agent_common.logger import ProjectLogger
+
+logger = ProjectLogger("MyTask")
+tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, item_name_str="file")
+
+for file_info in file_list:
+    try:
+        # Processing logic
+        tracker.increment_success(bytes_int=len(data))
+    except Exception as e:
+        tracker.increment_failure(error_msg_str=str(e))
+
+# Output final execution summary report
+tracker.log_summary()
+```
+
+#### 4. Unified Text/SQL Generation with LlmClient
+```python
+from agent_common.llm import LlmClient
+
+# 1) Initialize client with configured purpose or model name
+llm_client = LlmClient(purpose="sql_generator")
+
+# 2) Prompt-based generation (External API with auto fallback to local GGUF)
+prompt_str = "User request: Generate daily subscriber statistics SQL for August 2026."
+response_str = llm_client.generate(
+    prompt=prompt_str,
+    system_prompt="You are an expert AI for BigQuery SQL generation."
+)
+
+print(f"Generated result ({llm_client.last_generated_by}):\n{response_str}")
+```
+
+---
+
+### 🚀 Installation and Build Guide
+
+#### 📦 Wheel Package Build (.whl)
+Run the following commands within the `agent_common` directory or using `scripts/build_agent_common_whl.py`:
+
+##### 1. Air-gapped / Offline Environment
+Use `--no-index`, `--no-build-isolation`, and `--no-deps` to build offline without external PyPI access:
+```bash
+# Recommended: Run build script from root
+python scripts/build_agent_common_whl.py
+
+# Or build wheel directly
+pip wheel ./agent_common --no-index --no-build-isolation --no-deps -w whls/
+```
+
+##### 2. Online Environment
+```bash
+# Using pip wheel
+pip wheel ./agent_common --no-deps -w whls/
+
+# Or using build module
+python -m build agent_common --wheel -o whls/
+```
+
+#### Installing the Wheel Package
+```bash
+# Development (Editable mode)
+pip install -e agent_common
+
+# Production (Wheel package)
+pip install dist/agent_common-0.4.23-py3-none-any.whl
+```
+
+#### PyPI Public Distribution Guide
+This package adopts the standard `src/` layout, minimizing distribution archives (`sdist` and `wheel`) to approximately 50KB.
+
+```bash
+# 1. Install build tools
+pip install build twine
+
+# 2. Build distribution archives (sdist and wheel)
+python -m build
+
+# 3. Check distribution archives
+python -m twine check dist/*
+
+# 4. Upload to PyPI
+python -m twine upload dist/agent_common-0.4.23*
+```
+
+---
+
+### 📋 Version History (Changelog)
+
+For detailed version history, please refer to [GitHub CHANGELOG_EN.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md).
