@@ -2,6 +2,10 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.29 (2026-09-04)
+- **`pyproject.toml` 패키지 설명(`description`) 전면 개편 및 다국어 병기**:
+  - 패키지 발전 방향 및 현재 핵심 기능(설정, 구조화 로깅, 도구 파싱, 진행률 추적)에 부합하도록 한글 설명을 전면 개편하고 영문 설명을 병기 (`자율 에이전트 및 데이터 파이프라인을 위한 경량 설정·로깅·도구 프레임워크 (Lightweight configuration, logging, and tooling framework for autonomous agents and data pipelines)`).
+
 ### v0.4.28 (2026-09-04)
 - **`llmpool.yml` 및 `llm.py` 내 사내 GenAI 허브 엔드포인트 도메인 비식별화 및 보안 정제**:
   - `src/agent_common/config/llmpool.yml` 내 사내 전용 클라우드 도메인 및 엔드포인트 URL을 표준 가상 엔드포인트(`https://genaihub.example.com/v1/messages`)로 비식별화.

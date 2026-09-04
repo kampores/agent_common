@@ -2,6 +2,10 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.29 (2026-09-04)
+- **Bilingual Description Modernization in `pyproject.toml`**:
+  - Restructured package one-line summary `description` in Korean and English to accurately reflect the framework's core modern capabilities (`자율 에이전트 및 데이터 파이프라인을 위한 경량 설정·로깅·도구 프레임워크 (Lightweight configuration, logging, and tooling framework for autonomous agents and data pipelines)`).
+
 ### v0.4.28 (2026-09-04)
 - **Sanitization of Internal GenAI Hub Endpoint Domain and Docstring in `llmpool.yml` and `llm.py`**:
   - Sanitized internal private cloud domain and endpoint URLs in `src/agent_common/config/llmpool.yml` to standard sample endpoints (`https://genaihub.example.com/v1/messages`).
