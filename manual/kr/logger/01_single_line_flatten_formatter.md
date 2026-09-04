@@ -24,17 +24,17 @@
 
 ```mermaid
 flowchart TD
-    A[logging.LogRecord 유입] --> B{exc_info 존재 여부?}
-    B -- 예 (예외 발생) --> C[traceback.extract_tb 역추적]
-    C --> D[최종 원천 프레임 추출<br/>origin_file, lineno, func_name]
+    A["logging.LogRecord 유입"] --> B{"exc_info 존재 여부?"}
+    B -->|"예 (예외 발생)"| C["traceback.extract_tb 역추적"]
+    C --> D["최종 원천 프레임 추출<br/>origin_file, lineno, func_name"]
     D --> E["Origin 식별자 생성<br/>[Origin: file.py:L123 in func()]"]
-    B -- 아니오 (일반 로그) --> F[기본 포맷팅 수행]
-    E --> G[super().format 호출]
+    B -->|"아니오 (일반 로그)"| F["기본 포맷팅 수행"]
+    E --> G["super().format 호출"]
     F --> G
-    G --> H{Traceback 개행 포함 여부?}
-    H -- 예 --> I[로그 헤더 뒤에 Origin 주입 후 Traceback 결합]
-    H -- 아니오 --> J[메시지 말미에 Origin 주입 또는 원본 반환]
-    I --> K[최종 포맷팅된 로그 문자열 반환]
+    G --> H{"Traceback 개행 포함 여부?"}
+    H -->|"예"| I["로그 헤더 뒤에 Origin 주입 후 Traceback 결합"]
+    H -->|"아니오"| J["메시지 말미에 Origin 주입 또는 원본 반환"]
+    I --> K["최종 포맷팅된 로그 문자열 반환"]
     J --> K
 ```
 

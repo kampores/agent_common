@@ -184,7 +184,7 @@ python -m build agent_common --wheel -o whls/
 pip install -e agent_common
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.27-py3-none-any.whl
+pip install dist/agent_common-0.4.30-py3-none-any.whl
 ```
 
 #### PyPI 공공 배포 가이드
@@ -201,7 +201,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.27*
+python -m twine upload dist/agent_common-0.4.30*
 ```
 
 ---
@@ -406,7 +406,7 @@ python -m build agent_common --wheel -o whls/
 pip install -e agent_common
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.27-py3-none-any.whl
+pip install dist/agent_common-0.4.30-py3-none-any.whl
 ```
 
 #### PyPI Public Distribution Guide
@@ -423,7 +423,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.27*
+python -m twine upload dist/agent_common-0.4.30*
 ```
 
 ---

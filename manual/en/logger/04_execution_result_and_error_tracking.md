@@ -27,20 +27,24 @@ Classifying outcomes strictly into binary "Success" vs "Failure" causes severe p
 
 ```mermaid
 flowchart TD
-    A[Incoming Processed Item] --> B{Outcome Evaluation}
+    A["Incoming Processed Item"] --> B{"Outcome Evaluation"}
     
-    B -- "Business Skip / Filter" --> C["record_excluded(reason_code)<br/>excluded_bool=True"]
+    B -->|"Business Skip / Filter"| C["record_excluded(reason_code)<br/>excluded_bool=True"]
     C --> C1["excluded_count_int (+1)"]
     C --> C2["excluded_counts_dict[reason_code] (+1)"]
     
-    B -- "Successful Processing" --> D["record_success()<br/>success_bool=True"]
+    B -->|"Successful Processing"| D["record_success()<br/>success_bool=True"]
     D --> D1["success_count_int (+1)"]
     
-    B -- "System Error / Failure" --> E["record_failure(error_code) or<br/>logger.error / exception"]
+    B -->|"System Error / Failure"| E["record_failure(error_code) or<br/>logger.error / exception"]
     E --> E1["failure_count_int (+1)"]
     E --> E2["error_counts_dict[error_code] (+1)"]
     
-    C1 & C2 & D1 & E1 & E2 --> F["Update both Instance and Class-Global State"]
+    C1 --> F["Update both Instance and Class-Global State"]
+    C2 --> F
+    D1 --> F
+    E1 --> F
+    E2 --> F
     F --> G["Integrate with get_result_counts() and log_summary()"]
 ```
 

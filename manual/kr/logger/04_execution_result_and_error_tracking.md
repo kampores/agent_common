@@ -27,20 +27,24 @@
 
 ```mermaid
 flowchart TD
-    A[개별 처리 항목 유입] --> B{결과 판별}
+    A["개별 처리 항목 유입"] --> B{"결과 판별"}
     
-    B -- "비즈니스 제외/필터 (Skip)" --> C["record_excluded(사유_코드)<br/>excluded_bool=True"]
+    B -->|"비즈니스 제외/필터 (Skip)"| C["record_excluded(사유_코드)<br/>excluded_bool=True"]
     C --> C1["excluded_count_int 누적 (+1)"]
     C --> C2["excluded_counts_dict[사유_코드] 누적 (+1)"]
     
-    B -- "정상 완료 (Success)" --> D["record_success()<br/>success_bool=True"]
+    B -->|"정상 완료 (Success)"| D["record_success()<br/>success_bool=True"]
     D --> D1["success_count_int 누적 (+1)"]
     
-    B -- "처리 오류/장애 (Failure)" --> E["record_failure(에러_코드) 또는<br/>logger.error / exception 발생"]
+    B -->|"처리 오류/장애 (Failure)"| E["record_failure(에러_코드) 또는<br/>logger.error / exception 발생"]
     E --> E1["failure_count_int 누적 (+1)"]
     E --> E2["error_counts_dict[에러_코드] 누적 (+1)"]
     
-    C1 & C2 & D1 & E1 & E2 --> F["인스턴스 및 클래스 전역(_error_counts_dict 등) 동시 반영"]
+    C1 --> F["인스턴스 및 클래스 전역(_error_counts_dict 등) 동시 반영"]
+    C2 --> F
+    D1 --> F
+    E1 --> F
+    E2 --> F
     F --> G["get_result_counts() / get_error_counts() / log_summary() 집계 연동"]
 ```
 

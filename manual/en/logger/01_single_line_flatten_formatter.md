@@ -24,17 +24,17 @@ Most log collectors split log streams into records based on **newlines (`\n`)**.
 
 ```mermaid
 flowchart TD
-    A[logging.LogRecord Ingestion] --> B{exc_info Present?}
-    B -- Yes (Exception Raised) --> C[traceback.extract_tb Stack Inspection]
-    C --> D[Extract Innermost Frame<br/>origin_file, lineno, func_name]
+    A["logging.LogRecord Ingestion"] --> B{"exc_info Present?"}
+    B -->|"Yes (Exception Raised)"| C["traceback.extract_tb Stack Inspection"]
+    C --> D["Extract Innermost Frame<br/>origin_file, lineno, func_name"]
     D --> E["Construct Origin Tag<br/>[Origin: file.py:L123 in func()]"]
-    B -- No (Standard Log) --> F[Standard String Formatting]
-    E --> G[Invoke super().format]
+    B -->|"No (Standard Log)"| F["Standard String Formatting"]
+    E --> G["Invoke super().format"]
     F --> G
-    G --> H{Traceback Newline Present?}
-    H -- Yes --> I[Inject Origin into Header and Append Traceback]
-    H -- No --> J[Append Origin or Return Formatted Record]
-    I --> K[Return Final Log Message]
+    G --> H{"Traceback Newline Present?"}
+    H -->|"Yes"| I["Inject Origin into Header and Append Traceback"]
+    H -->|"No"| J["Append Origin or Return Formatted Record"]
+    I --> K["Return Final Log Message"]
     J --> K
 ```
 

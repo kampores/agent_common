@@ -23,17 +23,18 @@ Upon the completion of large-scale batch workloads, migrations, or Airflow tasks
 
 ```mermaid
 flowchart TD
-    A["Invoke log_summary(task_name, tracker_obj, ...)"] --> B{tracker_obj Passed?}
-    B -- Yes --> C[Extract Metrics Automatically from ProgressTracker]
-    B -- No --> D[Use Explicit Parameters or Internal Logger Counts]
+    A["Invoke log_summary(task_name, tracker_obj, ...)"] --> B{"tracker_obj Passed?"}
+    B -->|"Yes"| C["Extract Metrics Automatically from ProgressTracker"]
+    B -->|"No"| D["Use Explicit Parameters or Internal Logger Counts"]
     
-    C & D --> E["Compute Duration (time.time - start_time)"]
+    C --> E["Compute Duration (time.time - start_time)"]
+    D --> E
     E --> F["Compute Item Throughput (items/s) & Transfer Rate (MB/s)"]
     
     F --> G["Sort Error & Exclusion Maps by Frequency (Descending)"]
     G --> H["Call get_log_id_description() to Fetch Human-Readable Labels"]
     
-    H --> I[Format Structured 80-Column Text Block]
+    H --> I["Format Structured 80-Column Text Block"]
     I --> J["Emit logger.warning('execution_summary_report', summary=...)"]
 ```
 
@@ -61,7 +62,7 @@ Passing a `ProgressTracker` instance via `tracker_obj` automatically binds start
 
 ```text
 ================================================================================
-                         [ECS to BigQuery Migration Summary]
+                         [Data Pipeline Migration Summary]
 ================================================================================
 - Start / End Time       : 2026-09-04 22:00:00 ~ 2026-09-04 22:05:30
 - Total Elapsed Time     : 5m 30.0s (330.00s)
@@ -73,7 +74,7 @@ Passing a `ProgressTracker` instance via `tracker_obj` automatically binds start
   * network_timeout (Connection timeout to storage): 250 items
   * schema_mismatch (Required columns missing or type error): 50 items
 - Exclusion Breakdown (Total 200 items):
-  * db_deleted_status_skipped (Record excluded due to expired asset status 09): 150 items
+  * db_deleted_status_skipped (Record excluded due to soft-deleted status): 150 items
   * db_duplicate_pk_skipped (Duplicate primary key skipped): 50 items
 - Total Data Transferred : 1,024.50 MB (Avg 3.10 MB/s)
 - Average Processing Rate: 303.03 items/sec
@@ -108,7 +109,7 @@ logger.log_summary(
     total_bytes_int=1024 * 1024 * 150,
     extra_lines_list=[
         "Target Dataset: customer_dw.activity_logs",
-        "Target Table: prod_dw.daily_snapshot",
+        "Target Table: analytics_dw.daily_snapshot",
     ]
 )
 ```

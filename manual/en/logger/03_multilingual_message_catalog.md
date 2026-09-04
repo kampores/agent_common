@@ -22,18 +22,20 @@ Hardcoding log messages directly inside application code creates several challen
 
 ```mermaid
 flowchart TD
-    A["logger.info('task_start', task_name='sync')"] --> B{Resolve Language}
-    B -->|KO| C[logging_messages_ko.yml]
-    B -->|EN| D[logging_messages_en.yml]
+    A["logger.info('task_start', task_name='sync')"] --> B{"Resolve Language"}
+    B -->|"KO"| C["logging_messages_ko.yml"]
+    B -->|"EN"| D["logging_messages_en.yml"]
     
-    C & D --> E["_search_template_in_level(level, code)"]
-    E --> F{Found in Level?}
-    F -- Yes --> G[Obtain Template]
-    F -- No --> H{Search Other Level Categories}
-    H -- Found --> G
-    H -- Not Found --> I[Use default_str or message code itself]
+    C --> E["_search_template_in_level(level, code)"]
+    D --> E
+    E --> F{"Found in Level?"}
+    F -->|"Yes"| G["Obtain Template"]
+    F -->|"No"| H{"Search Other Level Categories"}
+    H -->|"Found"| G
+    H -->|"Not Found"| I["Use default_str or message code itself"]
     
-    G & I --> J["Construct safe_kwargs_dict (Escape Braces)"]
+    G --> J["Construct safe_kwargs_dict (Escape Braces)"]
+    I --> J
     J --> K["Execute template.format(**safe_kwargs)"]
     K --> L["Produce Final Formatted String"]
     L --> M["Log with stacklevel=2 to preserve caller frame"]
@@ -97,12 +99,12 @@ from agent_common.logger import ProjectLogger
 logger = ProjectLogger("MigrationService")
 
 # 1. Log with message code and template kwargs
-logger.info("task_start", task_name="ECS_to_BigQuery", target_count=50000)
+logger.info("task_start", task_name="Cloud_Data_Sync", target_count=50000)
 
 # 2. Progress log
 logger.info(
     "data_transfer_progress",
-    task_name="ECS_to_BigQuery",
+    task_name="Cloud_Data_Sync",
     processed_count=25000,
     total_count=50000,
     percent=50.0,
@@ -112,7 +114,7 @@ logger.info(
 try:
     raise TimeoutError("Endpoint unreachable")
 except Exception as e:
-    logger.exception("connection_failed", service_name="Dell ECS", error_msg=str(e))
+    logger.exception("connection_failed", service_name="Cloud_Storage", error_msg=str(e))
 ```
 
 ### 5.2. Runtime Language Switching

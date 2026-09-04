@@ -2,6 +2,17 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.30 (2026-09-04)
+- **Detailed Feature User Manuals for `agent_common.logger` (10 documents in Korean & English) and README Integration**:
+  - Authored comprehensive architecture and code reference manuals across 5 core logging capabilities under `manual/kr/logger/` and `manual/en/logger/`:
+    1. `01_single_line_flatten_formatter.md`: `SingleLineFlattenFormatter`, `[Origin: ...]` frame extraction and single-line stream flattening optimized for centralized log collectors (Logstash, Fluentd, CloudWatch)
+    2. `02_project_logger_configure.md`: `ProjectLogger.configure()`, console/file handler routing, date-partitioned directories, level-based file splitting (`out_file`, `debug_file`), and third-party noise suppression
+    3. `03_multilingual_message_catalog.md`: `logging_messages_ko.yml`/`en.yml`, dynamic runtime language switching (`set_language`), `safe_kwargs` formatting, and project-level catalog extension guide
+    4. `04_execution_result_and_error_tracking.md`: Success/Failure/Exclusion 3-tier outcome classification, instance & class-global multithreaded telemetry, and lowercase `snake_case` log identifier standardization
+    5. `05_summary_report_generation.md`: `ProjectLogger.log_summary()`, 80-column execution summary block, throughput (items/s), transfer rate (MB/s), human-readable error explanations (`get_log_id_description`), and `ProgressTracker` integration
+- **Addition of 2.1~2.5 Links to README.md Feature Lists and Detailed Feature Manuals Tables**:
+  - Updated both Korean and English sections and tables in `README.md` with direct links and executive summaries for all 5 new logger manuals.
+
 ### v0.4.29 (2026-09-04)
 - **Bilingual Description Modernization in `pyproject.toml`**:
   - Restructured package one-line summary `description` in Korean and English to accurately reflect the framework's core modern capabilities (`자율 에이전트 및 데이터 파이프라인을 위한 경량 설정·로깅·도구 프레임워크 (Lightweight configuration, logging, and tooling framework for autonomous agents and data pipelines)`).

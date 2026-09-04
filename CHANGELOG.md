@@ -2,6 +2,17 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.30 (2026-09-04)
+- **`agent_common.logger` 모듈의 5대 주요 기능별 상세 기술 매뉴얼(한국어/영어 총 10종) 신설 및 README 연동**:
+  - `manual/kr/logger/` 및 `manual/en/logger/` 디렉터리에 로깅 포매터 및 로거의 핵심 기능 5종에 대한 심층 기술 문서(아키텍처 다이어그램, 메커니즘, 실전 코드 예시, 운영 베스트 프랙티스) 작성:
+    1. `01_single_line_flatten_formatter.md`: `SingleLineFlattenFormatter`, `[Origin: ...]` 프레임 추출 및 단일 행 평탄화, 중앙 로그 수집기(Logstash, Fluentd 등) 연동 최적화
+    2. `02_project_logger_configure.md`: `ProjectLogger.configure()`, 콘솔/파일 핸들러 분기, 일자별 디렉터리, 레벨별 파일 분리(`out_file`, `debug_file`), 서드파티 노이즈 억제
+    3. `03_multilingual_message_catalog.md`: `logging_messages_ko.yml`/`en.yml`, 런타임 동적 언어 전환(`set_language`), `safe_kwargs` 템플릿 치환, 프로젝트별 메시지 사전 확장 실전 가이드
+    4. `04_execution_result_and_error_tracking.md`: 성공/실패/제외(Skip) 3단계 상태 분류, 인스턴스 및 클래스 전역 멀티스레드 집계, 소문자 `snake_case` 로그 식별자 표준화
+    5. `05_summary_report_generation.md`: `ProjectLogger.log_summary()`, 80열 표준 요약 블록, 처리 속도(items/s), 전송률(MB/s), 에러/제외 사유 직관적 한글/영문 자동 해석(`get_log_id_description`), `ProgressTracker` 연동
+- **`README.md` 내 기능 설명 및 상세 기능 매뉴얼(User Manuals) 테이블에 2.1~2.5 링크 추가**:
+  - 한국어 및 영문 섹션 2와 상세 매뉴얼 테이블에 신규 매뉴얼 5종의 바로가기 링크와 핵심 요약 반영.
+
 ### v0.4.29 (2026-09-04)
 - **`pyproject.toml` 패키지 설명(`description`) 전면 개편 및 다국어 병기**:
   - 패키지 발전 방향 및 현재 핵심 기능(설정, 구조화 로깅, 도구 파싱, 진행률 추적)에 부합하도록 한글 설명을 전면 개편하고 영문 설명을 병기 (`자율 에이전트 및 데이터 파이프라인을 위한 경량 설정·로깅·도구 프레임워크 (Lightweight configuration, logging, and tooling framework for autonomous agents and data pipelines)`).

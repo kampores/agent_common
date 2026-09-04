@@ -22,25 +22,30 @@
 
 ```mermaid
 flowchart TD
-    A["ProjectLogger.configure(app_name, file_logging, ...) 호출"] --> B[ConfigLoader를 통한 계층 설정 로드]
+    A["ProjectLogger.configure(app_name, file_logging, ...) 호출"] --> B["ConfigLoader를 통한 계층 설정 로드"]
     B --> C["로그 레벨 결정 (단일 문자열 또는 app_name 매칭)"]
     B --> D["포매터 생성 (SingleLineFlattenFormatter)"]
-    D --> E[콘솔 스트림 핸들러 StreamHandler 생성]
+    D --> E["콘솔 스트림 핸들러 StreamHandler 생성"]
     
-    A --> F{file_logging 활성화 여부 판별}
-    F -- False (비활성화) --> J[콘솔 핸들러만 등록]
-    F -- True (활성화) --> G{로그 레벨 기반 대상 파일 결정}
+    A --> F{"file_logging 활성화 여부 판별"}
+    F -->|"False (비활성화)"| J["콘솔 핸들러만 등록"]
+    F -->|"True (활성화)"| G{"로그 레벨 기반 대상 파일 결정"}
     
-    G -- "ERROR 이상" --> G1["out_file 경로 사용"]
-    G -- "WARNING 이하" --> G2["debug_file 경로 사용"]
-    G -- "기본/기타" --> G3["log_file 경로 사용"]
+    G -->|"ERROR 이상"| G1["out_file 경로 사용"]
+    G -->|"WARNING 이하"| G2["debug_file 경로 사용"]
+    G -->|"기본/기타"| G3["log_file 경로 사용"]
     
-    G1 & G2 & G3 --> H["동적 날짜(%Y%m%d) 및 {app_name} 치환"]
-    H --> I{로그 디렉터리 생성 및 FileHandler 연결}
-    I -- 성공 --> I1[파일 핸들러 리스트에 추가]
-    I -- "권한/OS 오류 발생" --> I2[콘솔 경고 출력 후 콘솔 로깅 유지]
+    G1 --> H["동적 날짜(%Y%m%d) 및 {app_name} 치환"]
+    G2 --> H
+    G3 --> H
+    H --> I{"로그 디렉터리 생성 및 FileHandler 연결"}
+    I -->|"성공"| I1["파일 핸들러 리스트에 추가"]
+    I -->|"권한/OS 오류 발생"| I2["콘솔 경고 출력 후 콘솔 로깅 유지"]
     
-    E & I1 & J & I2 --> K["logging.basicConfig(force=True) 일괄 적용"]
+    E --> K["logging.basicConfig(force=True) 일괄 적용"]
+    I1 --> K
+    J --> K
+    I2 --> K
     K --> L["서드파티 잡음 로거 레벨 강제 억제 (metricflow, urllib3, httpx 등 -> WARNING)"]
 ```
 
@@ -60,15 +65,60 @@ logging:
 ```
 
 ### 3.2. 로그 레벨에 따른 파일 분리 저장 (`out_file` vs `debug_file`)
-- `ERROR`, `CRITICAL` 레벨로 기동된 경우: 장애 전용 파일(`logging.out_file`)에 집중 기록
-- `DEBUG`, `INFO`, `WARNING` 레벨로 기동된 경우: 상세 추적 파일(`logging.debug_file`)에 기록
-- 별도 분기 설정이 없을 경우: 기본 `logging.file` 경로에 기록
 
-### 3.3. 동적 날짜 포맷 및 경로 자동 생성
-로그 파일 경로에 `%Y%m%d`, `%Y-%m-%d` 등의 날짜 포맷이나 `{app_name}` 템플릿 태그를 사용할 수 있으며, 상위 디렉터리가 없을 경우 자동으로 생성합니다:
+`ProjectLogger.configure()`는 현재 실행 중인 프로세스의 최종 결정된 `logging.level`에 따라 로그 저장 대상을 지능적으로 분기합니다:
+
+- **`ERROR`, `CRITICAL` 레벨 (장애 발생 감시 모드)**:
+  - 심각한 시스템 장애나 예외 로그만 격리하여 저장하는 `logging.out_file` 경로로 자동 라우팅됩니다.
+- **`DEBUG`, `INFO`, `WARNING` 레벨 (일반 추적 및 디버깅 모드)**:
+  - 통상적인 작업 진행 상태와 경고를 포함한 모든 상세 로그를 기록하는 `logging.debug_file` 경로로 자동 라우팅됩니다.
+- **기본/기타 레벨**:
+  - 위 분기 설정이 없거나 조건에 해당하지 않을 경우 표준 `logging.file` 경로에 기록됩니다.
+
+#### 엔터프라이즈 데이터 파이프라인의 실전 분기 설정 예시:
 ```yaml
 logging:
-  file: "logs/%Y%m%d/{app_name}.log"
+  # 프로그램별 실행 로그 레벨 매핑 (WARNING 이하이므로 debug_file로 자동 라우팅)
+  level:
+    data_extractor: "WARNING"
+    stream_processor: "WARNING"
+    db_loader: "WARNING"
+    
+  # 장애/에러 전용 격리 저장 경로 (level이 ERROR, CRITICAL일 때 활성화)
+  out_file: "logs/pipeline/out/%Y/%m/%d/{app_name}_out_%Y%m%dT%H%M%S.log"
+  
+  # 일반 추적/디버깅 전용 저장 경로 (level이 DEBUG, INFO, WARNING일 때 활성화)
+  debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
+```
+
+> 💡 **동작 예시**:
+> - `data_extractor` 배치 프로그램이 기동되면 설정된 레벨이 `WARNING`이므로 `debug_file` 경로인 `logs/pipeline/debug/...` 폴더 아래에 로그가 기록됩니다.
+> - 반면, 장애 모니터링 데몬이나 특정 배치가 `ERROR` 레벨로 실행되면 즉시 `out_file` 경로인 `logs/pipeline/out/...` 폴더 아래로 저장 위치가 분리되어, 장애 분석 담당자가 에러 로그 파일만 신속히 선별할 수 있습니다.
+
+### 3.3. 동적 날짜 포맷 및 경로 자동 생성
+
+`out_file`, `debug_file`, `file` 경로 템플릿에는 다양한 동적 치환 태그와 날짜 포맷을 자유롭게 결합할 수 있습니다:
+
+1. **`{app_name}` 치환 태그**:
+   - `ProjectLogger.configure(app_name="data_extractor")`로 전달된 애플리케이션 명칭(또는 실행 스크립트 파일명)으로 자동 치환됩니다.
+2. **`%Y/%m/%d` 계층형 디렉터리 포맷**:
+   - `datetime.now().strftime(...)` 파싱을 통해 연도/월/일 단위의 서브 디렉터리를 자동 계산합니다.
+3. **`%Y%m%dT%H%M%S` ISO Compact 타임스탬프**:
+   - 프로세스 기동 시점의 고유 타임스탬프(예: `20260904T230715`)를 부여하여 동일 일자에 여러 번 실행되어도 이전 실행 로그가 덮어써지지 않고 독립된 파일로 보존됩니다.
+4. **다단계 상위 디렉터리 자동 생성 (`mkdir(parents=True, exist_ok=True)`)**:
+   - 타겟 디렉터리(`logs/pipeline/debug/2026/09/04/`)가 시스템에 아직 없더라도 예외 없이 안전하게 디렉터리를 생성하고 파일 핸들러를 연결합니다.
+
+#### 실제 경로 해석 및 생성 검증 예시:
+```text
+[설정 템플릿]
+debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
+
+[런타임 호출 파라미터]
+ProjectLogger.configure(app_name="data_extractor", file_logging=True)
+실행 일시: 2026-09-04 23:07:15
+
+[최종 자동 생성 경로]
+logs/pipeline/debug/2026/09/04/data_extractor_debug_20260904T230715.log
 ```
 
 ### 3.4. 무중단 예외 완화 (Graceful Degradation)
@@ -83,8 +133,15 @@ Docker 컨테이너 마운트 볼륨의 권한 문제(`PermissionError`)나 디�
 
 ```yaml
 logging:
-  # 기본 로그 레벨 (문자열 또는 딕셔너리)
-  level: "INFO"
+  # 기본 로그 레벨 (문자열 또는 프로그램별 딕셔너리)
+  level:
+    data_extractor: "WARNING"
+    stream_processor: "WARNING"
+    db_loader: "WARNING"
+    default: "INFO"
+  
+  # 로그 메시지 템플릿 언어 (KO: 한국어, EN: 영어)
+  language: "KO"
   
   # 로그 포맷 및 날짜 표기 형식
   format: "[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d %(funcName)s()] %(message)s"
@@ -93,12 +150,12 @@ logging:
   # 파일 로깅 활성화 여부 (True: 콘솔+파일, False: 콘솔 전용)
   file_logging: true
   
-  # 기본 로그 파일 경로 (일자별 폴더 및 app_name 자동 치환)
-  file: "logs/%Y%m%d/{app_name}.log"
+  # 레벨 분기용 파일 경로 (엔터프라이즈 파이프라인 표준)
+  out_file: "logs/pipeline/out/%Y/%m/%d/{app_name}_out_%Y%m%dT%H%M%S.log"
+  debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
   
-  # 레벨 분기용 파일 경로 (선택 사항)
-  out_file: "logs/%Y%m%d/{app_name}_error.log"
-  debug_file: "logs/%Y%m%d/{app_name}_debug.log"
+  # 기본 로그 파일 경로 (대체용)
+  file: "logs/%Y%m%d/{app_name}.log"
 ```
 
 ---

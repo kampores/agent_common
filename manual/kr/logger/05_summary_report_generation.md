@@ -25,17 +25,18 @@
 
 ```mermaid
 flowchart TD
-    A["log_summary(task_name, tracker_obj, ...) 호출"] --> B{tracker_obj 전달 여부}
-    B -- 예 --> C[ProgressTracker로부터 메트릭 자동 추출]
-    B -- 아니오 --> D[인자로 전달된 건수/시간 또는 로거 누적 통계 사용]
+    A["log_summary(task_name, tracker_obj, ...) 호출"] --> B{"tracker_obj 전달 여부"}
+    B -->|"예"| C["ProgressTracker로부터 메트릭 자동 추출"]
+    B -->|"아니오"| D["인자로 전달된 건수/시간 또는 로거 누적 통계 사용"]
     
-    C & D --> E["소요 시간 정밀 계산 (time.time - start_time)"]
+    C --> E["소요 시간 정밀 계산 (time.time - start_time)"]
+    D --> E
     E --> F["처리 속도 (items/sec) 및 전송률 (MB/s) 산출"]
     
     F --> G["에러/제외 발생 딕셔너리 정렬 (발생 빈도 내림차순)"]
     G --> H["get_log_id_description() 호출<br/>(logging_messages 사전에서 직관적 설명 동적 조회)"]
     
-    H --> I[80열 표준 포맷 요약 블록 텍스트 조합]
+    H --> I["80열 표준 포맷 요약 블록 텍스트 조합"]
     I --> J["logger.warning('execution_summary_report', summary=...) 출력"]
 ```
 
@@ -63,7 +64,7 @@ flowchart TD
 
 ```text
 ================================================================================
-                    [ECS to BigQuery 이관 작업 결과 요약]
+                    [데이터 파이프라인 동기화 작업 결과 요약]
 ================================================================================
 - 작업 시작 / 종료 시간 : 2026-09-04 22:00:00 ~ 2026-09-04 22:05:30
 - 총 소요 시간          : 5분 30.0초 (330.00초)
@@ -110,7 +111,7 @@ logger.log_summary(
     total_bytes_int=1024 * 1024 * 150,  # 150 MB
     extra_lines_list=[
         "대상 데이터셋: customer_dw.activity_logs",
-        "타겟 빅쿼리 테이블: prod_dw.daily_snapshot",
+        "타겟 분석 테이블: analytics_dw.daily_snapshot",
     ]
 )
 ```

@@ -22,18 +22,20 @@
 
 ```mermaid
 flowchart TD
-    A["logger.info('task_start', task_name='이관') 호출"] --> B{언어 판별}
-    B -->|KO| C[logging_messages_ko.yml]
-    B -->|EN| D[logging_messages_en.yml]
+    A["logger.info('task_start', task_name='이관') 호출"] --> B{"언어 판별"}
+    B -->|"KO"| C["logging_messages_ko.yml"]
+    B -->|"EN"| D["logging_messages_en.yml"]
     
-    C & D --> E["_search_template_in_level(레벨, 코드)"]
-    E --> F{해당 레벨에서 발견?}
-    F -- 예 --> G[템플릿 획득]
-    F -- 아니오 --> H{타 레벨 섹션 순회 탐색}
-    H -- 발견 --> G
-    H -- 미발견 --> I[default_str 또는 코드 문자열 자체를 템플릿으로 사용]
+    C --> E["_search_template_in_level(레벨, 코드)"]
+    D --> E
+    E --> F{"해당 레벨에서 발견?"}
+    F -->|"예"| G["템플릿 획득"]
+    F -->|"아니오"| H{"타 레벨 섹션 순회 탐색"}
+    H -->|"발견"| G
+    H -->|"미발견"| I["default_str 또는 코드 문자열 자체를 템플릿으로 사용"]
     
-    G & I --> J["safe_kwargs_dict 처리 (중괄호 이스케이프 보호)"]
+    G --> J["safe_kwargs_dict 처리 (중괄호 이스케이프 보호)"]
+    I --> J
     J --> K["template.format(**safe_kwargs) 수행"]
     K --> L["포매팅 완료된 메시지 문자열 생성"]
     L --> M["stacklevel=2를 적용하여 호출 원천 라인으로 로깅 기록"]
@@ -115,12 +117,12 @@ from agent_common.logger import ProjectLogger
 logger = ProjectLogger("MigrationService")
 
 # 1. 메시지 코드 및 키워드 인자를 사용한 로깅
-logger.info("task_start", task_name="ECS_to_BigQuery", target_count=50000)
+logger.info("task_start", task_name="Cloud_Data_Sync", target_count=50000)
 
 # 2. 진행률 로깅
 logger.info(
     "data_transfer_progress",
-    task_name="ECS_to_BigQuery",
+    task_name="Cloud_Data_Sync",
     processed_count=25000,
     total_count=50000,
     percent=50.0,
@@ -130,7 +132,7 @@ logger.info(
 try:
     raise ConnectionTimeoutError("Connection timed out after 30s")
 except Exception as e:
-    logger.exception("connection_failed", service_name="Dell ECS", error_msg=str(e))
+    logger.exception("connection_failed", service_name="Cloud_Storage", error_msg=str(e))
 ```
 
 ### 5.2. 런타임 다국어 동적 전환 실전 예시
