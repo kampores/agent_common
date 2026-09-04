@@ -2,7 +2,18 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
----
+### v0.4.25 (2026-09-04)
+- **Detailed Feature User Manuals for `config_loader` (12 documents in Korean & English) and README/PyPI Integration**:
+  - Authored comprehensive architecture and code reference manuals across 6 core capabilities under `manual/kr/config_loader/` and `manual/en/config_loader/`:
+    1. `01_hierarchical_yaml_merge.md`: 5-stage merge order, recursive `_deep_merge` algorithm, and 3-tier project root auto-detection
+    2. `02_readonly_dot_notation.md`: Immutable dot-notation access (`ReadOnlyConfig`), runtime mutation prevention (Read-Only), and dictionary interoperability
+    3. `03_type_coercion_and_guarantee.md`: Type-suffix (`_int`, `_float`, `_bool`, `_str`, `_list`, `_dict`) automatic runtime casting and type safety guarantees
+    4. `04_fail_fast_require_setting.md`: `require_setting` mandatory setting validation during startup, diagnostic error logging, and fail-fast termination
+    5. `05_network_proxy_control.md`: Automatic synchronization of `NO_PROXY` environment variable from `proxy.no_proxy` configuration
+    6. `06_ensure_config_self_healing.md`: Automatic scaffolding of missing `config.yml` and in-place self-healing with timestamped inline comments
+  - Updated `README.md` bullet points with direct links to user manuals and introduced bilingual `### 📖 Detailed Feature Manuals` summary navigation tables.
+  - Updated `MANIFEST.in` with `graft manual` and `recursive-include manual *.md` for inclusion in source distribution (`sdist`) packages.
+  - Added `Manual (Korean)` and `Manual (English)` GitHub tree links to `[project.urls]` in `pyproject.toml`.
 
 ### v0.4.24 (2026-09-04)
 - **Multi-language Logging Template Dictionary (`logging_messages_en.yml`) and Config-driven Language Selection (`logging.language`)**:

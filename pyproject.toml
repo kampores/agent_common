@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent_common"
-version = "0.4.24"
+version = "0.4.25"
 description = "중앙 에이전트 및 하위 SQL 생성 서비스를 위한 공통 로깅/설정 모듈"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,6 +18,8 @@ dependencies = [
 "Repository" = "https://github.com/kampores/agent_common"
 "Changelog" = "https://github.com/kampores/agent_common/blob/main/CHANGELOG.md"
 "Changelog (English)" = "https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md"
+"Manual (Korean)" = "https://github.com/kampores/agent_common/tree/main/manual/kr"
+"Manual (English)" = "https://github.com/kampores/agent_common/tree/main/manual/en"
 
 [tool.setuptools.packages.find]
 where = ["src"]

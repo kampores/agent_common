@@ -2,7 +2,18 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
----
+### v0.4.25 (2026-09-04)
+- **`config_loader` 주요 6대 기능별 상세 기술 매뉴얼(한국어/영어 총 12종) 신설 및 README/PyPI 연동**:
+  - `manual/kr/config_loader/` 및 `manual/en/config_loader/` 디렉터리에 `agent_common.config_loader`의 핵심 기능 6종에 대한 심층 기술 문서(아키텍처, 알고리즘, 실전 코드 예시) 작성:
+    1. `01_hierarchical_yaml_merge.md`: 5단계 계층 병합 순서, `_deep_merge` 재귀 알고리즘, 프로젝트 루트 3중 자동 감지
+    2. `02_readonly_dot_notation.md`: 불변 점 표기법 조회(`ReadOnlyConfig`), 런타임 설정 변조 차단(Read-Only), 딕셔너리 호환성
+    3. `03_type_coercion_and_guarantee.md`: 타입 접미사(`_int`, `_float`, `_bool`, `_str`, `_list`, `_dict`) 자동 캐스팅 및 타입 안전성 보증
+    4. `04_fail_fast_require_setting.md`: `require_setting` 기반 기동 초기 필수 설정 검증, 상세 진단 로그 및 Fail-Fast 안전 조기 종료
+    5. `05_network_proxy_control.md`: `proxy.no_proxy` 설정의 OS `NO_PROXY` 환경변수 자동 반영 및 내부망 프록시 우회
+    6. `06_ensure_config_self_healing.md`: `ensure_config_file`을 통한 `config.yml` 자동 생성 및 기존 파일 내 누락 키 인라인 주석 보정(Self-healing)
+  - `README.md` 내 각 불릿 항목에 매뉴얼 직접 링크 연결 및 한국어/영문 `### 📖 상세 기능 매뉴얼 (User Manuals)` 요약 테이블 신설.
+  - `MANIFEST.in`에 `graft manual` 및 `recursive-include manual *.md`를 추가하여 소스 배포판(`sdist`) 내 매뉴얼 아카이빙 지원.
+  - `pyproject.toml`의 `[project.urls]`에 `Manual (Korean)` 및 `Manual (English)` GitHub 경로 등록.
 
 ### v0.4.24 (2026-09-04)
 - **다국어 로그 메시지 템플릿 사전(`logging_messages_en.yml`) 및 설정 기반 언어 선택(`logging.language`) 지원**:

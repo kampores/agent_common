@@ -1,8 +1,10 @@
 include README.md CHANGELOG.md CHANGELOG_EN.md LICENSE
 graft src/agent_common/config
 graft src/agent_common/schemas
+graft manual
 recursive-include src/agent_common/config *.yml
 recursive-include src/agent_common/schemas *.json
+recursive-include manual *.md
 
 prune whls
 prune dist

@@ -1,6 +1,6 @@
 # agent_common
 
-> [ 🇰🇷 한국어 설명 ](#-agent_common-패키지-한국어) | [ 🇺🇸 English Description ](#-agent_common-package-english)
+> [ 🇰🇷 한국어 설명 ](#-agent_common-패키지-한국어) | [ 🇺🇸 English Description ](#-agent_common-package-english) | [ 📖 매뉴얼 (Manuals) ](#-상세-기능-매뉴얼-user-manuals)
 
 ---
 
@@ -13,17 +13,17 @@
 ### 📌 주요 제공 기능
 
 #### 1. 설정 로더 및 불변 설정 객체 (`agent_common.config_loader`)
-- **계층적 YAML 설정 해석 및 병합 (Deep Merge)**: 패키지 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정(`config/*.yml`) 동적 병합.
-- **불변 점 표기법 조회 (`ReadOnlyConfig`)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 형태로 직관적 속성 접근 및 런타임 변조 방지.
-- **타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion - v0.4.14)**:
+- **[계층적 YAML 설정 해석 및 병합 (Deep Merge)](manual/kr/config_loader/01_hierarchical_yaml_merge.md)**: 패키지 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정(`config/*.yml`) 동적 병합.
+- **[불변 점 표기법 조회 (`ReadOnlyConfig`)](manual/kr/config_loader/02_readonly_dot_notation.md)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 형태로 직관적 속성 접근 및 런타임 변조 방지.
+- **[타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion - v0.4.14)](manual/kr/config_loader/03_type_coercion_and_guarantee.md)**:
   - `_int`: `int` 정수형 자동 형 변환 및 보증
   - `_float`: `float` 실수형 자동 형 변환 및 보증
   - `_bool`: `bool` 불리언형 자동 변환 (`"true"`, `"false"`, `1`, `0` 등 완벽 대응)
   - `_str`: `str` 문자열 변환 및 `.strip()` 공백 자동 정제
   - `_list` / `_dict`: 리스트 / 불변 딕셔너리(`ReadOnlyConfig`) 래핑 보증
-- **Fail-Fast 필수 설정 검증 (`require_setting()`)**: 프로그램 시작 시 필수 설정값 누락 시 상세 원인 출력 후 프로세스 즉시 종료.
-- **네트워크 프록시 제어**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
-- **설정 파일 템플릿 보정 (`ensure_config_file()`)**: 프로젝트 설정 누락 시 기본 스키마 기반 자동 생성 및 자가 치유(Self-healing).
+- **[Fail-Fast 필수 설정 검증 (`require_setting()`)](manual/kr/config_loader/04_fail_fast_require_setting.md)**: 프로그램 시작 시 필수 설정값 누락 시 상세 원인 출력 후 프로세스 즉시 종료.
+- **[네트워크 프록시 제어 (`_apply_no_proxy`)](manual/kr/config_loader/05_network_proxy_control.md)**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
+- **[설정 파일 템플릿 보정 및 자가 치유 (`ensure_config_file()`)](manual/kr/config_loader/06_ensure_config_self_healing.md)**: 프로젝트 설정 누락 시 기본 스키마 기반 자동 생성 및 자가 치유(Self-healing).
 
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - `SingleLineFlattenFormatter`: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화하여 중앙 로그 수집(Logstash, Fluentd 등)에 최적화
@@ -182,7 +182,7 @@ python -m build agent_common --wheel -o whls/
 pip install -e agent_common
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.24-py3-none-any.whl
+pip install dist/agent_common-0.4.25-py3-none-any.whl
 ```
 
 #### PyPI 공공 배포 가이드
@@ -199,8 +199,23 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.24*
+python -m twine upload dist/agent_common-0.4.25*
 ```
+
+---
+
+### 📖 상세 기능 매뉴얼 (User Manuals)
+
+모듈별 상세 아키텍처 및 실전 코드 예시는 아래 상세 매뉴얼 문서를 참고하세요:
+
+| 번호 | 모듈 / 주제 | 상세 매뉴얼 링크 | 주요 내용 요약 |
+| :---: | :--- | :---: | :--- |
+| **01** | **계층적 YAML 해석 & 딥 머지** | [01_hierarchical_yaml_merge.md](manual/kr/config_loader/01_hierarchical_yaml_merge.md) | 5단계 계층 병합 순서, `_deep_merge` 재귀 알고리즘, 루트 디렉터리 자동 탐색 |
+| **02** | **불변 점 표기법 조회 (`ReadOnlyConfig`)** | [02_readonly_dot_notation.md](manual/kr/config_loader/02_readonly_dot_notation.md) | 점 표기법 속성 접근, 런타임 변조 원천 차단(Read-Only), 불변 객체 설계 |
+| **03** | **타입 접미사 자동 형 변환 & 타입 보증** | [03_type_coercion_and_guarantee.md](manual/kr/config_loader/03_type_coercion_and_guarantee.md) | `_int`, `_float`, `_bool`, `_str`, `_list`, `_dict` 런타임 자동 캐스팅 및 타입 안전성 보증 |
+| **04** | **Fail-Fast 필수 설정 검증** | [04_fail_fast_require_setting.md](manual/kr/config_loader/04_fail_fast_require_setting.md) | 기동 초기 필수 설정 누락 감지, 상세 진단 로그 및 프로세스 안전 조기 종료 |
+| **05** | **네트워크 프록시 제어** | [05_network_proxy_control.md](manual/kr/config_loader/05_network_proxy_control.md) | `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영 및 내부 통신 프록시 우회 |
+| **06** | **설정 템플릿 보정 및 자가 치유** | [06_ensure_config_self_healing.md](manual/kr/config_loader/06_ensure_config_self_healing.md) | `config.yml` 자동 생성, 기존 설정 파일 내 누락 키 인라인 주석 보정(Self-healing) |
 
 ---
 
@@ -219,17 +234,17 @@ A comprehensive Python common library providing unified logging, hierarchical co
 ### 📌 Key Features
 
 #### 1. Configuration Loader & Immutable Config Object (`agent_common.config_loader`)
-- **Hierarchical YAML Parsing & Deep Merge**: Dynamically merges base package configurations (`agent_common/config/*.yml`) with project-specific configurations (`config/*.yml`).
-- **Immutable Dot-Notation Access (`ReadOnlyConfig`)**: Intuitive attribute-based lookup (`config.ecs.endpoint_url`, `config.transfer.max_workers_int`) while preventing unintended runtime mutations.
-- **Type Guarantee & Automatic Coercion via Type Suffixes (v0.4.14)**:
+- **[Hierarchical YAML Parsing & Deep Merge](manual/en/config_loader/01_hierarchical_yaml_merge.md)**: Dynamically merges base package configurations (`agent_common/config/*.yml`) with project-specific configurations (`config/*.yml`).
+- **[Immutable Dot-Notation Access (`ReadOnlyConfig`)](manual/en/config_loader/02_readonly_dot_notation.md)**: Intuitive attribute-based lookup (`config.ecs.endpoint_url`, `config.transfer.max_workers_int`) while preventing unintended runtime mutations.
+- **[Type Guarantee & Automatic Coercion via Type Suffixes (v0.4.14)](manual/en/config_loader/03_type_coercion_and_guarantee.md)**:
   - `_int`: Automatic integer conversion and type guarantee.
   - `_float`: Automatic floating-point conversion and type guarantee.
   - `_bool`: Automatic boolean conversion (`"true"`, `"false"`, `1`, `0`, etc.).
   - `_str`: Automatic string conversion and `.strip()` whitespace trimming.
   - `_list` / `_dict`: Guaranteed list / immutable dictionary (`ReadOnlyConfig`) wrapping.
-- **Fail-Fast Required Setting Validation (`require_setting()`)**: Immediate process termination with diagnostic output if required settings are missing during startup.
-- **Network Proxy Control**: Automatic synchronization of `NO_PROXY` environment variable from `proxy.no_proxy` configuration.
-- **Self-Healing Configuration Templates (`ensure_config_file()`)**: Automatic generation and missing-key repair based on default schemas.
+- **[Fail-Fast Required Setting Validation (`require_setting()`)](manual/en/config_loader/04_fail_fast_require_setting.md)**: Immediate process termination with diagnostic output if required settings are missing during startup.
+- **[Network Proxy Control (`_apply_no_proxy`)](manual/en/config_loader/05_network_proxy_control.md)**: Automatic synchronization of `NO_PROXY` environment variable from `proxy.no_proxy` configuration.
+- **[Self-Healing Configuration Templates (`ensure_config_file()`)](manual/en/config_loader/06_ensure_config_self_healing.md)**: Automatic generation and missing-key repair based on default schemas.
 
 #### 2. Single-Line Log Formatter & Project Logger (`agent_common.logger`)
 - `SingleLineFlattenFormatter`: Flattens all log messages and exception tracebacks into a single line, optimized for centralized log collectors (Logstash, Fluentd, etc.).
@@ -382,7 +397,7 @@ python -m build agent_common --wheel -o whls/
 pip install -e agent_common
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.24-py3-none-any.whl
+pip install dist/agent_common-0.4.25-py3-none-any.whl
 ```
 
 #### PyPI Public Distribution Guide
@@ -399,8 +414,23 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.24*
+python -m twine upload dist/agent_common-0.4.25*
 ```
+
+---
+
+### 📖 Detailed Feature Manuals
+
+For comprehensive architecture details and practical code examples for each module:
+
+| # | Module / Topic | User Manual Link | Key Highlights |
+| :---: | :--- | :---: | :--- |
+| **01** | **Hierarchical YAML Parsing & Deep Merge** | [01_hierarchical_yaml_merge.md](manual/en/config_loader/01_hierarchical_yaml_merge.md) | 5-stage merge order, recursive `_deep_merge` algorithm, auto project root discovery |
+| **02** | **Immutable Dot-Notation Access (`ReadOnlyConfig`)** | [02_readonly_dot_notation.md](manual/en/config_loader/02_readonly_dot_notation.md) | Dot-notation attribute lookup, strict runtime mutation prevention (Read-Only) |
+| **03** | **Type Guarantee & Automatic Coercion** | [03_type_coercion_and_guarantee.md](manual/en/config_loader/03_type_coercion_and_guarantee.md) | `_int`, `_float`, `_bool`, `_str`, `_list`, `_dict` runtime casting and type safety |
+| **04** | **Fail-Fast Required Setting Validation** | [04_fail_fast_require_setting.md](manual/en/config_loader/04_fail_fast_require_setting.md) | Startup phase mandatory validation, diagnostic output, and fail-fast termination |
+| **05** | **Network Proxy Control** | [05_network_proxy_control.md](manual/en/config_loader/05_network_proxy_control.md) | Automatic synchronization of `NO_PROXY` from `proxy.no_proxy` configuration |
+| **06** | **Self-Healing Configuration Templates** | [06_ensure_config_self_healing.md](manual/en/config_loader/06_ensure_config_self_healing.md) | Automatic scaffolding, in-place self-healing with timestamped inline comments |
 
 ---
 
