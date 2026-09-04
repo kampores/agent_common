@@ -1,4 +1,4 @@
-# 01. Hierarchical YAML Configuration Parsing & Deep Merge
+# 1.1. Hierarchical YAML Configuration Parsing & Deep Merge
 
 > **Module**: `agent_common.config_loader.ConfigLoader`  
 > **Key Methods**: `ConfigLoader.get_settings()`, `ConfigLoader._deep_merge()`

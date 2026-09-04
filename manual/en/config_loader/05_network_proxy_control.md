@@ -1,4 +1,4 @@
-# 05. Network Proxy Control (`_apply_no_proxy`)
+# 1.5. Network Proxy Control (`_apply_no_proxy`)
 
 > **Module**: `agent_common.config_loader.ConfigLoader`  
 > **Key Method**: `ConfigLoader._apply_no_proxy(settings)`

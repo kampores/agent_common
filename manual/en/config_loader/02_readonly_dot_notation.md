@@ -1,4 +1,4 @@
-# 02. Immutable Dot-Notation Access (`ReadOnlyConfig`)
+# 1.2. Immutable Dot-Notation Lookup & Runtime Protection (ReadOnlyConfig)
 
 > **Module**: `agent_common.config_loader.ReadOnlyConfig`, `agent_common.config_loader.ConfigLoader`  
 > **Global Instance**: `from agent_common.config_loader import config`

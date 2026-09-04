@@ -1,4 +1,4 @@
-# 01. 계층적 YAML 설정 해석 및 병합 (Deep Merge)
+# 1.1. 계층적 YAML 설정 해석 및 병합 (Deep Merge)
 
 > **소속 모듈**: `agent_common.config_loader.ConfigLoader`  
 > **관련 주요 메서드**: `ConfigLoader.get_settings()`, `ConfigLoader._deep_merge()`

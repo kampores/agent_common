@@ -2,6 +2,12 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.27 (2026-09-04)
+- **`manual/kr/config_loader/06_ensure_config_self_healing.md` 및 영문 문서 핵심 철학 전면 보강**:
+  - `ensure_config_file`의 본질적 주 목적을 '코드 내 모든 상수의 설정 파일화(외부화) 및 가시화'로 명문화하고, 자가 치유(Self-healing)는 이를 구현하는 부수적 메커니즘임을 명시.
+  - 코드 맨 처음/최초 기동단(Entry Point)에서의 기본 스키마(`default_schema`) 정의 및 누락 상수 강제 주입(In-place injection) 패턴 가이드 전면 보강.
+  - Mermaid 상수 강제 주입 흐름도 갱신 및 `README.md` 매뉴얼 설명 최적화.
+
 ### v0.4.26 (2026-09-04)
 - **`manual/kr/config_loader/02_readonly_dot_notation.md` 및 영문 문서 보강**:
   - 실제 `config/config.yml` 전체 예제 스키마 및 파이썬 점 표기법 1:1 매핑 가이드 추가.
@@ -17,7 +23,7 @@
     3. `03_type_coercion_and_guarantee.md`: 타입 접미사(`_int`, `_float`, `_bool`, `_str`, `_list`, `_dict`) 자동 캐스팅 및 타입 안전성 보증
     4. `04_fail_fast_require_setting.md`: `require_setting` 기반 기동 초기 필수 설정 검증, 상세 진단 로그 및 Fail-Fast 안전 조기 종료
     5. `05_network_proxy_control.md`: `proxy.no_proxy` 설정의 OS `NO_PROXY` 환경변수 자동 반영 및 내부망 프록시 우회
-    6. `06_ensure_config_self_healing.md`: `ensure_config_file`을 통한 `config.yml` 자동 생성 및 기존 파일 내 누락 키 인라인 주석 보정(Self-healing)
+    6. `06_ensure_config_self_healing.md`: 코드 내 모든 상수의 설정 파일화(외부화), `ensure_config_file`을 통한 `config.yml` 자동 생성 및 누락 상수 강제 주입·보정
   - `README.md` 내 각 불릿 항목에 매뉴얼 직접 링크 연결 및 한국어/영문 `### 📖 상세 기능 매뉴얼 (User Manuals)` 요약 테이블 신설.
   - `MANIFEST.in`에 `graft manual` 및 `recursive-include manual *.md`를 추가하여 소스 배포판(`sdist`) 내 매뉴얼 아카이빙 지원.
   - `pyproject.toml`의 `[project.urls]`에 `Manual (Korean)` 및 `Manual (English)` GitHub 경로 등록.

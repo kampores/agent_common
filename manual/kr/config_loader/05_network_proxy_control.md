@@ -1,4 +1,4 @@
-# 05. 네트워크 프록시 제어 (`_apply_no_proxy`)
+# 1.5. 네트워크 프록시 제어 (`_apply_no_proxy`)
 
 > **소속 모듈**: `agent_common.config_loader.ConfigLoader`  
 > **핵심 메서드**: `ConfigLoader._apply_no_proxy(settings)`

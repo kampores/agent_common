@@ -1,4 +1,4 @@
-# 04. Fail-Fast Required Setting Validation (`require_setting`)
+# 1.4. Fail-Fast Required Setting Validation (`require_setting`)
 
 > **Module**: `agent_common.config_loader.ConfigLoader`  
 > **Key Method**: `ConfigLoader.require_setting(path, message="", config_file=None)`  

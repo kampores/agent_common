@@ -1,4 +1,4 @@
-# 03. Type Guarantee & Automatic Coercion via Type Suffixes
+# 1.3. Type Guarantee & Automatic Coercion via Type Suffixes
 
 > **Module**: `agent_common.config_loader.ReadOnlyConfig`, `agent_common.config_loader.ConfigLoader`  
 > **Introduced In**: `v0.4.14`  

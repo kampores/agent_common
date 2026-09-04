@@ -1,4 +1,4 @@
-# 02. 불변 점 표기법 조회 (`ReadOnlyConfig`)
+# 1.2. 불변 점 표기법 조회 및 런타임 보호 (ReadOnlyConfig)
 
 > **소속 모듈**: `agent_common.config_loader.ReadOnlyConfig`, `agent_common.config_loader.ConfigLoader`  
 > **관련 전역 인스턴스**: `from agent_common.config_loader import config`

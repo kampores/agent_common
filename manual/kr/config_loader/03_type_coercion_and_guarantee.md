@@ -1,4 +1,4 @@
-# 03. 타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion)
+# 1.3. 타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion)
 
 > **소속 모듈**: `agent_common.config_loader.ReadOnlyConfig`, `agent_common.config_loader.ConfigLoader`  
 > **도입 버전**: `v0.4.14`  

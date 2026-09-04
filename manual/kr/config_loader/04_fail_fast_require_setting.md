@@ -1,4 +1,4 @@
-# 04. Fail-Fast 필수 설정 검증 (`require_setting`)
+# 1.4. Fail-Fast 필수 설정 검증 (`require_setting`)
 
 > **소속 모듈**: `agent_common.config_loader.ConfigLoader`  
 > **핵심 메서드**: `ConfigLoader.require_setting(path, message="", config_file=None)`  
