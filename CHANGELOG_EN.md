@@ -2,6 +2,11 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.26 (2026-09-04)
+- **Enhancement of `manual/en/config_loader/02_readonly_dot_notation.md` and Korean Manual**:
+  - Added full reference `config/config.yml` example schema with 1:1 Python dot-notation mapping guide.
+  - Documented 3 production patterns for custom configuration directories/paths (`config_dir`), dynamic directory switching, and in-memory test dictionaries.
+
 ### v0.4.25 (2026-09-04)
 - **Detailed Feature User Manuals for `config_loader` (12 documents in Korean & English) and README/PyPI Integration**:
   - Authored comprehensive architecture and code reference manuals across 6 core capabilities under `manual/kr/config_loader/` and `manual/en/config_loader/`:

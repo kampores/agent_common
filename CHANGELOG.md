@@ -2,6 +2,11 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.26 (2026-09-04)
+- **`manual/kr/config_loader/02_readonly_dot_notation.md` 및 영문 문서 보강**:
+  - 실제 `config/config.yml` 전체 예제 스키마 및 파이썬 점 표기법 1:1 매핑 가이드 추가.
+  - 기본 경로(`config/config.yml`) 외 다른 사용자 정의 경로(`config_dir`) 지정 및 동적 경로 변경, 테스트용 인메모리 딕셔너리 전달 3가지 실전 패턴 가이드 신설.
+
 ### v0.4.25 (2026-09-04)
 - **`config_loader` 주요 6대 기능별 상세 기술 매뉴얼(한국어/영어 총 12종) 신설 및 README/PyPI 연동**:
   - `manual/kr/config_loader/` 및 `manual/en/config_loader/` 디렉터리에 `agent_common.config_loader`의 핵심 기능 6종에 대한 심층 기술 문서(아키텍처, 알고리즘, 실전 코드 예시) 작성:
