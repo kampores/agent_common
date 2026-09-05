@@ -2,6 +2,19 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.31 (2026-09-04)
+- **Full Sanitization & Generalization of Proprietary Identifiers for Public Distribution**:
+  - Sanitized internal closed-network assets, private script names, and internal logging folder paths across all logger manuals (`manual/kr/logger/` & `manual/en/logger/`) into standardized enterprise virtual pipeline examples (`data_extractor`, `stream_processor`, `db_loader`, `logs/pipeline/...`, `Cloud_Data_Sync`).
+- **Enhanced Practical Dynamic File Routing and Path Templating in `02_project_logger_configure.md`**:
+  - Detailed the intelligent routing mechanism directing logs to isolated `out_file` for `ERROR`/`CRITICAL` runs and standard `debug_file` for normal operations.
+  - Added full dynamic evaluation samples combining `{app_name}` substitution and `%Y/%m/%d/%Y%m%dT%H%M%S` ISO compact timestamp folders.
+- **GitHub-Compatible Mermaid Diagram Syntax Standardization**:
+  - Applied double-quoted node text (`["..."]`) and standard edge syntax (`-->|"..."|`) across all 10 Korean and English logger manuals to prevent GitHub diagram rendering errors.
+- **Standardization of Telemetry Log Identifiers to Lowercase `snake_case`**:
+  - Sanitized error and exclusion log codes in `04_execution_result_and_error_tracking.md` and `05_summary_report_generation.md` to standard lowercase `snake_case`.
+- **Added Missing `from pathlib import Path` Import in `llm.py`**:
+  - Fixed missing `Path` import used in `LlmClient.__init__` type hint (`config_dir: str | Path | None`) to prevent potential NameError during runtime type inspection.
+
 ### v0.4.30 (2026-09-04)
 - **Detailed Feature User Manuals for `agent_common.logger` (10 documents in Korean & English) and README Integration**:
   - Authored comprehensive architecture and code reference manuals across 5 core logging capabilities under `manual/kr/logger/` and `manual/en/logger/`:

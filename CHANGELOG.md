@@ -2,6 +2,19 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.31 (2026-09-04)
+- **공개 배포 규격 준수를 위한 로깅 매뉴얼 내 사설·폐쇄망 식별자 전면 비식별화 및 일반화**:
+  - `manual/kr/logger/` 및 `manual/en/logger/` 전반에 걸쳐 사내 폐쇄망 자산 및 스크립트 식별자, 내부 로그 디렉터리 경로를 표준 엔터프라이즈 가상 데이터 파이프라인 규격(`data_extractor`, `stream_processor`, `db_loader`, `logs/pipeline/...`, `Cloud_Data_Sync`)으로 전면 변형 및 비식별화.
+- **`02_project_logger_configure.md` 로그 레벨별 동적 라우팅 및 템플릿 실전 예시 보강**:
+  - `logging.level` 설정값에 따라 장애 격리 저장용 `out_file`과 상세 추적용 `debug_file`로 분기되는 동작 메커니즘을 엔터프라이즈 파이프라인 실전 예제로 구체화.
+  - `{app_name}` 및 `%Y/%m/%d/%Y%m%dT%H%M%S` 동적 템플릿 경로 해석 및 생성 검증 예시 보강.
+- **Mermaid 아키텍처 다이어그램 GitHub 렌더링 호환성 개선**:
+  - GitHub 렌더러 파싱 오류를 방지하기 위해 노드 라벨 내 괄호 및 특수문자 큰따옴표 감싸기(`["..."]`) 및 엣지 라벨 표준 구문(`-->|"..."|`)을 한국어/영어 매뉴얼 10종에 전면 적용.
+- **로깅 결과 추적 식별자 소문자 `snake_case` 표준화**:
+  - `04_execution_result_and_error_tracking.md` 및 `05_summary_report_generation.md` 내 에러/제외 로그 ID를 소문자 `snake_case` 표준으로 정제.
+- **`llm.py` 내 `Path` 타입 힌트 누락 import(`from pathlib import Path`) 추가**:
+  - `LlmClient.__init__`의 `config_dir: str | Path | None` 인자 타입 힌팅 해석 및 런타임 검증 시 발생할 수 있는 잠재적 NameError 해소.
+
 ### v0.4.30 (2026-09-04)
 - **`agent_common.logger` 모듈의 5대 주요 기능별 상세 기술 매뉴얼(한국어/영어 총 10종) 신설 및 README 연동**:
   - `manual/kr/logger/` 및 `manual/en/logger/` 디렉터리에 로깅 포매터 및 로거의 핵심 기능 5종에 대한 심층 기술 문서(아키텍처 다이어그램, 메커니즘, 실전 코드 예시, 운영 베스트 프랙티스) 작성:
