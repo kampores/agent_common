@@ -145,6 +145,9 @@ logging_messages:
       # Example: logger.warning("config_auto_repair_failed", file_path="config/config.yml", error="Permission denied")
       config_auto_repair_failed: "Error occurred while auto-repairing configuration file: {file_path}, error: {error}"
 
+      # Example: logger.warning("config_default_fallback", key="timeout_seconds", default_val=30)
+      config_default_fallback: "Configuration item (key: '{key}') does not exist. Falling back to system default value ({default_val})."
+
     # --- [Fallback & Recovery Processing] ---
     fallback:
       # Example: logger.warning("fallback_applied", target_name="Candidate file", fallback_key="default.pdf", key="sample.json")
@@ -209,6 +212,9 @@ logging_messages:
       # Example: logger.warning("db_duplicate_pk_skipped", service_name="BigQuery", asst_id="DOC001", ecs_key="data/sample.json", context_info="...")
       db_duplicate_pk_skipped: "Already existing or duplicate primary key (PK={asst_id}) in {service_name}. Skipping from load target: [Key={ecs_key}] {context_info}"
 
+      # Example: logger.warning("sql_fallback_applied", context="SQL processing", error=str(e), sql="SELECT ...")
+      sql_fallback_applied: "An exception occurred during {context}. Returning original SQL as fallback. Error: {error}. Original SQL:\n{sql}"
+
   ERROR:
     # --- [Config & Regex Errors] ---
     config:
@@ -223,6 +229,9 @@ logging_messages:
 
       # Example: logger.error("config_load_failed", error="YAML syntax error at line 5")
       config_load_failed: "Failed to load configuration file: {error}"
+
+      # Example: logger.exception("config_type_coercion_failed", key_str="timeout_int", expected_type="integer (int)", guide_msg="Please provide an integer value.", val_any="'abc'", current_type="str")
+      config_type_coercion_failed: "[Config Type Guarantee Error] Setting '{key_str}' must be of type {expected_type}. {guide_msg} (Value: {val_any}, CurrentType: {current_type})"
 
     # --- [Rule & Schema Load Errors] ---
     rule:
@@ -260,6 +269,9 @@ logging_messages:
 
       # Example: logger.exception("db_bulk_streaming_fallback_failed", service_name="BigQuery", error="Permission denied")
       db_bulk_streaming_fallback_failed: "{service_name} bulk streaming fallback load finally failed: error: {error}"
+
+      # Example: logger.error("db_file_lock_failed", db_path="data/app.db", error="database is locked")
+      db_file_lock_failed: "Failed to connect to database (Path: {db_path}). A server process or another session may be locking the DB file. Please terminate related processes and retry: {error}"
 
     # --- [Storage Connection, Metadata & File Transfer Errors] ---
     storage:

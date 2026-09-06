@@ -2,6 +2,22 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.32 (2026-09-06)
+- **Generalization & Public Module-Level Promotion of Type Suffix Coercion Function (`coerce_type_by_key_suffix`)**:
+  - Promoted `ReadOnlyConfig._coerce_type_by_key_suffix` private static method to a first-class module-level public function `coerce_type_by_key_suffix(key_str, val_any)`.
+  - Enables direct import and standalone execution across arbitrary YAML, JSON, dictionaries, and custom data processing pipelines beyond just `config.yml`.
+  - Preserves 100% backward compatibility with existing class-level references (`ReadOnlyConfig.coerce_type_by_key_suffix` and `_coerce_type_by_key_suffix`).
+- **Eliminated Silent Failures & Enforced Strict Fail-Fast Policy via `logger.exception`**:
+  - Removed legacy antipattern where `int(val_any)` or `float(val_any)` failures silently returned raw invalid strings.
+  - Eliminated hardcoded error message formatting in Python code (enforcing DRY and No Hardcoding standards) and consolidated duplicate type failure templates into a single standardized log ID (`config_type_coercion_failed`) in `logging_messages_*.yml`.
+  - Extracted centralized helper `_raise_coercion_error` invoking `logger.exception("config_type_coercion_failed", ...)` to track origin tracebacks and update error telemetry before raising explicit `ValueError` / `TypeError`.
+- **Introduced Recursive Type Guarantee Helper for Nested Mappings (`coerce_dict_by_key_suffix`)**:
+  - Added `coerce_dict_by_key_suffix(data_dict)` to recursively walk and sanitize deeply nested dictionaries and list items according to key suffix rules in a single step.
+- **Extended `ReadOnlyConfig` to Support Arbitrary Configuration Files**:
+  - Parameterized source file name (`ReadOnlyConfig(data, source_name_str="config.yml")`) so that attribute lookup failures on custom configurations (`rule.yml`, `mapping.yml`) produce precise diagnostic `AttributeError` messages reflecting the actual source name.
+- **Top-Level Package Exports**:
+  - Re-exported `coerce_type_by_key_suffix` and `coerce_dict_by_key_suffix` in `agent_common.__all__`.
+
 ### v0.4.31 (2026-09-04)
 - **Full Sanitization & Generalization of Proprietary Identifiers for Public Distribution**:
   - Sanitized internal closed-network assets, private script names, and internal logging folder paths across all logger manuals (`manual/kr/logger/` & `manual/en/logger/`) into standardized enterprise virtual pipeline examples (`data_extractor`, `stream_processor`, `db_loader`, `logs/pipeline/...`, `Cloud_Data_Sync`).

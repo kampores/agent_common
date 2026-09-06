@@ -15,12 +15,14 @@
 #### 1. 설정 로더 및 불변 설정 객체 (`agent_common.config_loader`)
 - **1.1. [계층적 YAML 설정 해석 및 병합 (Deep Merge)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/01_hierarchical_yaml_merge.md)**: 패키지 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정(`config/*.yml`) 동적 병합.
 - **1.2. [불변 점 표기법 조회 (`ReadOnlyConfig`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/02_readonly_dot_notation.md)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 형태로 직관적 속성 접근 및 런타임 변조 방지.
-- **1.3. [타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion - v0.4.14)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/03_type_coercion_and_guarantee.md)**:
+- **1.3. [타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion - v0.4.14 / 범용화 v0.4.32)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/03_type_coercion_and_guarantee.md)**:
   - `_int`: `int` 정수형 자동 형 변환 및 보증
   - `_float`: `float` 실수형 자동 형 변환 및 보증
   - `_bool`: `bool` 불리언형 자동 변환 (`"true"`, `"false"`, `1`, `0` 등 완벽 대응)
   - `_str`: `str` 문자열 변환 및 `.strip()` 공백 자동 정제
   - `_list` / `_dict`: 리스트 / 불변 딕셔너리(`ReadOnlyConfig`) 래핑 보증
+  - 범용 함수 `coerce_type_by_key_suffix` 및 중첩 딕셔너리 일괄 변환 `coerce_dict_by_key_suffix` 제공으로 임의의 외부 설정 파일(`rule.yml`, `mapping.yml` 등) 및 데이터 파이프라인 완벽 지원
+  - 타입 불일치 시 침묵하지 않고 상세 안내와 함께 즉시 조기 실패(Fail-Fast, `ValueError`/`TypeError`) 발생 보증
 - **1.4. [Fail-Fast 필수 설정 검증 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/04_fail_fast_require_setting.md)**: 프로그램 시작 시 필수 설정값 누락 시 상세 원인 출력 후 프로세스 즉시 종료.
 - **1.5. [네트워크 프록시 제어 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/05_network_proxy_control.md)**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
 - **1.6. [모든 상수의 설정 파일화 및 템플릿 보정 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/06_ensure_config_self_healing.md)**: 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정.
@@ -243,12 +245,14 @@ A comprehensive Python common library providing unified logging, hierarchical co
 #### 1. Configuration Loader & Immutable Config Object (`agent_common.config_loader`)
 - **1.1. [Hierarchical YAML Parsing & Deep Merge](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/01_hierarchical_yaml_merge.md)**: Dynamically merges base package configurations (`agent_common/config/*.yml`) with project-specific configurations (`config/*.yml`).
 - **1.2. [Immutable Dot-Notation Access (`ReadOnlyConfig`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/02_readonly_dot_notation.md)**: Intuitive attribute-based lookup (`config.ecs.endpoint_url`, `config.transfer.max_workers_int`) while preventing unintended runtime mutations.
-- **1.3. [Type Guarantee & Automatic Coercion via Type Suffixes (v0.4.14)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/03_type_coercion_and_guarantee.md)**:
+- **1.3. [Type Guarantee & Automatic Coercion via Type Suffixes (v0.4.14 / Generalized v0.4.32)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/03_type_coercion_and_guarantee.md)**:
   - `_int`: Automatic integer conversion and type guarantee.
   - `_float`: Automatic floating-point conversion and type guarantee.
   - `_bool`: Automatic boolean conversion (`"true"`, `"false"`, `1`, `0`, etc.).
   - `_str`: Automatic string conversion and `.strip()` whitespace trimming.
   - `_list` / `_dict`: Guaranteed list / immutable dictionary (`ReadOnlyConfig`) wrapping.
+  - Standalone functions `coerce_type_by_key_suffix` and recursive batch coercion `coerce_dict_by_key_suffix` for arbitrary external configuration files (`rule.yml`, `mapping.yml`) and data mappings.
+  - Strict Fail-Fast guarantee: type-suffix mismatches immediately raise diagnostic exceptions (`ValueError`/`TypeError`) instead of silently falling back to raw values.
 - **1.4. [Fail-Fast Required Setting Validation (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/04_fail_fast_require_setting.md)**: Immediate process termination with diagnostic output if required settings are missing during startup.
 - **1.5. [Network Proxy Control (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/05_network_proxy_control.md)**: Automatic synchronization of `NO_PROXY` environment variable from `proxy.no_proxy` configuration.
 - **1.6. [Externalizing All Constants & Self-Healing Templates (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/06_ensure_config_self_healing.md)**: Materializing all in-code constants to configuration files, automatic scaffolding, and in-place missing key injection.

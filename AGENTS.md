@@ -16,7 +16,7 @@
 
 ### 1.3. Fail-Fast & Program Stability
 
-1.3.1. Required configuration values must be defined in configuration files. If missing, do not fallback to code constants; report via logs and terminate immediately (Fail-Fast). (Optional settings may use default fallbacks: `""`, `[]`, `None`, `0`.)
+1.3.1. Required configuration values must be defined in configuration files. If missing, do not fallback to code constants; report via logs and terminate immediately (Fail-Fast). (Optional settings may use default fallbacks: `""`, `[]`, `{}`, `None`, `0`, `Exception`.)
 
 1.3.2. Program termination due to missing configuration must only occur during the early execution phase (startup/CLI launch). Once startup completes, handle exceptions during request/task processing to prevent abnormal termination and recover gracefully.
 

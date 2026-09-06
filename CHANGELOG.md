@@ -2,6 +2,23 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.32 (2026-09-06)
+- **타입 접미사 자동 변환 함수의 공개 모듈 레벨 승격 및 범용화 (`coerce_type_by_key_suffix`)**:
+  - `ReadOnlyConfig` 내부의 비공개 정적 메서드(`_coerce_type_by_key_suffix`)를 패키지 최상위 모듈 공개 함수 `coerce_type_by_key_suffix(key_str, val_any)`로 승격.
+  - `config.yml` 뿐만 아니라 임의의 YAML, JSON, 데이터 사전(Dict) 및 비즈니스 파이프라인에서 단독 함수로 즉시 import하여 활용 가능하도록 개방.
+  - 기존 클래스 정적 메서드(`ReadOnlyConfig.coerce_type_by_key_suffix` 및 `_coerce_type_by_key_suffix`)와의 100% 하위 호환성 유지.
+- **타입 변환 실패 시 조용한 침묵 실패(Silent Failure) 제거 및 엄격한 Fast-Fail 정책 준수**:
+  - 기존에 `int(val_any)` 또는 `float(val_any)` 변환 실패 시 원본 문자열을 그대로 반환하던 안티패턴을 전면 제거.
+  - 소스코드 내 하드코딩된 예외 문자열 조립을 배제(No Hardcoding & DRY 준수)하고, `logging_messages_*.yml`에 단일화된 전용 로그 ID(`config_type_coercion_failed`) 템플릿을 구축하여 불필요한 메시지 중복을 전면 제거.
+  - `_raise_coercion_error` 공통 헬퍼를 통해 `logger.exception("config_type_coercion_failed", ...)`를 호출하여 원천 Traceback과 에러 텔레메트리 카운트를 기록한 뒤, 상세 안내 메시지와 함께 Fast-Fail 예외(`ValueError` / `TypeError`)를 발생시키도록 설계 개선.
+- **중첩 딕셔너리 일괄 재귀 타입 보증 헬퍼 함수 신설 (`coerce_dict_by_key_suffix`)**:
+  - 다중 계층으로 구성된 외부 설정 파일(YAML/JSON) 전체를 단 한 줄로 일괄 정제할 수 있도록, 딕셔너리 및 하위 리스트를 재귀 순회하며 접미사 규칙을 자동 변환하는 `coerce_dict_by_key_suffix(data_dict)` 함수 신설.
+- **`ReadOnlyConfig`의 다중 설정 파일 지원 확장 (설정 소스명 매개변수화)**:
+  - `ReadOnlyConfig(data, source_name_str="config.yml")` 형태로 인스턴스화 시 설정 파일명/소스명을 지정할 수 있도록 확장.
+  - 임의의 외부 설정 파일(`rule.yml`, `mapping.yml` 등)을 래핑했을 때 키 누락 시 해당 파일명(예: `rule.yml에 정의되지 않은 설정 항목입니다`)으로 정확한 `AttributeError` 메시지 출력 지원.
+- **`agent_common` 최상위 패키지 export 및 `__all__` 등록**:
+  - `from agent_common import coerce_type_by_key_suffix, coerce_dict_by_key_suffix` 지원.
+
 ### v0.4.31 (2026-09-04)
 - **공개 배포 규격 준수를 위한 로깅 매뉴얼 내 사설·폐쇄망 식별자 전면 비식별화 및 일반화**:
   - `manual/kr/logger/` 및 `manual/en/logger/` 전반에 걸쳐 사내 폐쇄망 자산 및 스크립트 식별자, 내부 로그 디렉터리 경로를 표준 엔터프라이즈 가상 데이터 파이프라인 규격(`data_extractor`, `stream_processor`, `db_loader`, `logs/pipeline/...`, `Cloud_Data_Sync`)으로 전면 변형 및 비식별화.

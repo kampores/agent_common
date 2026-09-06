@@ -14,13 +14,21 @@ from agent_common.config_loader import (
     ConfigLoader,
     ReadOnlyConfig,
     config,
+    coerce_type_by_key_suffix,
+    coerce_dict_by_key_suffix,
 )
+from agent_common.error_handler import ErrorHandler, error_handler, raise_coercion_error
 from agent_common.llm import LlmClient, LlmInferenceError
 
 __all__ = [
     "ConfigLoader",
     "ReadOnlyConfig",
     "config",
+    "coerce_type_by_key_suffix",
+    "coerce_dict_by_key_suffix",
+    "ErrorHandler",
+    "error_handler",
+    "raise_coercion_error",
     "LlmClient",
     "LlmInferenceError",
     "EcsClient",

@@ -20,7 +20,6 @@ from botocore.client import Config as BotoConfig
 from google.cloud import storage, bigquery
 from google.oauth2 import service_account
 
-from agent_common.error_handler import ErrorHandler
 from agent_common.config_loader import ConfigLoader
 from agent_common.logger import ProjectLogger
 
@@ -63,7 +62,7 @@ class EcsClient:
 
     def _connect(self):
         """
-        boto3 S3 클라이언트를 사용하여 Dell ECS 접속을 초기화하고 연결을 검증합니다.
+        boto3 S3 클라이언트를 사용하여 Dell ECS 접속을 초기화하고 연결 및 버킷 접근을 검증합니다 (Fail-Fast).
         """
         try:
             self.client = boto3.client(
@@ -78,9 +77,9 @@ class EcsClient:
                     retries={"max_attempts": 2},
                 ),
             )
+            # Dell ECS 버킷 접근 권한 및 엔드포인트 연결 상태 검증 (Fail-Fast)
+            self.client.head_bucket(Bucket=self.bucket_name)
         except Exception as e:
-            # 공용 에러 핸들러 네트워크 예외 기록 수행
-            ErrorHandler.handle_network_error(e, f"Dell ECS 연결 ({self.endpoint_url})")
             raise ConnectionError(self.logger.exception("connection_failed", service_name="Dell ECS", error=str(e))) from e
 
     def list_objects(self, prefix: str = "") -> Generator[Dict[str, Any], None, None]:
@@ -242,10 +241,7 @@ class GcsClient:
             # 버킷에 대한 접근 권한 및 존재 여부 검사 (타임아웃 적용)
             self.bucket = self.client.get_bucket(self.bucket_name, timeout=self.timeout_seconds)
         except Exception as e:
-            # 공용 에러 핸들러 네트워크 예외 기록 수행
-            ErrorHandler.handle_network_error(e, f"GCS 버킷 연결 ({self.bucket_name})")
-            self.logger.exception("connection_failed", service_name="GCS", error=str(e))
-            raise ConnectionError(f"GCS 버킷({self.bucket_name}) 연결 실패: {str(e)}") from e
+            raise ConnectionError(self.logger.exception("connection_failed", service_name="GCS", error=str(e))) from e
 
     def get_blob_size(self, destination_blob_name: str) -> int | None:
         """GCS 목적지 blob의 존재 여부 및 바이트 크기(bytes)를 조회한다.
@@ -341,7 +337,7 @@ class BigQueryClient:
 
     def _connect(self):
         """
-        Google Cloud BigQuery 클라이언트를 초기화하고 연결 및 테이블 스키마 상태를 검증합니다.
+        Google Cloud BigQuery 클라이언트를 초기화하고 연결 및 테이블 스키마 상태를 검증합니다 (Fail-Fast).
         """
         try:
             if self.credentials_path and self.credentials_path.strip() != "":
@@ -359,15 +355,10 @@ class BigQueryClient:
             else:
                 self.client = bigquery.Client(project=self.project_id)
             
-            # BigQuery Table 객체를 조회하여 스키마 타입(JSON, TIMESTAMP 등) 사전 캐싱
+            # BigQuery Table 객체를 조회하여 스키마 타입(JSON, TIMESTAMP 등) 사전 캐싱 및 연결 상태 검증 (Fail-Fast)
             table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
-            try:
-                self.table_obj = self.client.get_table(table_ref)
-            except Exception as table_err:
-                self.logger.exception("table_fetch_failed", service_name="BigQuery", fallback_ref=table_ref, error=str(table_err))
-                self.table_obj = table_ref
+            self.table_obj = self.client.get_table(table_ref)
         except Exception as e:
-            ErrorHandler.handle_network_error(e, f"BigQuery 연결 (Project: {self.project_id})")
             raise ConnectionError(self.logger.exception("connection_failed", service_name="BigQuery", error=str(e))) from e
 
     def load_table_from_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None, write_disposition: str | None = None) -> None:

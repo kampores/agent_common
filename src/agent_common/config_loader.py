@@ -12,13 +12,128 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Optional, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from agent_common.logger import ProjectLogger
+from typing import Any, Optional
 
 import yaml
+from agent_common.error_handler import ErrorHandler
 from agent_common.utils import DateTimeUtils
+
+
+def coerce_type_by_key_suffix(key_str: str, val_any: Any) -> Any:
+    """키 접미사(_int, _str, _bool, _float, _list, _dict)에 따라 값을 보증된 파이썬 표준 데이터 타입으로 엄격히 변환합니다.
+
+    도메인 의미: YAML, JSON 등 임의의 설정 파일이나 외부 데이터 소스에서 읽어들인 값의 타입을
+    키의 타입 접미사 명명 규칙에 기반하여 검증 및 강제 변환(Coercion & Guarantee)합니다.
+    [Fail-Fast 정책 준수] 접미사 규격과 일치하지 않는 유효하지 않은 값이 들어올 경우 침묵하며 원본을 반환하지 않고,
+    logger.exception()을 호출하여 에러를 기록하고 안내 메시지와 함께 예외(ValueError/TypeError)를 발생시켜 빠른 실패(Fail-Fast)를 유도합니다.
+
+    :param key_str: 설정 키 문자열
+    :param val_any: 변환할 원본 값
+    :return: 변환 및 보증된 파이썬 타입 값 (None 유입 시 None 반환)
+    :raises ValueError: 정수(_int), 실수(_float), 불리언(_bool) 형식 변환 불가 시 발생
+    :raises TypeError: 부적합한 타입(정수/실수에 복합타입, _bool에 비지원타입, _dict에 비매핑타입) 유입 시 발생
+    """
+    if val_any is None:
+        return None
+
+    if key_str.endswith("_int"):
+        try:
+            return int(val_any)
+        except Exception as err:
+            ErrorHandler.raise_coercion_error(
+                key_str=key_str,
+                val_any=val_any,
+                expected_type_str="정수형(int)",
+                guide_msg_str="정수형 값으로 입력해 주십시오.",
+                cause_exc=err,
+            )
+
+    if key_str.endswith("_float"):
+        try:
+            return float(val_any)
+        except Exception as err:
+            ErrorHandler.raise_coercion_error(
+                key_str=key_str,
+                val_any=val_any,
+                expected_type_str="실수형(float)",
+                guide_msg_str="올바른 숫자형 값으로 입력해 주십시오.",
+                cause_exc=err,
+            )
+
+    if key_str.endswith("_bool"):
+        if isinstance(val_any, bool):
+            return val_any
+        if isinstance(val_any, str):
+            # 대소문자 무관(Case-insensitive): 'true', 'TRUE', 'True' -> True / 'false', 'FALSE', 'False' -> False
+            clean_str: str = val_any.strip().lower()
+            if clean_str == "true":
+                return True
+            if clean_str == "false":
+                return False
+            ErrorHandler.raise_coercion_error(
+                key_str=key_str,
+                val_any=val_any,
+                expected_type_str="불리언(bool)",
+                guide_msg_str="True 또는 False 값으로 입력해 주십시오.",
+                exc_cls=ValueError,
+            )
+        ErrorHandler.raise_coercion_error(
+            key_str=key_str,
+            val_any=val_any,
+            expected_type_str="불리언(bool)",
+            guide_msg_str="True 또는 False 값으로 입력해 주십시오.",
+            exc_cls=TypeError,
+        )
+
+    if key_str.endswith("_str"):
+        return str(val_any).strip()
+
+    if key_str.endswith("_list"):
+        if isinstance(val_any, list):
+            return val_any
+        if isinstance(val_any, (tuple, set)):
+            return list(val_any)
+        return [val_any]
+
+    if key_str.endswith("_dict"):
+        if isinstance(val_any, dict):
+            return val_any
+        if hasattr(val_any, "to_dict") and callable(val_any.to_dict):
+            return val_any.to_dict()
+        ErrorHandler.raise_coercion_error(
+            key_str=key_str,
+            val_any=val_any,
+            expected_type_str="딕셔너리(dict)",
+            guide_msg_str="딕셔너리 매핑 구조로 입력해 주십시오.",
+            exc_cls=TypeError,
+        )
+
+    return val_any
+
+
+def coerce_dict_by_key_suffix(data_dict: dict[str, Any]) -> dict[str, Any]:
+    """딕셔너리 내부의 모든 키에 대해 키 접미사 규칙을 재귀적으로 적용하여 보증된 타입으로 일괄 변환한 새 딕셔너리를 반환합니다.
+
+    도메인 의미: 외부 설정 파일(YAML, JSON)을 파싱한 원본 딕셔너리 전체의 타입 무결성을 한 번에 보증합니다.
+
+    :param data_dict: 변환 대상 원본 딕셔너리
+    :return: 타입 자동 보증이 적용된 신규 딕셔너리
+    """
+    if not isinstance(data_dict, dict):
+        return data_dict
+
+    result_dict: dict[str, Any] = {}
+    for key_str, val_any in data_dict.items():
+        if isinstance(val_any, dict):
+            result_dict[key_str] = coerce_dict_by_key_suffix(val_any)
+        elif isinstance(val_any, list):
+            result_dict[key_str] = [
+                coerce_dict_by_key_suffix(item_any) if isinstance(item_any, dict) else item_any
+                for item_any in val_any
+            ]
+        else:
+            result_dict[key_str] = coerce_type_by_key_suffix(key_str, val_any)
+    return result_dict
 
 
 class ReadOnlyConfig:
@@ -26,11 +141,20 @@ class ReadOnlyConfig:
 
     도메인 의미: config.ecs.endpoint_url, config.transfer.max_workers 형태로
     설정값을 직관적으로 조회할 수 있으며, 런타임에 설정값이 임의로 변조되는 것을 방지합니다.
+    config.yml 뿐만 아니라 임의의 설정 파일(예: rule.yml, mapping.yml) 딕셔너리도 래핑하여 활용할 수 있습니다.
     """
 
-    def __init__(self, data_or_loader: dict[str, Any] | Any) -> None:
-        """딕셔너리 데이터 또는 ConfigLoader 인스턴스를 기반으로 ReadOnlyConfig 인스턴스를 초기화합니다."""
+    coerce_type_by_key_suffix = staticmethod(coerce_type_by_key_suffix)
+    _coerce_type_by_key_suffix = staticmethod(coerce_type_by_key_suffix)
+
+    def __init__(self, data_or_loader: dict[str, Any] | Any, source_name_str: str = "config.yml") -> None:
+        """딕셔너리 데이터 또는 ConfigLoader 인스턴스를 기반으로 ReadOnlyConfig 인스턴스를 초기화합니다.
+
+        :param data_or_loader: 딕셔너리 데이터 또는 ConfigLoader 인스턴스
+        :param source_name_str: 설정 소스 식별자 또는 파일명 (기본값: 'config.yml')
+        """
         object.__setattr__(self, "_source", data_or_loader)
+        object.__setattr__(self, "_source_name_str", source_name_str)
 
     def _get_data(self) -> dict[str, Any]:
         """현재 연결된 데이터 소스로부터 최신 딕셔너리를 반환합니다."""
@@ -41,79 +165,45 @@ class ReadOnlyConfig:
             return src.get_settings()
         return {}
 
-    @staticmethod
-    def _coerce_type_by_key_suffix(key: str, val: Any) -> Any:
-        """키 접미사(_int, _str, _bool, _float, _list, _dict)에 따라 값을 보증된 파이썬 타입으로 변환합니다.
-
-        :param key: 설정 키 문자열
-        :param val: 변환할 원본 값
-        :return: 변환 및 보증된 파이썬 타입 값
-        """
-        if val is None:
-            return val
-        if key.endswith("_int"):
-            try:
-                return int(val)
-            except (ValueError, TypeError):
-                return val
-        if key.endswith("_float"):
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return val
-        if key.endswith("_bool"):
-            if isinstance(val, bool):
-                return val
-            if isinstance(val, str):
-                return val.strip().lower() in ("true", "1", "yes", "y", "on")
-            return bool(val)
-        if key.endswith("_str"):
-            return str(val).strip()
-        if key.endswith("_list") and not isinstance(val, list):
-            if isinstance(val, (tuple, set)):
-                return list(val)
-            return [val]
-        if key.endswith("_dict") and not isinstance(val, dict):
-            return dict(val) if hasattr(val, "to_dict") or hasattr(val, "items") else val
-        return val
-
-    def __getattr__(self, key: str) -> Any:
+    def __getattr__(self, key_str: str) -> Any:
         """점 표기법(속성)으로 설정값을 조회하며 하위 딕셔너리는 ReadOnlyConfig로 자동 래핑합니다.
         
         설정 키 접미사(_int, _str, _bool, _float, _list, _dict)에 맞춰 타입을 자동 보증하여 반환합니다.
         """
         data: dict[str, Any] = self._get_data()
-        if key not in data:
-            raise AttributeError(f"config.yml에 정의되지 않은 설정 항목입니다: '{key}'")
-        val = data[key]
-        if isinstance(val, dict):
-            return ReadOnlyConfig(val)
-        if isinstance(val, list):
-            return [ReadOnlyConfig(item) if isinstance(item, dict) else item for item in val]
-        return self._coerce_type_by_key_suffix(key, val)
+        if key_str not in data:
+            source_name_str: str = object.__getattribute__(self, "_source_name_str")
+            raise AttributeError(f"{source_name_str}에 정의되지 않은 설정 항목입니다: '{key_str}'")
+        val_any = data[key_str]
+        source_name_str = object.__getattribute__(self, "_source_name_str")
+        if isinstance(val_any, dict):
+            return ReadOnlyConfig(val_any, source_name_str=source_name_str)
+        if isinstance(val_any, list):
+            return [ReadOnlyConfig(item, source_name_str=source_name_str) if isinstance(item, dict) else item for item in val_any]
+        return coerce_type_by_key_suffix(key_str, val_any)
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key_str: str) -> Any:
         """딕셔너리 키 인덱싱 표기법(config['ecs'])으로 조회합니다."""
-        return self.__getattr__(key)
+        return self.__getattr__(key_str)
 
-    def __contains__(self, key: str) -> bool:
+    def __contains__(self, key_str: str) -> bool:
         """설정 키 존재 여부(in 연산자)를 확인합니다."""
         data: dict[str, Any] = self._get_data()
-        return key in data
+        return key_str in data
 
-    def __setattr__(self, key: str, value: Any) -> None:
+    def __setattr__(self, key_str: str, value_any: Any) -> None:
         """설정값 임의 수정을 차단합니다 (불변성 유지)."""
         raise TypeError("config 설정값은 런타임에 수정할 수 없습니다 (Read-Only).")
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self, key_str: str, value_any: Any) -> None:
         """설정값 임의 수정을 차단합니다 (불변성 유지)."""
         raise TypeError("config 설정값은 런타임에 수정할 수 없습니다 (Read-Only).")
 
-    def __delattr__(self, key: str) -> None:
+    def __delattr__(self, key_str: str) -> None:
         """설정값 임의 삭제를 차단합니다 (불변성 유지)."""
         raise TypeError("config 설정값은 런타임에 삭제할 수 없습니다 (Read-Only).")
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key_str: str) -> None:
         """설정값 임의 삭제를 차단합니다 (불변성 유지)."""
         raise TypeError("config 설정값은 런타임에 삭제할 수 없습니다 (Read-Only).")
 
@@ -485,10 +575,12 @@ class ConfigLoader:
         current: Any = self.get_settings()
         for key in path.split("."):
             if not isinstance(current, dict) or key not in current:
+                if not path.startswith("logging_messages"):
+                    self.logger.warning("config_default_fallback", key=path, default_val=default)
                 return default
             current = current[key]
         last_key_str: str = path.split(".")[-1]
-        return ReadOnlyConfig._coerce_type_by_key_suffix(last_key_str, current)
+        return coerce_type_by_key_suffix(last_key_str, current)
 
     def require_setting(
         self, 
@@ -557,7 +649,7 @@ class ConfigLoader:
             sys.exit(1)
 
         last_key_str: str = path.split(".")[-1]
-        return ReadOnlyConfig._coerce_type_by_key_suffix(last_key_str, current)
+        return coerce_type_by_key_suffix(last_key_str, current)
 
     def project_path(self, path: str | Path | None = None) -> Path:
         """
