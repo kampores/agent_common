@@ -13,15 +13,90 @@ import re
 import time
 import json
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, TYPE_CHECKING, Tuple
 
-import boto3
-from botocore.client import Config as BotoConfig
-from google.cloud import storage, bigquery
-from google.oauth2 import service_account
+if TYPE_CHECKING:
+    import boto3
+    from botocore.client import Config as BotoConfig
+    from google.cloud import storage, bigquery
+    from google.oauth2 import service_account
 
 from agent_common.config_loader import ConfigLoader
 from agent_common.logger import ProjectLogger
+
+# 서드파티 SDK 지연 로딩(Lazy Loading) 캐시 변수
+_boto3: Any = None
+_boto_config: Any = None
+_storage: Any = None
+_bigquery: Any = None
+_service_account: Any = None
+
+
+def _get_boto3() -> Tuple[Any, Any]:
+    """
+    boto3 및 BotoConfig 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
+
+    :return: (boto3 모듈, BotoConfig 클래스) 튜플
+    :raises ImportError: boto3 패키지가 설치되어 있지 않은 경우 발생
+    """
+    global _boto3, _boto_config
+    if _boto3 is None or _boto_config is None:
+        try:
+            import boto3
+            from botocore.client import Config as BotoConfig
+            _boto3 = boto3
+            _boto_config = BotoConfig
+        except ImportError as exc:
+            raise ImportError(
+                "Dell ECS(S3) 기능을 사용하려면 'boto3' 패키지가 필요합니다. "
+                "'pip install boto3' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
+            ) from exc
+    return _boto3, _boto_config
+
+
+def _get_gcs() -> Tuple[Any, Any]:
+    """
+    google.cloud.storage 및 google.oauth2.service_account 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
+
+    :return: (storage 모듈, service_account 모듈) 튜플
+    :raises ImportError: google-cloud-storage 또는 google-auth 패키지가 설치되어 있지 않은 경우 발생
+    """
+    global _storage, _service_account
+    if _storage is None or _service_account is None:
+        try:
+            from google.cloud import storage
+            from google.oauth2 import service_account
+            _storage = storage
+            _service_account = service_account
+        except ImportError as exc:
+            raise ImportError(
+                "Google Cloud Storage(GCS) 기능을 사용하려면 'google-cloud-storage' 패키지가 필요합니다. "
+                "'pip install google-cloud-storage' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
+            ) from exc
+    return _storage, _service_account
+
+
+def _get_bigquery() -> Tuple[Any, Any]:
+    """
+    google.cloud.bigquery 및 google.oauth2.service_account 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
+
+    :return: (bigquery 모듈, service_account 모듈) 튜플
+    :raises ImportError: google-cloud-bigquery 또는 google-auth 패키지가 설치되어 있지 않은 경우 발생
+    """
+    global _bigquery, _service_account
+    if _bigquery is None or _service_account is None:
+        try:
+            from google.cloud import bigquery
+            from google.oauth2 import service_account
+            _bigquery = bigquery
+            _service_account = service_account
+        except ImportError as exc:
+            raise ImportError(
+                "Google Cloud BigQuery 기능을 사용하려면 'google-cloud-bigquery' 패키지가 필요합니다. "
+                "'pip install google-cloud-bigquery' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
+            ) from exc
+    return _bigquery, _service_account
+
 
 
 class EcsClient:
@@ -64,13 +139,14 @@ class EcsClient:
         """
         boto3 S3 클라이언트를 사용하여 Dell ECS 접속을 초기화하고 연결 및 버킷 접근을 검증합니다 (Fail-Fast).
         """
+        boto3_module, boto_config_cls = _get_boto3()
         try:
-            self.client = boto3.client(
+            self.client = boto3_module.client(
                 "s3",
                 aws_access_key_id=self.access_key,
                 aws_secret_access_key=self.secret_key,
                 endpoint_url=self.endpoint_url,
-                config=BotoConfig(
+                config=boto_config_cls(
                     signature_version="s3v4",
                     connect_timeout=self.timeout_seconds,
                     read_timeout=self.timeout_seconds,
@@ -222,6 +298,7 @@ class GcsClient:
         """
         Google Cloud Storage 클라이언트를 초기화하고 해당 버킷의 연결/접근 권한 상태를 검증합니다.
         """
+        storage_module, service_account_module = _get_gcs()
         try:
             if self.credentials_path and self.credentials_path.strip() != "":
                 cred_path = Path(self.credentials_path)
@@ -231,12 +308,12 @@ class GcsClient:
                     raise FileNotFoundError(
                         f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path}')"
                     )
-                credentials = service_account.Credentials.from_service_account_file(
+                credentials = service_account_module.Credentials.from_service_account_file(
                     str(cred_path)
                 )
-                self.client = storage.Client(credentials=credentials)
+                self.client = storage_module.Client(credentials=credentials)
             else:
-                self.client = storage.Client()
+                self.client = storage_module.Client()
 
             # 버킷에 대한 접근 권한 및 존재 여부 검사 (타임아웃 적용)
             self.bucket = self.client.get_bucket(self.bucket_name, timeout=self.timeout_seconds)
@@ -339,6 +416,7 @@ class BigQueryClient:
         """
         Google Cloud BigQuery 클라이언트를 초기화하고 연결 및 테이블 스키마 상태를 검증합니다 (Fail-Fast).
         """
+        bigquery_module, service_account_module = _get_bigquery()
         try:
             if self.credentials_path and self.credentials_path.strip() != "":
                 cred_path = Path(self.credentials_path)
@@ -348,12 +426,12 @@ class BigQueryClient:
                     raise FileNotFoundError(
                         f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path}')"
                     )
-                credentials = service_account.Credentials.from_service_account_file(
+                credentials = service_account_module.Credentials.from_service_account_file(
                     str(cred_path)
                 )
-                self.client = bigquery.Client(credentials=credentials, project=self.project_id)
+                self.client = bigquery_module.Client(credentials=credentials, project=self.project_id)
             else:
-                self.client = bigquery.Client(project=self.project_id)
+                self.client = bigquery_module.Client(project=self.project_id)
             
             # BigQuery Table 객체를 조회하여 스키마 타입(JSON, TIMESTAMP 등) 사전 캐싱 및 연결 상태 검증 (Fail-Fast)
             table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
@@ -382,14 +460,15 @@ class BigQueryClient:
         if rows_to_insert is None:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
 
+        bigquery_module, _ = _get_bigquery()
         try:
-            write_disp = write_disposition if write_disposition else bigquery.WriteDisposition.WRITE_APPEND
-            job_config = bigquery.LoadJobConfig(
-                source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+            write_disp = write_disposition if write_disposition else bigquery_module.WriteDisposition.WRITE_APPEND
+            job_config = bigquery_module.LoadJobConfig(
+                source_format=bigquery_module.SourceFormat.NEWLINE_DELIMITED_JSON,
                 write_disposition=write_disp,
                 ignore_unknown_values=skip_unknown,
             )
-            if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery.Table):
+            if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery_module.Table):
                 job_config.schema = self.table_obj.schema
 
             load_job = self.client.load_table_from_json(
@@ -631,6 +710,7 @@ WHEN MATCHED THEN
             pk_key=pk_key_str,
         )
 
+        bigquery_module, _ = _get_bigquery()
         try:
             for chunk_idx_int in range(total_chunks_int):
                 start_idx_int: int = chunk_idx_int * chunk_size_int
@@ -638,9 +718,9 @@ WHEN MATCHED THEN
                 chunk_rows_list: list[dict[str, Any]] = rows_list[start_idx_int:end_idx_int]
 
                 json_payload_str: str = json.dumps(chunk_rows_list, ensure_ascii=False, default=str)
-                job_config = bigquery.QueryJobConfig(
+                job_config = bigquery_module.QueryJobConfig(
                     query_parameters=[
-                        bigquery.ScalarQueryParameter("json_payload", "STRING", json_payload_str)
+                        bigquery_module.ScalarQueryParameter("json_payload", "STRING", json_payload_str)
                     ]
                 )
 
@@ -667,7 +747,7 @@ WHEN MATCHED THEN
                     p_sql_str: str = p_item_dict.get("sql", "")
                     p_params_list = p_item_dict.get("params") or []
                     if p_sql_str:
-                        p_job_config = bigquery.QueryJobConfig(query_parameters=p_params_list) if p_params_list else None
+                        p_job_config = bigquery_module.QueryJobConfig(query_parameters=p_params_list) if p_params_list else None
                         p_job = self.client.query(p_sql_str, job_config=p_job_config, timeout=merge_timeout_int)
                         p_job.result(timeout=merge_timeout_int)
 

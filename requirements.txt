@@ -1,3 +1,7 @@
-# agent_common 필수 의존성 패키지 목록
+# agent_common 필수 의존성 패키지 목록 (경량 기본 설치)
 PyYAML>=6.0
-requests
+
+# [선택 의존성] Dell ECS, GCS, BigQuery 클라이언트 사용 시 필요 (pip install agent_common[clients])
+# boto3>=1.26.0
+# google-cloud-storage>=2.10.0
+# google-cloud-bigquery>=3.10.0

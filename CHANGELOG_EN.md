@@ -2,6 +2,18 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.33 (2026-09-07)
+- **Lazy Loading of Cloud Storage SDKs & Ultra-Lightweight Package Footprint**:
+  - Refactored heavy cloud SDK dependencies (`boto3`, `google-cloud-storage`, `google-cloud-bigquery`) in `EcsClient`, `GcsClient`, and `BigQueryClient` to load on-demand upon `_connect()` and query execution rather than at module import time.
+  - Ensures safe and error-free import of `agent_common` core and `clients` modules in lean environments without cloud SDKs installed.
+  - Provides clear diagnostic `ImportError` messages guiding users to install missing dependencies (e.g., `'pip install boto3'` or `'pip install agent_common[clients]'`).
+  - Preserved IDE autocomplete and static type analysis via `TYPE_CHECKING` blocks.
+- **Optional Dependencies (Extras) Specification**:
+  - Moved all cloud storage SDKs to `[project.optional-dependencies]` (`clients`, `ecs`, `gcp`, `all`) in `pyproject.toml`.
+  - Base installation (`pip install agent_common`) now requires only `PyYAML`, achieving an ultra-compact installation footprint.
+- **Complete Removal of Unused `requests` Dependency**:
+  - Fully eliminated unused `requests` from dependencies in strict alignment with AGENTS.md rule 1.2.1 (standard library prioritization via `urllib.request` to minimize CVE exposure).
+
 ### v0.4.32 (2026-09-06)
 - **Generalization & Public Module-Level Promotion of Type Suffix Coercion Function (`coerce_type_by_key_suffix`)**:
   - Promoted `ReadOnlyConfig._coerce_type_by_key_suffix` private static method to a first-class module-level public function `coerce_type_by_key_suffix(key_str, val_any)`.

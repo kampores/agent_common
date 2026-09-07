@@ -182,11 +182,14 @@ python -m build agent_common --wheel -o whls/
 
 #### Wheel 패키지 설치
 ```bash
-# 개발 환경 (Editable 모드)
+# 개발 환경 (Editable 모드 - 기본 경량 설치)
 pip install -e agent_common
 
+# 개발 환경 (클라우드 클라이언트 extras 포함)
+pip install -e "agent_common[clients]"
+
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.30-py3-none-any.whl
+pip install dist/agent_common-0.4.33-py3-none-any.whl
 ```
 
 #### PyPI 공공 배포 가이드
@@ -203,7 +206,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.30*
+python -m twine upload dist/agent_common-0.4.33*
 ```
 
 ---
@@ -406,11 +409,14 @@ python -m build agent_common --wheel -o whls/
 
 #### Installing the Wheel Package
 ```bash
-# Development (Editable mode)
+# Development (Editable mode - lightweight core)
 pip install -e agent_common
 
+# Development (With cloud client extras)
+pip install -e "agent_common[clients]"
+
 # Production (Wheel package)
-pip install dist/agent_common-0.4.30-py3-none-any.whl
+pip install dist/agent_common-0.4.33-py3-none-any.whl
 ```
 
 #### PyPI Public Distribution Guide
@@ -427,7 +433,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.30*
+python -m twine upload dist/agent_common-0.4.33*
 ```
 
 ---

@@ -2,6 +2,18 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.33 (2026-09-07)
+- **클라우드 스토리지 SDK 지연 로딩(Lazy Loading) 및 패키지 초경량화**:
+  - `EcsClient`, `GcsClient`, `BigQueryClient` 구동에 필요한 무거운 서드파티 SDK(`boto3`, `google-cloud-storage`, `google-cloud-bigquery`)를 모듈 임포트 시점이 아닌 클라이언트 연결(`_connect`) 및 쿼리 실행 시점에 동적 로드하도록 구조 개선.
+  - 외부 SDK 미설치 상태에서도 `agent_common` 최상위 패키지 및 `clients` 모듈을 에러 없이 안전하게 import 가능하도록 보장.
+  - 해당 클라이언트 구동 시 라이브러리가 설치되어 있지 않을 경우 설치 명령어(`pip install boto3` 등)를 상세 안내하는 명확한 `ImportError` 예외 발생.
+  - 타입 체커 및 IDE 정적 분석 지원을 위해 `TYPE_CHECKING` 블록을 유지하여 개발 생산성 보장.
+- **선택적 의존성(Optional Dependencies / Extras) 분리**:
+  - `pyproject.toml`의 기본 `dependencies`에서 무거운 클라우드 SDK를 전면 분리하고, 필요한 환경에 따라 선택 설치할 수 있도록 `[project.optional-dependencies]` (`clients`, `ecs`, `gcp`, `all`) 신설.
+  - 기본 설치(`pip install agent_common`) 시 `PyYAML`만 설치되는 초경량 풋프린트 달성.
+- **불필요한 `requests` 의존성 전면 제거**:
+  - 패키지 내 모든 HTTP 통신이 파이썬 표준 라이브러리(`urllib.request`)로 구현되어 있으므로, 미사용 서드파티 라이브러리인 `requests`를 의존성 목록에서 완전 삭제(AGENTS.md 규칙 1.2.1 보안 취약점 최소화 준수).
+
 ### v0.4.32 (2026-09-06)
 - **타입 접미사 자동 변환 함수의 공개 모듈 레벨 승격 및 범용화 (`coerce_type_by_key_suffix`)**:
   - `ReadOnlyConfig` 내부의 비공개 정적 메서드(`_coerce_type_by_key_suffix`)를 패키지 최상위 모듈 공개 함수 `coerce_type_by_key_suffix(key_str, val_any)`로 승격.

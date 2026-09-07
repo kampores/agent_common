@@ -4,13 +4,31 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent_common"
-version = "0.4.32"
+version = "0.4.33"
 description = "자율 에이전트 및 데이터 파이프라인을 위한 경량 설정·로깅·도구 프레임워크 (Lightweight configuration, logging, and tooling framework for autonomous agents and data pipelines)"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "pyyaml>=6.0",
-    "requests"
+    "pyyaml>=6.0"
+]
+
+[project.optional-dependencies]
+clients = [
+    "boto3>=1.26.0",
+    "google-cloud-storage>=2.10.0",
+    "google-cloud-bigquery>=3.10.0"
+]
+ecs = [
+    "boto3>=1.26.0"
+]
+gcp = [
+    "google-cloud-storage>=2.10.0",
+    "google-cloud-bigquery>=3.10.0"
+]
+all = [
+    "boto3>=1.26.0",
+    "google-cloud-storage>=2.10.0",
+    "google-cloud-bigquery>=3.10.0"
 ]
 
 [project.urls]
