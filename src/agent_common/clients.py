@@ -3,7 +3,7 @@
 # 설계자 이메일: bakkus@daum.net
 
 """
-Dell ECS(S3), Google Cloud Storage(GCS), Google Cloud BigQuery(BQ) 등 
+AWS S3, Dell ECS(S3 호환), Google Cloud Storage(GCS), Google Cloud BigQuery(BQ) 등 
 스토리지 및 데이터베이스 시스템과의 연결 및 데이터 입출력을 담당하는 공용 클라이언트 모듈입니다.
 """
 
@@ -32,6 +32,7 @@ _bigquery: Any = None
 _service_account: Any = None
 
 
+
 def _get_boto3() -> Tuple[Any, Any]:
     """
     boto3 및 BotoConfig 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
@@ -48,7 +49,7 @@ def _get_boto3() -> Tuple[Any, Any]:
             _boto_config = BotoConfig
         except ImportError as exc:
             raise ImportError(
-                "Dell ECS(S3) 기능을 사용하려면 'boto3' 패키지가 필요합니다. "
+                "AWS S3 및 Dell ECS 기능을 사용하려면 'boto3' 패키지가 필요합니다. "
                 "'pip install boto3' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
             ) from exc
     return _boto3, _boto_config
@@ -99,95 +100,149 @@ def _get_bigquery() -> Tuple[Any, Any]:
 
 
 
-class EcsClient:
+class S3Client:
     """
-    Dell ECS (S3 호환) 저장소와의 연결 및 데이터 조회를 담당하는 공용 클라이언트 클래스.
+    AWS S3 및 Dell ECS(S3 호환) 저장소와의 연결, 데이터 조회 및 전송을 담당하는 공용 클라이언트 클래스.
     """
 
     def __init__(
         self,
-        endpoint_url: str,
-        access_key: str,
-        secret_key: str,
-        bucket_name: str,
-        timeout_seconds: int | None = None,
+        endpoint_url_str: str | None = None,
+        access_key_str: str | None = None,
+        secret_key_str: str | None = None,
+        bucket_name_str: str = "",
+        timeout_seconds_int: int | None = None,
+        region_name_str: str | None = None,
+        **kwargs: Any,
     ):
-        # endpoint_url: Dell ECS API 서버 주소 (예: http://xxx.yyy.zzz.uuu:0000)
-        self.endpoint_url: str = endpoint_url
-        # access_key: S3 연결에 사용하는 인증 키 ID
-        self.access_key: str = access_key
-        # secret_key: S3 연결에 사용하는 비밀번호
-        self.secret_key: str = secret_key
-        # bucket_name: 조회의 대상이 되는 ECS 버킷명
-        self.bucket_name: str = bucket_name
-        # logger: _logger 백킹 필드 초기화
-        self.logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        """
+        AWS S3 또는 Dell ECS 클라이언트를 초기화합니다.
+
+        :param endpoint_url_str: S3 엔드포인트 URL (Dell ECS 등 온프레미스 사용 시 지정, AWS S3 기본 사용 시 None 또는 생략)
+        :param access_key_str: S3 접속 Access Key ID (AWS IAM Role 사용 시 None 가능)
+        :param secret_key_str: S3 접속 Secret Access Key (AWS IAM Role 사용 시 None 가능)
+        :param bucket_name_str: 조회의 대상이 되는 S3/ECS 버킷명 (필수)
+        :param timeout_seconds_int: 네트워크 연결 및 읽기 타임아웃 초 (미지정 시 설정 파일 transfer.timeout_seconds 참조)
+        :param region_name_str: AWS 리전명 (예: 'ap-northeast-2', Dell ECS의 경우 생략 가능)
+        :param kwargs: 하위 호환성을 위한 레거시 매개변수 (endpoint_url, access_key, secret_key, bucket_name, timeout_seconds, region_name)
+        :raises ValueError: 필수 파라미터인 bucket_name이 누락된 경우 발생
+        :raises ConnectionError: 저장소 연결 또는 버킷 접근 권한 검증에 실패한 경우 발생
+        """
+        # 레거시 키워드 인자 호환성 보장
+        self.endpoint_url_str: str | None = endpoint_url_str or kwargs.get("endpoint_url")
+        self.access_key_str: str | None = access_key_str or kwargs.get("access_key")
+        self.secret_key_str: str | None = secret_key_str or kwargs.get("secret_key")
+        resolved_bucket_name_str: str = bucket_name_str or kwargs.get("bucket_name", "")
+        if not resolved_bucket_name_str:
+            raise ValueError("S3/ECS 버킷명(bucket_name_str)은 필수 입력 항목입니다.")
+        self.bucket_name_str: str = resolved_bucket_name_str.strip()
+        self.region_name_str: str | None = region_name_str or kwargs.get("region_name")
+
+        # 레거시 프로퍼티 호환 지원 (기존 self.endpoint_url, self.bucket_name 등을 참조하는 코드 대비)
+        self.endpoint_url: str | None = self.endpoint_url_str
+        self.access_key: str | None = self.access_key_str
+        self.secret_key: str | None = self.secret_key_str
+        self.bucket_name: str = self.bucket_name_str
+
+        # logger 초기화
+        self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
         self.config_loader: ConfigLoader = ConfigLoader()
-        # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
-        resolved_timeout = (
-            timeout_seconds
-            if timeout_seconds is not None
-            else self.config_loader.require_setting("transfer.timeout_seconds")
+
+        resolved_timeout_int = (
+            timeout_seconds_int
+            if timeout_seconds_int is not None
+            else kwargs.get("timeout_seconds")
         )
-        self.timeout_seconds: int = int(resolved_timeout)
+        if resolved_timeout_int is None:
+            resolved_timeout_int = self.config_loader.require_setting("transfer.timeout_seconds")
+        self.timeout_seconds_int: int = int(resolved_timeout_int)
+        self.timeout_seconds: int = self.timeout_seconds_int
+
         # client: boto3 s3 클라이언트 인스턴스
         self.client: Any = None
         self._connect()
 
-    def _connect(self):
+    def _connect(self) -> None:
         """
-        boto3 S3 클라이언트를 사용하여 Dell ECS 접속을 초기화하고 연결 및 버킷 접근을 검증합니다 (Fail-Fast).
+        boto3 S3 클라이언트를 사용하여 AWS S3 / Dell ECS 접속을 초기화하고 연결 및 버킷 접근을 검증합니다 (Fail-Fast).
+
+        :raises ConnectionError: 엔드포인트 연결 실패 또는 버킷 접근 권한 검증 실패 시 발생
         """
         boto3_module, boto_config_cls = _get_boto3()
         try:
-            self.client = boto3_module.client(
-                "s3",
-                aws_access_key_id=self.access_key,
-                aws_secret_access_key=self.secret_key,
-                endpoint_url=self.endpoint_url,
-                config=boto_config_cls(
+            client_kwargs_dict: Dict[str, Any] = {
+                "service_name": "s3",
+                "config": boto_config_cls(
                     signature_version="s3v4",
-                    connect_timeout=self.timeout_seconds,
-                    read_timeout=self.timeout_seconds,
+                    connect_timeout=self.timeout_seconds_int,
+                    read_timeout=self.timeout_seconds_int,
                     retries={"max_attempts": 2},
                 ),
-            )
-            # Dell ECS 버킷 접근 권한 및 엔드포인트 연결 상태 검증 (Fail-Fast)
-            self.client.head_bucket(Bucket=self.bucket_name)
-        except Exception as e:
-            raise ConnectionError(self.logger.exception("connection_failed", service_name="Dell ECS", error=str(e))) from e
+            }
+            if self.endpoint_url_str:
+                client_kwargs_dict["endpoint_url"] = self.endpoint_url_str
+            if self.region_name_str:
+                client_kwargs_dict["region_name"] = self.region_name_str
+            if self.access_key_str and self.secret_key_str:
+                client_kwargs_dict["aws_access_key_id"] = self.access_key_str
+                client_kwargs_dict["aws_secret_access_key"] = self.secret_key_str
 
-    def list_objects(self, prefix: str = "") -> Generator[Dict[str, Any], None, None]:
+            self.client = boto3_module.client(**client_kwargs_dict)
+
+            # S3/ECS 버킷 접근 권한 및 엔드포인트 연결 상태 검증 (Fail-Fast)
+            self.client.head_bucket(Bucket=self.bucket_name_str)
+        except Exception as exc:
+            target_service_str: str = "Dell ECS" if self.endpoint_url_str else "AWS S3"
+            raise ConnectionError(
+                self.logger.exception("connection_failed", service_name=target_service_str, error=str(exc))
+            ) from exc
+
+    def list_objects(self, prefix_str: str = "", **kwargs: Any) -> Generator[Dict[str, Any], None, None]:
         """
-        지정된 버킷 및 프리픽스 범위 하위의 ECS 오브젝트 목록을 안전하게 조회(페이징)합니다.
+        지정된 버킷 및 프리픽스 범위 하위의 S3/ECS 오브젝트 목록을 안전하게 조회(페이징)합니다.
+
+        :param prefix_str: 조회할 오브젝트 키 프리픽스
+        :return: 오브젝트 메타데이터 딕셔너리 제너레이터
+        :raises RuntimeError: 목록 조회 실패 시 발생
         """
+        resolved_prefix_str: str = prefix_str or kwargs.get("prefix", "")
         try:
             paginator = self.client.get_paginator("list_objects_v2")
-            pages = paginator.paginate(Bucket=self.bucket_name, Prefix=prefix)
+            pages = paginator.paginate(Bucket=self.bucket_name_str, Prefix=resolved_prefix_str)
             for page in pages:
                 if "Contents" in page:
                     for obj in page["Contents"]:
                         yield obj
-        except Exception as e:
-            raise RuntimeError(self.logger.exception("list_failed", storage_type="ECS", error=str(e))) from e
+        except Exception as exc:
+            storage_type_str: str = "Dell ECS" if self.endpoint_url_str else "AWS S3"
+            raise RuntimeError(self.logger.exception("list_failed", storage_type=storage_type_str, error=str(exc))) from exc
 
-    def get_object_stream(self, key: str) -> Any:
+    def get_object_stream(self, key_str: str = "", **kwargs: Any) -> Any:
         """
-        특정 파일의 파일 스트림 객체(StreamingBody)를 ECS로부터 획득합니다.
+        특정 파일의 파일 스트림 객체(StreamingBody)를 S3/ECS로부터 획득합니다.
+
+        :param key_str: 대상 오브젝트 키 경로
+        :return: StreamingBody 스트림 객체
+        :raises RuntimeError: 스트림 조회 실패 시 발생
         """
+        resolved_key_str: str = key_str or kwargs.get("key", "")
         try:
-            response = self.client.get_object(Bucket=self.bucket_name, Key=key)
+            response = self.client.get_object(Bucket=self.bucket_name_str, Key=resolved_key_str)
             return response["Body"]
-        except Exception as e:
-            raise RuntimeError(self.logger.exception("transfer_failed", file_name=key, error=str(e))) from e
+        except Exception as exc:
+            raise RuntimeError(self.logger.exception("transfer_failed", file_name=resolved_key_str, error=str(exc))) from exc
 
-    def get_object_size(self, key: str) -> int | None:
+    def get_object_size(self, key_str: str = "", **kwargs: Any) -> int | None:
         """
-        Dell ECS 오브젝트의 파일 크기(bytes)를 헤더(head_object)로 빠르게 조회합니다.
+        S3/ECS 오브젝트의 파일 크기(bytes)를 헤더(head_object)로 빠르게 조회합니다.
+
+        :param key_str: 대상 오브젝트 키 경로
+        :return: 파일 크기(바이트) 또는 조회 실패 시 None
         """
+        resolved_key_str: str = key_str or kwargs.get("key", "")
         try:
-            response = self.client.head_object(Bucket=self.bucket_name, Key=key)
+            response = self.client.head_object(Bucket=self.bucket_name_str, Key=resolved_key_str)
             return response.get("ContentLength")
         except Exception:
             return None
@@ -195,71 +250,82 @@ class EcsClient:
     def transfer_to_gcs(
         self,
         gcs_client: GcsClient,
-        ecs_key: str,
-        gcs_blob_name: str,
-        size: int,
+        s3_key_str: str = "",
+        gcs_blob_name_str: str = "",
+        size_int: int | None = None,
+        **kwargs: Any,
     ) -> bool:
         """
         단일 파일에 대해 GCS 존재 여부 및 용량을 사전 검사하여, 동일 용량 파일 존재 시 복사를 건너뛰고(Skip),
-        신규 파일이거나 용량이 다른 경우 ECS 스트림을 열고 GCS로 실시간 전송하며,
+        신규 파일이거나 용량이 다른 경우 S3/ECS 스트림을 열고 GCS로 실시간 전송하며,
         구간별 통계 시간 및 단일 행 표준 로깅을 공통 처리합니다.
 
         :param gcs_client: 목적지 GCS 클라이언트 인스턴스
-        :param ecs_key: 소스 ECS 객체 키 경로
-        :param gcs_blob_name: 목적지 GCS 블롭 경로명
-        :param size: 파일 바이트 크기
+        :param s3_key_str: 소스 S3/ECS 객체 키 경로
+        :param gcs_blob_name_str: 목적지 GCS 블롭 경로명
+        :param size_int: 파일 바이트 크기
         :return: 전송 성공 또는 Skip 시 True, 실패 시 False
         """
-        import time
-        total_start = time.time()
-        context_info = f"[ECS_Key={ecs_key} GCS_Blob={gcs_blob_name} Size={size}]"
+        resolved_s3_key_str: str = s3_key_str or kwargs.get("ecs_key", "")
+        resolved_blob_name_str: str = gcs_blob_name_str or kwargs.get("gcs_blob_name", "")
+        resolved_size_int: int = size_int if size_int is not None else int(kwargs.get("size", 0))
+
+        total_start_float = time.time()
+        context_info_str = f"[S3_Key={resolved_s3_key_str} GCS_Blob={resolved_blob_name_str} Size={resolved_size_int}]"
 
         try:
             # 1. GCS 목적지의 기존 파일 존재 여부 및 바이트 크기 조회
-            check_start = time.time()
-            existing_size = gcs_client.get_blob_size(gcs_blob_name)
-            check_elapsed = time.time() - check_start
+            check_start_float = time.time()
+            existing_size_int = gcs_client.get_blob_size(resolved_blob_name_str)
+            check_elapsed_float = time.time() - check_start_float
 
             # 이미 GCS에 존재하고 용량이 동일한 경우 복사 건너뛰기
-            if existing_size is not None and existing_size == size:
-                self.logger.info("transfer_skipped", file_name=ecs_key, dst_type="GCS")
+            if existing_size_int is not None and existing_size_int == resolved_size_int:
+                self.logger.info("transfer_skipped", file_name=resolved_s3_key_str, dst_type="GCS")
                 self.logger.info(
                     "elapsed_time",
                     action_name="GCS 파일 검사",
-                    details=f"[CheckTime={check_elapsed:.2f}s Status=Skipped]",
-                    context_info=context_info,
+                    details=f"[CheckTime={check_elapsed_float:.2f}s Status=Skipped]",
+                    context_info=context_info_str,
                 )
                 return True
 
-            # 2. ECS S3 StreamingBody 스트림 객체 생성 시간 측정
-            ecs_start = time.time()
-            stream = self.get_object_stream(ecs_key)
-            ecs_stream_time = time.time() - ecs_start
+            # 2. S3/ECS StreamingBody 스트림 객체 생성 시간 측정
+            stream_start_float = time.time()
+            stream_obj = self.get_object_stream(resolved_s3_key_str)
+            stream_elapsed_float = time.time() - stream_start_float
 
             # 3. GCS 업로드 스트림 시간 측정
-            gcs_start = time.time()
-            gcs_client.upload_stream(stream, gcs_blob_name, size)
-            gcs_upload_time = time.time() - gcs_start
+            upload_start_float = time.time()
+            gcs_client.upload_stream(stream_obj, resolved_blob_name_str, resolved_size_int)
+            upload_elapsed_float = time.time() - upload_start_float
 
-            total_elapsed = time.time() - total_start
-            self.logger.info("transfer_completed", file_name=ecs_key, size_bytes=size)
+            total_elapsed_float = time.time() - total_start_float
+            self.logger.info("transfer_completed", file_name=resolved_s3_key_str, size_bytes=resolved_size_int)
             self.logger.info(
                 "elapsed_time",
                 action_name="GCS 파일 전송",
-                details=f"[TotalElapsed={total_elapsed:.2f}s CheckTime={check_elapsed:.2f}s ECSStreamTime={ecs_stream_time:.2f}s GCSUploadTime={gcs_upload_time:.2f}s]",
-                context_info=context_info,
+                details=(
+                    f"[TotalElapsed={total_elapsed_float:.2f}s CheckTime={check_elapsed_float:.2f}s "
+                    f"S3StreamTime={stream_elapsed_float:.2f}s GCSUploadTime={upload_elapsed_float:.2f}s]"
+                ),
+                context_info=context_info_str,
             )
             return True
-        except Exception as e:
-            total_elapsed = time.time() - total_start
-            self.logger.exception("transfer_failed", file_name=ecs_key, error=str(e))
+        except Exception as exc:
+            total_elapsed_float = time.time() - total_start_float
+            self.logger.exception("transfer_failed", file_name=resolved_s3_key_str, error=str(exc))
             self.logger.error(
                 "elapsed_time",
                 action_name="GCS 파일 전송 오류",
-                details=f"[TotalElapsed={total_elapsed:.2f}s]",
-                context_info=context_info,
+                details=f"[TotalElapsed={total_elapsed_float:.2f}s]",
+                context_info=context_info_str,
             )
             return False
+
+
+# 하위 호환성을 위한 기존 클래스명 별칭(Alias) 제공
+EcsClient = S3Client
 
 
 class GcsClient:

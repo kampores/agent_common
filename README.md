@@ -35,7 +35,7 @@
 - **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md)**: 소요 시간, 처리 속도, 전송량 및 에러/제외 사유별 상세 내역(`get_log_id_description`)이 포함된 표준 요약 블록 자동 출력
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
-- `EcsClient`: Dell ECS S3 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득
+- `S3Client`: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득 (`EcsClient` 별칭 하위 호환 지원)
 - `GcsClient`: Google Cloud Storage 연결, 파일 존재 검증 및 대용량 멀티스레드 스트리밍 업로드
 - `BigQueryClient`: Google Cloud BigQuery 연결, JSON 데이터 스트리밍 입력(`insert_rows_json`), 배치 로드(`load_table_from_json_data`), 인라인 MERGE(`merge_table_from_json_data` - 한글/특수문자/예약어 컬럼 백틱 지원 및 413 방지 기본 청크 100건 분할), 범용 SQL 쿼리(`query`)
 
@@ -268,7 +268,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **2.5. [Automatic Summary Report Generation (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation.md)**: Emits structured 80-column execution summary reports with duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
 
 #### 3. Storage and Database Infrastructure Clients (`agent_common.clients`)
-- `EcsClient`: Dell ECS S3 storage connection, object listing, metadata extraction, and in-memory streaming retrieval.
+- `S3Client`: AWS S3 and Dell ECS (S3-compatible) storage connection, object listing, metadata extraction, and in-memory streaming retrieval (`EcsClient` provided as backward compatibility alias).
 - `GcsClient`: Google Cloud Storage connection, blob existence verification, and high-throughput multithreaded streaming uploads.
 - `BigQueryClient`: Google Cloud BigQuery client supporting streaming ingestion (`insert_rows_json`), batch loading (`load_table_from_json_data`), inline MERGE (`merge_table_from_json_data` with backtick escaping and 100-record chunking to prevent HTTP 413), and general SQL execution (`query`).
 

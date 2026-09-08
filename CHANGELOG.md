@@ -2,6 +2,16 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.34 (2026-09-08)
+- **AWS S3 및 Dell ECS 범용 클라이언트 `S3Client` 신설 및 `EcsClient` 하위 호환 보장**:
+  - 기존 Dell ECS 전용으로 명명된 `EcsClient`를 AWS S3 및 Dell ECS(S3 호환 스토리지) 모두를 유연하게 지원하는 범용 클라이언트 `S3Client`로 전면 개편.
+  - `endpoint_url_str`을 선택적(Optional)으로 변경하여, 미지정(`None`) 시 AWS 기본 S3 엔드포인트로 자동 접속되고, 값 지정 시 온프레미스 Dell ECS 또는 MinIO 등으로 즉시 접속되도록 개선.
+  - AWS 환경에서의 Signature V4 서명을 위한 `region_name_str` 파라미터 신설.
+  - AWS IAM Role / 인스턴스 프로파일 자격 증명 자동 탐색을 지원하기 위해 `access_key_str` 및 `secret_key_str` 생략 가능하도록 유연화.
+  - 기존 코드의 중단 없는 실행을 위해 `EcsClient = S3Client` 모듈 레벨 별칭(Alias) 제공 및 레거시 키워드 매개변수(`endpoint_url`, `access_key`, `secret_key`, `bucket_name`, `timeout_seconds`, `ecs_key`, `size` 등) 100% 하위 호환 지원.
+- **선택적 의존성에 `s3` extras 추가**:
+  - `pyproject.toml`의 `[project.optional-dependencies]`에 `s3 = ["boto3>=1.26.0"]` 추가 (기존 `ecs` 옵션 병행 유지).
+
 ### v0.4.33 (2026-09-07)
 - **클라우드 스토리지 SDK 지연 로딩(Lazy Loading) 및 패키지 초경량화**:
   - `EcsClient`, `GcsClient`, `BigQueryClient` 구동에 필요한 무거운 서드파티 SDK(`boto3`, `google-cloud-storage`, `google-cloud-bigquery`)를 모듈 임포트 시점이 아닌 클라이언트 연결(`_connect`) 및 쿼리 실행 시점에 동적 로드하도록 구조 개선.

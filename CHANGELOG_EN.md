@@ -2,6 +2,16 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.34 (2026-09-08)
+- **Introduction of Universal `S3Client` for AWS S3 & Dell ECS with 100% `EcsClient` Backward Compatibility**:
+  - Generalized `EcsClient` into `S3Client` supporting standard AWS S3 as well as on-premise Dell ECS and other S3-compatible object storages (MinIO, Ceph).
+  - Made `endpoint_url_str` optional (`None` default): connects to AWS default S3 endpoints when omitted, and connects to custom Dell ECS/MinIO endpoints when specified.
+  - Added `region_name_str` parameter to support Signature Version 4 requirements for AWS S3.
+  - Added support for AWS IAM Role and environment-based credentials by allowing `access_key_str` and `secret_key_str` to be omitted.
+  - Provided `EcsClient = S3Client` module-level alias and legacy keyword arguments mapping (`endpoint_url`, `access_key`, `secret_key`, `bucket_name`, `timeout_seconds`, `ecs_key`, `size`, etc.) ensuring zero breaking changes for existing code.
+- **Added `s3` Extras in Optional Dependencies**:
+  - Added `s3 = ["boto3>=1.26.0"]` under `[project.optional-dependencies]` in `pyproject.toml` while retaining `ecs` for existing setups.
+
 ### v0.4.33 (2026-09-07)
 - **Lazy Loading of Cloud Storage SDKs & Ultra-Lightweight Package Footprint**:
   - Refactored heavy cloud SDK dependencies (`boto3`, `google-cloud-storage`, `google-cloud-bigquery`) in `EcsClient`, `GcsClient`, and `BigQueryClient` to load on-demand upon `_connect()` and query execution rather than at module import time.
