@@ -2,6 +2,139 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.51 (2026-09-09)
+- **Elimination of 19 Redundant Pass-Through Getter Properties in `LlmClient` (Rules 1.4.5, 1.4.6)**:
+  - `llm.py`:
+    - Completely removed 19 unused pass-through `@property` getters (`provider_str`, `enabled_bool`, `api_key_env_str`, `base_url_str`, `chat_completions_path_str`, `api_format_str`, `model_str`, `llm_id_int`, `client_env_str`, `user_env_str`, `timeout_seconds_int`, `max_tokens_int`, `temperature_float`, `model_path_str`, `n_ctx_int`, `n_threads_int`, `n_batch_int`, `n_gpu_layers_int`, `verbose_bool`) from `LlmClient`.
+    - Eliminated ~95 lines of redundant wrapper boilerplate and standardized internal configuration access directly through immutable `self.model_config`, achieving structural conciseness and adhering to YAGNI and anti-pass-through rules.
+
+### v0.4.50 (2026-09-09)
+- **Elimination of Defensive Fuzzy Matching and Legacy Key Fallbacks in `ProjectLogger.configure` (Rule 1.5.3)**:
+  - `logger.py`:
+    - Completely eliminated triple-fallback chains and fuzzy app name search loops across `logging.level_dict`.
+    - Standardized on direct canonical key lookups (`logging.format_str`, `logging.datefmt_str`, `logging.file_logging_bool`, `logging.log_file_str`).
+    - Removed defensive type casts (`str(...)`, `bool(...)`), strictly adhering to Fail-Fast principles.
+
+### v0.4.49 (2026-09-09)
+- **Elimination of Defensive Fuzzy Suffix Matching Loops in `ReadOnlyConfig` and Full Fail-Fast Enforcement (Rule 1.5.3)**:
+  - `config_loader.py`:
+    - Completely removed bidirectional fuzzy suffix hunting loops (`for suffix_str in ("_str", "_int", ...): ...`) in `ReadOnlyConfig.__getattr__` and `__contains__`.
+    - Standardized on direct key lookups (`data[key_str]`), ensuring that misspelled or non-canonical keys raise `AttributeError` immediately (Fail-Fast).
+    - Eliminated intermediate alias variable `effective_key_str`, passing canonical `key_str` directly into `coerce_type_by_key_suffix`.
+
+### v0.4.48 (2026-09-09)
+- **Elimination of Defensive `**kwargs: Any` and Fallback Logic in Client (`clients.py`) and LLM (`llm.py`) Modules (Rules 1.3.1, 1.5.2, 1.6.1)**:
+  - `clients.py`:
+    - `S3Client.__init__`, `list_objects`, `get_object_stream`, `get_object_size`, `transfer_to_gcs`: Completely eliminated `**kwargs: Any` and defensive fallback code (`kwargs.get("prefix")`, `kwargs.get("endpoint_url")`), enforcing explicit, type-suffixed arguments (`endpoint_url_str`, `prefix_str`, etc.).
+    - `GcsClient.__init__`, `get_blob_size`, `upload_stream`: Removed `**kwargs: Any` and bound strictly to canonical parameters (`bucket_name_str`, `blob_name_str`, etc.).
+    - `BigQueryClient.__init__`, `load_table_from_json_data`, `insert_rows_json_data`, `query`, `get_existing_keys`: Removed `**kwargs: Any` and fallback handling for legacy aliases like `write_disp`.
+  - `llm.py`:
+    - `LlmClient.__init__`, `generate`: Fully removed `**kwargs: Any` and defensive wrappers (`kwargs.get("prompt")`), ensuring immediate `TypeError` (Fail-Fast) when unexpected arguments are provided.
+
+### v0.4.47 (2026-09-09)
+- **Direct Immutable Config Access for `LlmClient` and Elimination of Redundant `self` Config Cloning & Defensive Casting (Rules 1.4.2, 1.4.5, 1.6.1)**:
+  - `llm.py`:
+    - Eliminated redundant cloning of 19 static model configuration fields into `self` inside `LlmClient.__init__` (`self.provider_str = str(...)`, `self.max_tokens_int = int(...)`), standardizing on direct access via `self.model_config` (ReadOnlyConfig) and `config.llm_pool[self.model_name_str]`.
+    - Removed defensive right-hand casting wrappers like `int(os.getenv(..., str(self.max_tokens_int)))` to ensure unadulterated type evaluation and enforce Fail-Fast principles.
+    - Trimmed `APP_DEFAULT_SCHEMA_DICT["llm"]` by removing 19 artificial `default_*` fallback keys, significantly reducing schema bloat.
+    - Added backwards-compatible accessor properties on `LlmClient` backed directly by `model_config`.
+  - `llmpool.yml`:
+    - Standardized all model profile keys with strict type suffixes (`provider_str`, `enabled_bool`, `api_key_env_str`, `base_url_str`, `chat_completions_path_str`, `model_str`, `timeout_seconds_int`, `max_tokens_int`, `temperature_float`, `api_format_str`, `llm_id_int`, `client_env_str`, `user_env_str`, `model_path_str`, `n_ctx_int`, `n_threads_int`, `n_batch_int`, `n_gpu_layers_int`, `verbose_bool`).
+  - `config_loader.py`:
+    - Enhanced `ReadOnlyConfig.__getattr__` and `__contains__` with bidirectional suffix lookup for improved resilience and backward compatibility.
+
+### v0.4.46 (2026-09-09)
+- **Elimination of Defensive Right-Hand Type Casting Wrappers (`str(...)`) and Fail-Fast Enforcement (Rules 1.3.1 & 1.5.2)**:
+  - `logger.py`: Removed redundant `str(name)` casting in `ProjectLogger.__init__`, directly assigning `name or ""` to avoid masking non-string inputs and guarantee early error detection.
+
+### v0.4.45 (2026-09-09)
+- **Strict Type-Suffix Standardization and Elimination of Hardcoding in LLM (`llm.py`) and Logging (`logger.py`) Modules (Rules 1.1, 1.6.1, 1.7.5)**:
+  - `llm.py`:
+    - Enforced mandatory type suffixes on all configuration keys in `APP_DEFAULT_SCHEMA_DICT` (`default_provider_str`, `default_enabled_bool`, `default_timeout_seconds_int`, `default_max_tokens_int`, `default_temperature_float`, `vertex_model_str`, `gemini_model_str`, `ollama_model_str`, `ollama_endpoint_str`, `router_model_str`, `sql_generator_model_str`, `validator_model_str`), eliminating code hardcoding.
+    - Automated global configuration schema registration upon module import (`config._source.register_schema(APP_DEFAULT_SCHEMA_DICT)`).
+    - Fully standardized `LlmClient` class annotations, instance fields (`last_generated_by_str`), and method parameters (`purpose_str`, `prompt_str`, `system_prompt_str`, `model_name_str`, `provider_str`, `timeout_seconds_int`, `max_tokens_int`, `temperature_float`) to strict type suffixes while maintaining backwards-compatible keyword arguments.
+  - `logger.py`:
+    - `ProjectLogger.configure`: Enhanced to inspect type-suffixed config properties (`logging.level_dict`, `logging.level_str`, `logging.format_str`, `logging.datefmt_str`, `logging.file_logging_bool`, `logging.log_file_str`) with seamless fallback to legacy keys.
+  - `README.md`: Synchronized Korean and English `LlmClient` code examples with suffixed argument names (`purpose_str`, `prompt_str`, `system_prompt_str`, `last_generated_by_str`).
+
+### v0.4.44 (2026-09-09)
+- **Comprehensive Elimination of Untyped Alias Constants and Redundant Bindings across All Modules**:
+  - `llm.py`: Deleted untyped alias variables `_LOCAL_LLMS = _LOCAL_LLMS_DICT` and `APP_DEFAULT_SCHEMA = APP_DEFAULT_SCHEMA_DICT`, unifying cache references to `_LOCAL_LLMS_DICT`.
+  - `config_loader.py`, `logger.py`, `tool_parser.py`: Deleted module-level `APP_DEFAULT_SCHEMA = APP_DEFAULT_SCHEMA_DICT` aliases and cleaned up `logger.__all__`.
+  - `date_time_utils.py`: Completely removed 5 untyped class constant aliases (`FORMAT_DATE_YYYYMMDD`, `FORMAT_DATETIME_STD`, `FORMAT_DATETIME_NO_TZ`, `FORMAT_DATETIME_KST`, `FORMAT_DATETIME_COMPACT`), and updated all callers (`logger.py`, `tool_parser.py`, `utils.py`) to canonical `_STR` constants.
+  - `medallion/tool/code/date_check_to_code.py`: Removed legacy function alias bindings (`date_check`, `evaluate_date_status`).
+
+### v0.4.43 (2026-09-09)
+- **Full Standardization of Local Variables, Arguments, and Loop Targets with Strict Type Suffixes across `clients.py` (Rules 1.6.1 & 1.6.2)**:
+  - `BigQueryClient.insert_rows_json_data`: Replaced `table_target` -> `table_target_any`, `rows_to_insert` -> `rows_to_insert_list`, `errors` -> `insert_errors_list`, `err_details` -> `error_details_list`, `idx` -> `row_index_int`, `e`/`loc`/`rsn` -> `single_error_dict`, `location_str`, `reason_str`, `combined_err_msg` -> `combined_error_message_str`, and `clean_insert_err` -> `clean_insert_error_str`.
+  - `BigQueryClient.load_table_from_json_data`: Replaced `table_target` -> `table_target_any`, `rows_to_insert` -> `rows_to_insert_list`, `write_disp` -> `write_disposition_effective_str`, `job_config` -> `job_config_obj`, `load_job` -> `load_job_obj`, `sub_err_list`/`s_err`/`loc` -> `sub_error_list`, `sub_error_item_dict`, `location_str`, and `clean_err` -> `clean_error_str`.
+  - `BigQueryClient.query`, `get_existing_keys`, `merge_table_from_json_data`: Replaced `query_job` -> `query_job_obj`, `results` -> `query_results_obj`, `job_config` -> `job_config_obj`, `p_job` -> `post_job_obj`, `clean_err_str` -> `clean_error_str`.
+  - `BigQueryClient.convert_to_bigquery_timestamp`: Replaced `tz_pattern` -> `tz_pattern_str`, `tz_match` -> `tz_match_obj`, `tz_suffix` -> `tz_suffix_str`, `raw_tz` -> `raw_tz_str`, and `dt_part` -> `datetime_part_str`.
+  - `S3Client`, `GcsClient`: Standardized `paginator` -> `paginator_obj`, `pages` -> `pages_iterable`, `page`/`obj` -> `page_dict`/`object_item_dict`, `response` -> `response_dict`, `blob` -> `blob_obj`, `resolved_stream` -> `resolved_stream_any`.
+  - Module-level lazy load cache variables: Clarified to `_boto3_module`, `_boto_config_cls`, `_storage_module`, `_bigquery_module`, `_service_account_module`.
+
+### v0.4.42 (2026-09-09)
+- **Complete Elimination of Duplicate Untyped Alias Instance Variables in `clients.py` and Full Enforcement of Rule 1.6.1**:
+  - `BigQueryClient`: Deleted all redundant alias variables without type suffixes (`self.project_id`, `self.dataset_id`, `self.table_id`, `self.credentials_path`, `self.timeout_seconds`, `self.ignore_unknown_values`, `self.timezone_offset`) and unused internal flag (`self._use_streaming_only`).
+  - `S3Client`, `GcsClient`: Cleaned up all redundant alias instance fields (`self.endpoint_url`, `self.access_key`, `self.secret_key`, `self.bucket_name`, `self.credentials_path`, `self.timeout_seconds`).
+  - Removed unused module-level `APP_DEFAULT_SCHEMA` alias from top of `clients.py`.
+  - Application layer (`app/`): Synchronized all client attribute lookups in `ecs_to_bigquery.py`, `ecs_to_gcs.py`, `ecs_to_gcsbigquery_merge.py`, and `table_transformer.py` to use canonical type-suffixed attributes (`dataset_id_str`, `table_id_str`, `project_id_str`, `bucket_name_str`).
+
+### v0.4.41 (2026-09-09)
+- **Full Restoration of Strict Type Suffixes (`_int`, `_str`, `_bool`) in `clients.py` and Removal of Redundant Casting Wrappers**:
+  - `clients.py`: Restored mandatory type suffixes (`timeout_seconds_int`, `chunk_size_int`, `ignore_unknown_values_bool`, `timezone_offset_str`, `max_retries_int`) in `APP_DEFAULT_SCHEMA_DICT` per Rule 1.6.1.
+  - `BigQueryClient`, `GcsClient`: Standardized constructor parameters, instance fields, and method arguments with explicit type suffixes (`_str`, `_int`, `_bool`) while maintaining backwards-compatible properties and `**kwargs`.
+  - Removed redundant manual wrappers (`bool()`, `int()`, `str()`) by leveraging `ReadOnlyConfig`'s native suffix-based type coercion (`coerce_type_by_key_suffix`).
+
+### v0.4.40 (2026-09-09)
+- **Elimination of Speculative Suffix Fuzzy Matching & Strict 1:1 Key Resolution (Fail-Fast)**:
+  - `ReadOnlyConfig.__getattr__`: Removed fuzzy `suffixes` scanning loop that silently papered over mismatched keys (`_str`, `_int`, etc.). Unmatched keys now immediately raise `AttributeError` (Fail-Fast).
+  - `ReadOnlyConfig.__contains__`: Streamlined `in` operator to strict `key_str in data` lookup without speculative suffix mutation.
+  - `ConfigLoader.ensure_config_file`: Removed fuzzy suffix checks during self-healing dictionary merges to ensure exact 1:1 key fidelity between schema and YAML files.
+  - `ConfigLoader.setting`: Eliminated speculative suffix traversal in dotted key paths.
+  - `app/app_schema.py`: Perfectly matched schema dictionary keys with `config/config.yml` to prevent unintended self-healing additions.
+
+### v0.4.39 (2026-09-09)
+- **Standardization of Schema Constants (`APP_DEFAULT_SCHEMA_DICT`) and Strict Type Suffixes (`_str`, `_int`, `_bool`, `_list`, `_dict`)**:
+  - Renamed schema dictionary constants across all `agent_common` modules (`clients`, `logger`, `config_loader`, `llm`, `tool_parser`) to `APP_DEFAULT_SCHEMA_DICT` with backward-compatible `APP_DEFAULT_SCHEMA` aliases.
+  - Added `_STR` suffixes to `DateTimeUtils` format constants (`FORMAT_DATE_YYYYMMDD_STR`, `FORMAT_DATETIME_STD_STR`, etc.).
+  - `ConfigLoader`: Avoided forced registration of package-level schemas in `__init__` to eliminate unintended template injection into application `config.yml`, providing transparent fallback for internal templates via `APP_DEFAULT_SCHEMA_DICT`.
+  - Application Schema (`app/app_schema.py`): Enforced comprehensive type suffixes on all keys across `_BASE_*_SCHEMA_DICT` and `ECS_TO_*_SCHEMA_DICT` (`prefix_str`, `target_folders_list`, `date_prefix_str`, `path_regex_str`, `table_id_str`, `max_retries_int`, `chunk_size_int`, `timeout_seconds_int`, etc.).
+
+### v0.4.38 (2026-09-09)
+- **Elimination of Speculative Fallback Chains & Enforcement of Direct Dot-Notation Configuration (`config`)**:
+  - `ToolParser`: Removed hardcoded fallback (`"medallion/tool"`) and speculative directory search lists (`cand_dirs_list = [...]`). Enforced direct access via `config.transfer.tool_dir_str`.
+  - `BigQueryClient`: Removed in-code hardcoded defaults (`setting(..., True)`, `setting(..., "+09:00")`) and defensive `getattr(self, "timezone_offset_str", "+09:00")`. Switched to direct `config.bigquery.ignore_unknown_values` and `config.bigquery.timezone_offset` access.
+  - `LlmClient`: Completely abolished speculative `prompts.* or llm.*` fallback chains in favor of direct declarative settings `config.llm.system_prompt_str`, `config.llm.router_model_str`, and `config.llm.sql_generator_model_str`.
+  - `ProjectLogger`: Removed duplicate hardcoded fallback arguments in `loader.setting()` calls.
+  - `ConfigLoader.ensure_config_file`: Removed hardcoded template fallback strings in `setting()` calls.
+  - Higher-level Application (`app/`): Cleaned up defensive `getattr(config.transfer, "save_error_json_bool", False)` patterns to direct `config.transfer.save_error_json_bool`.
+
+### v0.4.37 (2026-09-09)
+- **Deprecation of Package-level Synthetic Schema (`default_schema.py`) to Preserve Modularity and Lazy Loading**:
+  - In alignment with `agent_common`'s lightweight modularity design (allowing users to import only specific components like `logger` or `clients`), completely removed the forced synthetic schema module (`default_schema.py`) and top-level `APP_DEFAULT_SCHEMA`/`AGENT_COMMON_DEFAULT_SCHEMA` exports.
+  - Retained module-specific baseline schemas within each file, preventing unnecessary cross-module coupling and overhead.
+  - Revised architecture rule (1.7.5): Library packages define module schemas independently without forced package-wide aggregation.
+
+### v0.4.36 (2026-09-08)
+- **Standardized Program Logger Name (`%(name)s`) and Automatic Stack-based Caller (`%(caller)s`, `%(className)s`) Extraction**:
+  - Unified logger names (`name`) to the application/program identifier (`ProjectLogger.configure(app_name_str=...)`) for enterprise monitoring and centralized logging collectors (Cloud Logging, BigQuery, ELK).
+  - Automatically inspected Python runtime call stack frames during logging to detect `self.__class__.__name__` inside class methods, populating `caller` (`ClassName.method()`) and `className` without manual boilerplates.
+  - Automatically formatted top-level functions or script entry points without a leading dot (`function()`).
+  - Standardized default log format: `[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller)s] %(message)s`.
+
+### v0.4.35 (2026-09-08)
+- **Modular `APP_DEFAULT_SCHEMA` Declarative Configuration Architecture**:
+  - Implemented per-module `APP_DEFAULT_SCHEMA` constants across all source files (`logger`, `config_loader`, `clients`, `tool_parser`, `llm`) matching `agent_common`'s non-main library structure.
+  - Added `default_schema.py` synthesizing module schemas and exposing `APP_DEFAULT_SCHEMA` and `AGENT_COMMON_DEFAULT_SCHEMA` at package root, automatically merged into `ConfigLoader._registered_schemas`.
+- **Consolidation into Standard `log_file` with Dynamic `{log_level}` Directory Creation**:
+  - Deprecated subjective dual paths (`out_file` for error vs `debug_file` for warning/debug) in favor of unified `logging.log_file`.
+  - Added support for `{log_level}` (lowercase) and `{LOG_LEVEL}` (uppercase) placeholders, automatically creating level-specific directories (`warning/`, `error/`, etc.) during runtime execution.
+  - Maintained 100% backward compatibility fallback for existing `out_file` and `debug_file` configurations.
+- **Strict Prohibition of Abbreviated Identifiers & Full Descriptive Naming Principle (Rules 1.6.2 & 1.7.5)**:
+  - Eliminated ambiguous abbreviated variables in `logger.py`, refactoring to descriptive names with mandatory type suffixes (`output_error_log_file_str`, `debug_log_file_str`, `default_log_file_str`, `target_log_file_path_str`, `file_logging_enabled_bool`).
+  - Completely prevents confusion where missing settings are assumed due to ambiguous names, avoiding redundant key creation.
+
 ### v0.4.34 (2026-09-08)
 - **Introduction of Universal `S3Client` for AWS S3 & Dell ECS with 100% `EcsClient` Backward Compatibility**:
   - Generalized `EcsClient` into `S3Client` supporting standard AWS S3 as well as on-premise Dell ECS and other S3-compatible object storages (MinIO, Ceph).

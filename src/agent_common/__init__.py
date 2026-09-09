@@ -7,9 +7,12 @@
 도메인 의미: 여러 에이전트 프로젝트가 공용으로 사용하는 설정 로더, 로거, 예외 핸들러 라이브러리 패키지입니다.
 """
 
+__version__: str = "0.4.51"
+
 from agent_common.clients import BigQueryClient, EcsClient, GcsClient, S3Client
 from agent_common.utils import DateTimeUtils, ProgressTracker
 from agent_common.tool_parser import ToolParser
+from agent_common.logger import ProjectLogger, SingleLineFlattenFormatter
 from agent_common.config_loader import (
     ConfigLoader,
     ReadOnlyConfig,
@@ -38,5 +41,7 @@ __all__ = [
     "DateTimeUtils",
     "ProgressTracker",
     "ToolParser",
+    "ProjectLogger",
+    "SingleLineFlattenFormatter",
 ]
 

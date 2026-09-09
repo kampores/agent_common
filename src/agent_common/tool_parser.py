@@ -16,8 +16,18 @@ import inspect
 import importlib
 
 from agent_common.logger import ProjectLogger
-from agent_common.config_loader import ConfigLoader
+from agent_common.config_loader import ConfigLoader, config
 from agent_common.utils import DateTimeUtils
+
+# ==============================================================================
+# 도구 파서 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
+# ==============================================================================
+APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
+    "transfer": {
+        "tool_dir_str": "medallion/tool",
+    }
+}
+
 
 
 class _SafeNamespace:
@@ -93,7 +103,7 @@ class ToolParser:
         """
         now_compact_str: str = DateTimeUtils.get_now_compact()
         today_str: str = DateTimeUtils.get_today_yyyymmdd()
-        now_dt_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ)
+        now_dt_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ_STR)
 
         return {
             "sys": {
@@ -159,40 +169,30 @@ class ToolParser:
                     pass
 
         # [2순위] 애플리케이션 로컬 도구 디렉토리 탐색 (예: medallion/tool/)
-        tool_dir_setting_str: str = str(
-            self.config_loader.setting("transfer.tool_dir", "medallion/tool")
-        ).strip().strip("/")
-
-        cand_dirs_list: list[Path] = [
-            self.config_loader.project_path(tool_dir_setting_str),
-            self.config_loader.project_path("medallion/tool"),
-            self.config_loader.project_path("tool"),
-        ]
-
-        for cand_dir in cand_dirs_list:
-            if cand_dir.exists():
-                for py_file in cand_dir.rglob("*.py"):
-                    if py_file.stem == func_name_str or py_file.stem == func_name_str.split(".")[-1]:
-                        rel_parts = py_file.relative_to(self.config_loader.ROOT).with_suffix("").parts
-                        mod_name_str = ".".join(rel_parts)
-                        try:
-                            mod = importlib.import_module(mod_name_str)
-                            if hasattr(mod, func_name_str):
-                                fn = getattr(mod, func_name_str)
-                                self._tool_cache[func_name_str] = fn
-                                return fn
-                            target_func_name = func_name_str.split(".")[-1]
-                            if hasattr(mod, target_func_name):
-                                fn = getattr(mod, target_func_name)
-                                self._tool_cache[func_name_str] = fn
-                                return fn
-                        except Exception as import_err:
-                            self.logger.warning(
-                                "tool_load_failed",
-                                func_name=func_name_str,
-                                module=mod_name_str,
-                                error=str(import_err)
-                            )
+        local_tool_dir: Path = self.config_loader.project_path(config.transfer.tool_dir_str)
+        if local_tool_dir.exists():
+            for py_file in local_tool_dir.rglob("*.py"):
+                if py_file.stem == func_name_str or py_file.stem == func_name_str.split(".")[-1]:
+                    rel_parts = py_file.relative_to(self.config_loader.ROOT).with_suffix("").parts
+                    mod_name_str = ".".join(rel_parts)
+                    try:
+                        mod = importlib.import_module(mod_name_str)
+                        if hasattr(mod, func_name_str):
+                            fn = getattr(mod, func_name_str)
+                            self._tool_cache[func_name_str] = fn
+                            return fn
+                        target_func_name = func_name_str.split(".")[-1]
+                        if hasattr(mod, target_func_name):
+                            fn = getattr(mod, target_func_name)
+                            self._tool_cache[func_name_str] = fn
+                            return fn
+                    except Exception as import_err:
+                        self.logger.warning(
+                            "tool_load_failed",
+                            func_name=func_name_str,
+                            module=mod_name_str,
+                            error=str(import_err)
+                        )
 
         return None
 

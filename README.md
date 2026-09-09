@@ -28,8 +28,8 @@
 - **1.6. [모든 상수의 설정 파일화 및 템플릿 보정 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/06_ensure_config_self_healing.md)**: 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정.
 
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
-- **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출로 중앙 로그 수집(Logstash, Fluentd 등)에 최적화
-- **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 레벨별 파일 분기(`out_file`, `debug_file`) 및 서드파티 노이즈 억제
+- **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 호출 스택 기반 호출자/클래스명(`%(caller)s`, `%(className)s`) 자동 분리 추출 및 프로그램 로거 이름(`%(name)s`) 통일 지원 (v0.4.36)
+- **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 실행 로그 레벨별 디렉터리 자동 분기(`{log_level}` 기반 `log_file` 단일화) 및 서드파티 노이즈 억제
 - **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog.md)**: `config.yml`의 `logging.language` (`KO` 또는 `EN`) 설정에 따라 한국어/영문 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환
 - **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계
 - **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md)**: 소요 시간, 처리 속도, 전송량 및 에러/제외 사유별 상세 내역(`get_log_id_description`)이 포함된 표준 요약 블록 자동 출력
@@ -42,7 +42,7 @@
 #### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
 - **이원화된 Tool 디렉터리 계층 탐색**:
   - **1순위 (내장 도구)**: `agent_common/tool/` 하위 모듈 (전사 표준 내장 도구)
-  - **2순위 (프로젝트 도구)**: `config.yml`의 `transfer.tool_dir`에 지정된 로컬 경로 (예: `medallion/tool/`)
+  - **2순위 (프로젝트 도구)**: `config.yml`의 `transfer.tool_dir_str`에 지정된 로컬 경로 (예: `medallion/tool/`)
 - **선언적 템플릿 치환 및 표현식 평가 (`ToolParser.eval`)**:
   - 변수 네임스페이스 바인딩: `{ecs.key}`, `{sys.today}`, `{json.title}`
   - 동적 도구 함수 호출: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`
@@ -139,16 +139,16 @@ tracker.log_summary()
 from agent_common.llm import LlmClient
 
 # 1) 설정 풀에 정의된 모델명 또는 용도로 클라이언트 초기화
-llm_client = LlmClient(purpose="sql_generator")
+llm_client = LlmClient(purpose_str="sql_generator")
 
 # 2) 프롬프트 기반 텍스트 생성 (외부 API -> 로컬 GGUF 자동 폴백)
 prompt_str = "사용자 요청: 2026년 8월 일일 가입자 수 통계 쿼리를 작성해줘."
 response_str = llm_client.generate(
-    prompt=prompt_str,
-    system_prompt="당신은 BigQuery 전문 SQL 생성 AI입니다."
+    prompt_str=prompt_str,
+    system_prompt_str="당신은 BigQuery 전문 SQL 생성 AI입니다."
 )
 
-print(f"생성된 결과 ({llm_client.last_generated_by}):\n{response_str}")
+print(f"생성된 결과 ({llm_client.last_generated_by_str}):\n{response_str}")
 ```
 
 ---
@@ -189,14 +189,13 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.33-py3-none-any.whl
+pip install dist/agent_common-0.4.39-py3-none-any.whl
 ```
 
-#### PyPI 공공 배포 가이드
-본 패키지는 표준 `src/` 레이아웃으로 구성되어 소스 배포판(`sdist`) 및 휠(`wheel`) 파일 용량이 약 50KB 수준으로 최소화되어 있습니다.
+#### 🌐 PyPI 공식 배포 (관리자 전용)
 
 ```bash
-# 1. 빌드 도구 설치
+# 1. 빌드 도구 최신화
 pip install build twine
 
 # 2. 패키지 빌드 (sdist 및 wheel 동시 생성)
@@ -206,7 +205,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.33*
+python -m twine upload dist/agent_common-0.4.39*
 ```
 
 ---
@@ -262,7 +261,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 
 #### 2. Single-Line Log Formatter & Project Logger (`agent_common.logger`)
 - **2.1. [Single-Line Flatten Formatter & Origin Tracking (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/01_single_line_flatten_formatter.md)**: Flattens log records, extracts `[Origin: ...]` caller frames, and optimizes for centralized log aggregators (Logstash, Fluentd, CloudWatch).
-- **2.2. [Batch Logging Configuration & Handler Control (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/02_project_logger_configure.md)**: Dynamic console/file handler initialization, date-based directories, level-based file routing (`out_file`, `debug_file`), and third-party noise suppression.
+- **2.2. [Batch Logging Configuration & Handler Control (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/02_project_logger_configure.md)**: Dynamic console/file handler initialization, date-based directories, level-based directory creation (`log_file` with `{log_level}`), and third-party noise suppression.
 - **2.3. [Multilingual Message Catalog & Code-Based Logging (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog.md)**: Dynamic bilingual dictionary loading (`KO`/`EN`), runtime language switching, and safe template parameter substitution.
 - **2.4. [Real-Time Metric Tracking & Error/Exclusion Classification (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/04_execution_result_and_error_tracking.md)**: Three-tier outcome model (Success, Failure, Excluded/Skip) and dual instance/class-global multithreaded telemetry.
 - **2.5. [Automatic Summary Report Generation (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation.md)**: Emits structured 80-column execution summary reports with duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
@@ -275,7 +274,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 #### 4. Dynamic Tool Loader & Template Evaluator (`agent_common.tool_parser`) & Built-in Tools (`agent_common.tool`)
 - **Dual Tool Hierarchy Discovery**:
   - **Priority 1 (Built-in Tools)**: Modules under `agent_common/tool/` (standard enterprise tools).
-  - **Priority 2 (Project Tools)**: Local path configured in `config.yml` under `transfer.tool_dir` (e.g., `medallion/tool/`).
+  - **Priority 2 (Project Tools)**: Local path configured in `config.yml` under `transfer.tool_dir_str` (e.g., `medallion/tool/`).
 - **Declarative Template Replacement & Expression Evaluation (`ToolParser.eval`)**:
   - Variable namespace binding: `{ecs.key}`, `{sys.today}`, `{json.title}`
   - Dynamic tool function invocation: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`
@@ -369,16 +368,16 @@ tracker.log_summary()
 from agent_common.llm import LlmClient
 
 # 1) Initialize client with configured purpose or model name
-llm_client = LlmClient(purpose="sql_generator")
+llm_client = LlmClient(purpose_str="sql_generator")
 
 # 2) Prompt-based generation (External API with auto fallback to local GGUF)
 prompt_str = "User request: Generate daily subscriber statistics SQL for August 2026."
 response_str = llm_client.generate(
-    prompt=prompt_str,
-    system_prompt="You are an expert AI for BigQuery SQL generation."
+    prompt_str=prompt_str,
+    system_prompt_str="You are an expert AI for BigQuery SQL generation."
 )
 
-print(f"Generated result ({llm_client.last_generated_by}):\n{response_str}")
+print(f"Generated result ({llm_client.last_generated_by_str}):\n{response_str}")
 ```
 
 ---
@@ -416,24 +415,23 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.33-py3-none-any.whl
+pip install dist/agent_common-0.4.39-py3-none-any.whl
 ```
 
-#### PyPI Public Distribution Guide
-This package adopts the standard `src/` layout, minimizing distribution archives (`sdist` and `wheel`) to approximately 50KB.
+#### 🌐 Official PyPI Distribution (Maintainers Only)
 
 ```bash
-# 1. Install build tools
+# 1. Update build tools
 pip install build twine
 
-# 2. Build distribution archives (sdist and wheel)
+# 2. Build distributions (sdist & wheel)
 python -m build
 
-# 3. Check distribution archives
+# 3. Validate distribution archives
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.33*
+python -m twine upload dist/agent_common-0.4.39*
 ```
 
 ---

@@ -19,6 +19,28 @@ from agent_common.error_handler import ErrorHandler
 from agent_common.utils import DateTimeUtils
 
 
+# ==============================================================================
+# 설정 로더 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
+# ==============================================================================
+APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
+    "templates": {
+        "config_notice_header_str": (
+            "# ==============================================================================\n"
+            "# [안내 / NOTICE]\n"
+            "# 본 설정 파일({config_file_name})은 프로그램 실행 시 기존 파일이 존재하지 않아\n"
+            "# 기본 템플릿 스키마로 자동 생성되었습니다.\n"
+            "# \n"
+            "# 원활한 프로그램 작동을 위해 실제 접속 정보(엔드포인트, 인증키, 버킷명, 테이블 등)를\n"
+            "# 직접 수정하시거나, 기존에 보유하신 올바른 {config_file_name} 파일을 이 경로에 대체해 주십시오.\n"
+            "# 자동 생성일시: {now_dt_str}\n"
+            "# ==============================================================================\n"
+        ),
+        "config_repair_inline_comment_str": "# [자동 추가: {now_dt_str}]",
+    }
+}
+
+
+
 def coerce_type_by_key_suffix(key_str: str, val_any: Any) -> Any:
     """키 접미사(_int, _str, _bool, _float, _list, _dict)에 따라 값을 보증된 파이썬 표준 데이터 타입으로 엄격히 변환합니다.
 
@@ -174,6 +196,7 @@ class ReadOnlyConfig:
         if key_str not in data:
             source_name_str: str = object.__getattribute__(self, "_source_name_str")
             raise AttributeError(f"{source_name_str}에 정의되지 않은 설정 항목입니다: '{key_str}'")
+
         val_any = data[key_str]
         source_name_str = object.__getattribute__(self, "_source_name_str")
         if isinstance(val_any, dict):
@@ -361,7 +384,7 @@ class ConfigLoader:
             # 1. 파일이 아예 없으면 기본 스키마로 파일 신규 생성
             initial_data = merged_defaults if merged_defaults else {"app": {"name": "app"}}
             now_dt_str = DateTimeUtils.get_now_formatted()
-            header_tmpl = self.setting("templates.config_notice_header", "")
+            header_tmpl = self.setting("templates.config_notice_header_str")
             if header_tmpl:
                 header_comment = header_tmpl.format(config_file_name=config_file_name, now_dt_str=now_dt_str)
                 if not header_comment.endswith("\n"):
@@ -394,27 +417,50 @@ class ConfigLoader:
 
                     if repaired_keys:
                         now_dt_str = DateTimeUtils.get_now_formatted()
-                        repair_tmpl = self.setting("templates.config_repair_inline_comment", "# [자동 추가: {now_dt_str}]")
+                        repair_tmpl = self.setting("templates.config_repair_inline_comment_str")
                         inline_comment = repair_tmpl.format(now_dt_str=now_dt_str)
 
-                        yaml_str = yaml.dump(current_data, allow_unicode=True, sort_keys=False)
-                        lines = yaml_str.splitlines()
-                        repaired_leaf_keys = {k.split(".")[-1] for k in repaired_keys}
+                        # 기존 파일의 모든 주석과 서식을 100% 보존하며 누락된 키만 정교하게 삽입
+                        original_text = target_path.read_text(encoding="utf-8")
+                        lines = original_text.splitlines()
 
-                        new_lines = []
-                        for line in lines:
-                            stripped = line.strip()
-                            is_target = False
-                            for lk in repaired_leaf_keys:
-                                if (stripped == f"{lk}:" or stripped.startswith(f"{lk}: ")) and "#" not in stripped:
-                                    is_target = True
-                                    break
-                            if is_target:
-                                new_lines.append(f"{line}  {inline_comment}")
+                        for rep_key in repaired_keys:
+                            if "." in rep_key:
+                                sec_name, sub_name = rep_key.split(".", 1)
+                                sub_val = current_data[sec_name][sub_name]
+                                val_rendered = yaml.dump({sub_name: sub_val}, allow_unicode=True, sort_keys=False).strip()
+                                rendered_lines = val_rendered.splitlines()
+                                indented_block = [f"  {rl}" for rl in rendered_lines]
+                                indented_block[0] = f"{indented_block[0]}  {inline_comment}"
+
+                                # 섹션 헤더 찾기
+                                sec_idx = -1
+                                for i, line in enumerate(lines):
+                                    if re.match(r"^" + re.escape(sec_name) + r"\s*:", line):
+                                        sec_idx = i
+                                        break
+
+                                if sec_idx != -1:
+                                    insert_idx = len(lines)
+                                    for j in range(sec_idx + 1, len(lines)):
+                                        l = lines[j]
+                                        if l.strip() and not l.startswith(" ") and not l.startswith("#"):
+                                            insert_idx = j
+                                            break
+                                    for idx_offset, entry_line in enumerate(indented_block):
+                                        lines.insert(insert_idx + idx_offset, entry_line)
+                                else:
+                                    lines.append("")
+                                    lines.append(f"{sec_name}:")
+                                    lines.extend(indented_block)
                             else:
-                                new_lines.append(line)
+                                sec_name = rep_key
+                                sec_val = current_data[sec_name]
+                                val_rendered = yaml.dump({sec_name: sec_val}, allow_unicode=True, sort_keys=False).strip()
+                                lines.append("")
+                                lines.append(f"{val_rendered}  {inline_comment}")
 
-                        final_yaml_str = "\n".join(new_lines) + "\n"
+                        final_yaml_str = "\n".join(lines) + "\n"
                         with open(target_path, "w", encoding="utf-8") as f:
                             f.write(final_yaml_str)
                         self.logger.info("config_file_auto_repaired", file_path=str(target_path), repaired_keys=repaired_keys)
@@ -573,14 +619,31 @@ class ConfigLoader:
         :return: 조회된 설정값 또는 기본값
         """
         current: Any = self.get_settings()
+        found = True
         for key in path.split("."):
             if not isinstance(current, dict) or key not in current:
-                if not path.startswith("logging_messages"):
-                    self.logger.warning("config_default_fallback", key=path, default_val=default)
-                return default
+                found = False
+                break
             current = current[key]
-        last_key_str: str = path.split(".")[-1]
-        return coerce_type_by_key_suffix(last_key_str, current)
+        if found:
+            last_key_str: str = path.split(".")[-1]
+            return coerce_type_by_key_suffix(last_key_str, current)
+
+        # ConfigLoader 모듈 기본 스키마(APP_DEFAULT_SCHEMA_DICT)에서 템플릿 등 안전 조회
+        current = APP_DEFAULT_SCHEMA_DICT
+        found_schema = True
+        for key in path.split("."):
+            if not isinstance(current, dict) or key not in current:
+                found_schema = False
+                break
+            current = current[key]
+        if found_schema:
+            last_key_str = path.split(".")[-1]
+            return coerce_type_by_key_suffix(last_key_str, current)
+
+        if not path.startswith("logging_messages"):
+            self.logger.warning("config_default_fallback", key=path, default_val=default)
+        return default
 
     def require_setting(
         self, 
@@ -590,12 +653,12 @@ class ConfigLoader:
     ) -> Any:
         """
         [Fail-Fast 정책 준수]
-        프로그램 기동에 필요한 필수 설정값을 점 표기법(예: 'schema_config.pk_key')으로 조회합니다.
+        프로그램 기동에 필요한 필수 설정값을 점 표기법(예: 'schema.pk_key')으로 조회합니다.
         설정값이 누락되어 있거나 빈 값인 경우, 명시된 설정 파일명과 함께 오류 메시지를 CLI 및 로그로 출력하고
         프로세스를 즉시 강제 종료(sys.exit(1))하여 빠른 실패(Fail-Fast)를 유도합니다.
         설정 키 접미사(_int, _str, _bool, _float, _list, _dict)에 맞춰 타입을 자동 보증하여 반환합니다.
 
-        :param path: 점 표기법 필수 설정 경로 (예: 'schema_config.pk_key')
+        :param path: 점 표기법 필수 설정 경로 (예: 'schema.pk_key')
         :param message: 설정값 누락 시 추가 안내 설명 메시지 (옵션)
         :param config_file: 특정 설정 파일 경로 (미지정 시 기본 config_dir 설정 전체 사용)
         :return: 설정 파일에 정의된 필수 설정값

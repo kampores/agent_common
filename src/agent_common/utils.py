@@ -42,7 +42,7 @@ class ProgressTracker:
         self.logger: Any = logger
         self.task_name_str: str = task_name_str
         self.start_time_float: float = start_time_float if start_time_float is not None else time.time()
-        self.start_datetime_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ)
+        self.start_datetime_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ_STR)
 
         self.current_count_int: int = 0
         self.total_bytes_int: int = 0

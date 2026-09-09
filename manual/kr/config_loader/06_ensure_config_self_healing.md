@@ -98,7 +98,7 @@ loader = ConfigLoader()
 # [핵심 원칙] 코드 맨 처음 / 최초 실행단에 시스템의 모든 상수를 스키마로 정의
 # 소스 코드 내부의 하드코딩을 배제하고, 설정 파일로 투명하게 노출할 모든 상수를 선언합니다.
 # ==============================================================================
-APP_DEFAULT_SCHEMA = {
+APP_DEFAULT_SCHEMA_DICT = {
     "transfer": {
         "max_workers_int": 4,          # 동시 전송 워커 수 상수
         "batch_size_int": 500,         # 1회 배치 처리 행 수 상수
@@ -107,15 +107,15 @@ APP_DEFAULT_SCHEMA = {
     },
     "logging": {
         "level_str": "INFO",           # 기본 로그 레벨 상수
-        "language": "KO"               # 로그 출력 언어
+        "language_str": "KO"           # 로그 출력 언어 상수
     }
 }
 
 # 1. 스키마 등록 (런타임 기본 뼈대로 상시 유지)
-loader.register_schema(APP_DEFAULT_SCHEMA)
+loader.register_schema(APP_DEFAULT_SCHEMA_DICT)
 
 # 2. 모든 상수의 설정 파일화 실행 (누락된 상수가 있다면 config.yml에 강제 주입)
-config_path = loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA)
+config_path = loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA_DICT)
 print(f"모든 상수가 파일화되어 보정 완료된 경로: {config_path}")
 ```
 

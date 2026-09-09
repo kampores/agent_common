@@ -1,7 +1,7 @@
 # 2.2. 로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)
 
 > **소속 모듈**: `agent_common.logger.ProjectLogger`  
-> **핵심 메서드**: `ProjectLogger.configure(config_dir=None, default_log_file="logs/app.log", app_name=None, file_logging=None)`
+> **핵심 메서드**: `ProjectLogger.configure(config_dir=None, default_log_file_str="logs/app.log", app_name_str=None, file_logging_bool=None)`
 
 ---
 
@@ -64,61 +64,60 @@ logging:
     api_gateway: "WARNING"
 ```
 
-### 3.2. 로그 레벨에 따른 파일 분리 저장 (`out_file` vs `debug_file`)
+### 3.2. 로그 레벨에 따른 디렉터리 자동 분기 및 생성 (`{log_level}` 기반 `log_file` 단일화)
 
-`ProjectLogger.configure()`는 현재 실행 중인 프로세스의 최종 결정된 `logging.level`에 따라 로그 저장 대상을 지능적으로 분기합니다:
+`ProjectLogger.configure()`는 모호하고 주관적인 이원화 경로(`out_file` vs `debug_file`) 대신 단일 표준 경로인 `logging.log_file` 템플릿에 **`{log_level}`(소문자) 또는 `{LOG_LEVEL}`(대문자)** 태그를 지원하여, 프로세스의 실행 로그 레벨에 부합하는 디렉터리를 자동으로 생성하고 격리 저장합니다:
 
-- **`ERROR`, `CRITICAL` 레벨 (장애 발생 감시 모드)**:
-  - 심각한 시스템 장애나 예외 로그만 격리하여 저장하는 `logging.out_file` 경로로 자동 라우팅됩니다.
-- **`DEBUG`, `INFO`, `WARNING` 레벨 (일반 추적 및 디버깅 모드)**:
-  - 통상적인 작업 진행 상태와 경고를 포함한 모든 상세 로그를 기록하는 `logging.debug_file` 경로로 자동 라우팅됩니다.
-- **기본/기타 레벨**:
-  - 위 분기 설정이 없거나 조건에 해당하지 않을 경우 표준 `logging.file` 경로에 기록됩니다.
+- **로그 레벨 자동 디렉터리 생성 (`{log_level}`)**:
+  - `logging.level`이 `WARNING`이면 `logs/pipeline/2026/09/08/warning/` 하위로 자동 저장.
+  - `logging.level`이 `ERROR`이면 `logs/pipeline/2026/09/08/error/` 하위로 자동 저장.
+  - 별도의 주관적 키 분기 없이 일관된 단일 템플릿으로 모든 로그 레벨 디렉터리를 자동 생성 관리합니다.
+- **하위 호환성(Fallback) 보장**:
+  - 기존 설정 파일에서 `log_file` 대신 `out_file`이나 `debug_file`을 사용 중인 환경의 경우, `log_file`이 설정되어 있지 않으면 레벨 조건(`ERROR` 이상 -> `out_file`, `WARNING` 이하 -> `debug_file`)에 맞춰 자동으로 대체 로드됩니다.
 
-#### 엔터프라이즈 데이터 파이프라인의 실전 분기 설정 예시:
+#### 엔터프라이즈 데이터 파이프라인의 실전 설정 예시:
 ```yaml
 logging:
-  # 프로그램별 실행 로그 레벨 매핑 (WARNING 이하이므로 debug_file로 자동 라우팅)
+  # 프로그램별 실행 로그 레벨 매핑
   level:
     data_extractor: "WARNING"
     stream_processor: "WARNING"
-    db_loader: "WARNING"
+    db_loader: "ERROR"
     
-  # 장애/에러 전용 격리 저장 경로 (level이 ERROR, CRITICAL일 때 활성화)
-  out_file: "logs/pipeline/out/%Y/%m/%d/{app_name}_out_%Y%m%dT%H%M%S.log"
-  
-  # 일반 추적/디버깅 전용 저장 경로 (level이 DEBUG, INFO, WARNING일 때 활성화)
-  debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
+  # {log_level} 태그를 활용한 단일 표준 파일 저장 경로 (레벨별 폴더 자동 생성)
+  log_file: "logs/pipeline/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log"
 ```
 
 > 💡 **동작 예시**:
-> - `data_extractor` 배치 프로그램이 기동되면 설정된 레벨이 `WARNING`이므로 `debug_file` 경로인 `logs/pipeline/debug/...` 폴더 아래에 로그가 기록됩니다.
-> - 반면, 장애 모니터링 데몬이나 특정 배치가 `ERROR` 레벨로 실행되면 즉시 `out_file` 경로인 `logs/pipeline/out/...` 폴더 아래로 저장 위치가 분리되어, 장애 분석 담당자가 에러 로그 파일만 신속히 선별할 수 있습니다.
+> - `data_extractor` 프로그램 기동 시 레벨이 `WARNING`이므로 `logs/pipeline/2026/09/08/warning/` 폴더가 자동 생성되고 그 안에 저장됩니다.
+> - `db_loader` 프로그램 기동 시 레벨이 `ERROR`이므로 `logs/pipeline/2026/09/08/error/` 폴더가 자동 생성되고 에러 로그가 깔끔하게 격리 보관됩니다.
 
 ### 3.3. 동적 날짜 포맷 및 경로 자동 생성
 
-`out_file`, `debug_file`, `file` 경로 템플릿에는 다양한 동적 치환 태그와 날짜 포맷을 자유롭게 결합할 수 있습니다:
+`log_file` 경로 템플릿에는 다양한 동적 치환 태그와 날짜 포맷을 자유롭게 결합할 수 있습니다:
 
 1. **`{app_name}` 치환 태그**:
    - `ProjectLogger.configure(app_name="data_extractor")`로 전달된 애플리케이션 명칭(또는 실행 스크립트 파일명)으로 자동 치환됩니다.
-2. **`%Y/%m/%d` 계층형 디렉터리 포맷**:
+2. **`{log_level}` / `{LOG_LEVEL}` 치환 태그**:
+   - 현재 프로세스에 결정된 실행 로그 레벨 명칭(소문자 `warning`, `error` / 대문자 `WARNING`, `ERROR`)으로 치환되어 레벨별 전용 폴더가 자동 생성됩니다.
+3. **`%Y/%m/%d` 계층형 디렉터리 포맷**:
    - `datetime.now().strftime(...)` 파싱을 통해 연도/월/일 단위의 서브 디렉터리를 자동 계산합니다.
-3. **`%Y%m%dT%H%M%S` ISO Compact 타임스탬프**:
-   - 프로세스 기동 시점의 고유 타임스탬프(예: `20260904T230715`)를 부여하여 동일 일자에 여러 번 실행되어도 이전 실행 로그가 덮어써지지 않고 독립된 파일로 보존됩니다.
-4. **다단계 상위 디렉터리 자동 생성 (`mkdir(parents=True, exist_ok=True)`)**:
-   - 타겟 디렉터리(`logs/pipeline/debug/2026/09/04/`)가 시스템에 아직 없더라도 예외 없이 안전하게 디렉터리를 생성하고 파일 핸들러를 연결합니다.
+4. **`%Y%m%dT%H%M%S` ISO Compact 타임스탬프**:
+   - 프로세스 기동 시점의 고유 타임스탬프(예: `20260908T183000`)를 부여하여 동일 일자에 여러 번 실행되어도 이전 실행 로그가 덮어써지지 않고 독립된 파일로 보존됩니다.
+5. **다단계 상위 디렉터리 자동 생성 (`mkdir(parents=True, exist_ok=True)`)**:
+   - 타겟 디렉터리(`logs/pipeline/2026/09/08/warning/`)가 시스템에 아직 없더라도 예외 없이 안전하게 디렉터리를 생성하고 파일 핸들러를 연결합니다.
 
 #### 실제 경로 해석 및 생성 검증 예시:
 ```text
 [설정 템플릿]
-debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
+log_file: "logs/pipeline/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log"
 
 [런타임 호출 파라미터]
-ProjectLogger.configure(app_name="data_extractor", file_logging=True)
-실행 일시: 2026-09-04 23:07:15
+ProjectLogger.configure(app_name_str="data_extractor", file_logging_bool=True)
+실행 일시: 2026-09-08 18:30:00
 
 [최종 자동 생성 경로]
-logs/pipeline/debug/2026/09/04/data_extractor_debug_20260904T230715.log
+logs/pipeline/2026/09/08/warning/data_extractor_out_20260908T183000.log
 ```
 
 ### 3.4. 무중단 예외 완화 (Graceful Degradation)
@@ -143,19 +142,15 @@ logging:
   # 로그 메시지 템플릿 언어 (KO: 한국어, EN: 영어)
   language: "KO"
   
-  # 로그 포맷 및 날짜 표기 형식
-  format: "[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d %(funcName)s()] %(message)s"
+  # 로그 포맷 및 날짜 표기 형식 (name: 프로그램명, caller: 호출 클래스.메서드() 또는 일반 함수())
+  format: "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller)s] %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   
   # 파일 로깅 활성화 여부 (True: 콘솔+파일, False: 콘솔 전용)
   file_logging: true
   
-  # 레벨 분기용 파일 경로 (엔터프라이즈 파이프라인 표준)
-  out_file: "logs/pipeline/out/%Y/%m/%d/{app_name}_out_%Y%m%dT%H%M%S.log"
-  debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
-  
-  # 기본 로그 파일 경로 (대체용)
-  file: "logs/%Y%m%d/{app_name}.log"
+  # 단일 표준 로그 파일 경로 ({log_level}에 따른 디렉터리 자동 분기)
+  log_file: "logs/pipeline/out/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log"
 ```
 
 ---
@@ -171,9 +166,9 @@ from agent_common.logger import ProjectLogger
 def main():
     # 1. 애플리케이션 기동 시 단 1회 전체 로깅 구성 초기화
     ProjectLogger.configure(
-        app_name="data_migrator",
-        file_logging=True,              # False 지정 시 파일 저장 없이 stdout만 출력
-        default_log_file="logs/migrator.log"
+        app_name_str="data_migrator",
+        file_logging_bool=True,              # False 지정 시 파일 저장 없이 stdout만 출력
+        default_log_file_str="logs/migrator.log"
     )
 
     # 2. 개별 모듈/클래스에서 로거 인스턴스 획득
@@ -206,8 +201,8 @@ group.add_argument("--file-log", "-fl", dest="file_log", action="store_true", de
 group.add_argument("--no-file-log", "-nfl", dest="file_log", action="store_false")
 args = parser.parse_args()
 
-# CLI 옵션을 file_logging 인자에 바로 전달 (None이면 config.yml 설정 준용)
-ProjectLogger.configure(app_name="batch_job", file_logging=args.file_log)
+# CLI 옵션을 file_logging_bool 인자에 바로 전달 (None이면 config.yml 설정 준용)
+ProjectLogger.configure(app_name_str="batch_job", file_logging_bool=args.file_log)
 ```
 
 ---

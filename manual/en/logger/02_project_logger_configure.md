@@ -1,7 +1,7 @@
 # 2.2. Batch Logging Environment Configuration & Handler Control (`ProjectLogger.configure`)
 
 > **Module**: `agent_common.logger.ProjectLogger`  
-> **Key Method**: `ProjectLogger.configure(config_dir=None, default_log_file="logs/app.log", app_name=None, file_logging=None)`
+> **Key Method**: `ProjectLogger.configure(config_dir=None, default_log_file_str="logs/app.log", app_name_str=None, file_logging_bool=None)`
 
 ---
 
@@ -64,61 +64,60 @@ logging:
     api_server: "WARNING"
 ```
 
-### 3.2. Level-Based File Routing (`out_file` vs `debug_file`)
+### 3.2. Automatic Log Level Directory Creation (`log_file` with `{log_level}`)
 
-`ProjectLogger.configure()` intelligently routes log file destinations based on the resolved `logging.level`:
+`ProjectLogger.configure()` eliminates subjective, split routing keys (`out_file` vs `debug_file`) by consolidating into a single standard template `logging.log_file` that supports **`{log_level}` (lowercase) or `{LOG_LEVEL}` (uppercase)**:
 
-- **`ERROR`, `CRITICAL` Level (Failure Monitoring Mode)**:
-  - Automatically routed to `logging.out_file` to isolate system errors and critical failure logs for on-call engineers.
-- **`DEBUG`, `INFO`, `WARNING` Level (Standard Tracing Mode)**:
-  - Automatically routed to `logging.debug_file` capturing informational and diagnostic logs.
-- **Default / Other**:
-  - Saved to `logging.file` if specific level routing keys are omitted.
+- **Automated Level Directory Partitioning (`{log_level}`)**:
+  - If `logging.level` is `WARNING`, logs are saved under `logs/pipeline/2026/09/08/warning/`.
+  - If `logging.level` is `ERROR`, logs are saved under `logs/pipeline/2026/09/08/error/`.
+  - Automatically isolates logs into appropriate level subdirectories without multiple configuration keys.
+- **Backward Compatibility (Fallback)**:
+  - For legacy configurations still defining `out_file` or `debug_file` without `log_file`, `ProjectLogger.configure()` seamlessly falls back to the legacy level routing rules.
 
-#### Enterprise Data Pipeline Routing Configuration Example:
+#### Enterprise Data Pipeline Configuration Example:
 ```yaml
 logging:
-  # Program-specific log levels (WARNING and below routes to debug_file)
+  # Program-specific log levels
   level:
     data_extractor: "WARNING"
     stream_processor: "WARNING"
-    db_loader: "WARNING"
+    db_loader: "ERROR"
     
-  # Isolated destination for ERROR and CRITICAL runs
-  out_file: "logs/pipeline/out/%Y/%m/%d/{app_name}_out_%Y%m%dT%H%M%S.log"
-  
-  # Standard destination for DEBUG, INFO, and WARNING runs
-  debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
+  # Unified standard log file path with dynamic {log_level} directory
+  log_file: "logs/pipeline/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log"
 ```
 
 > 💡 **Behavioral Example**:
-> - When `data_extractor` runs with `WARNING` level, logs are written to the `debug_file` path under `logs/pipeline/debug/...`.
-> - If the process or CLI flag elevates the level to `ERROR`, logs are automatically redirected to `out_file` under `logs/pipeline/out/...`, enabling clear separation between normal operations and error triage.
+> - When `data_extractor` runs with `WARNING` level, the folder `logs/pipeline/2026/09/08/warning/` is auto-created and logs are written there.
+> - When `db_loader` runs with `ERROR` level, the folder `logs/pipeline/2026/09/08/error/` is auto-created, isolating error triage logs cleanly.
 
 ### 3.3. Dynamic Path Templating & Recursive Directory Creation
 
-The `out_file`, `debug_file`, and `file` template strings support dynamic placeholders and date specifiers:
+The `log_file` template string supports dynamic placeholders and date specifiers:
 
 1. **`{app_name}` Placeholder**:
    - Replaced by the application name passed to `ProjectLogger.configure(app_name="data_extractor")` (or the script filename).
-2. **`%Y/%m/%d` Hierarchical Date Partitioning**:
+2. **`{log_level}` / `{LOG_LEVEL}` Placeholder**:
+   - Replaced by the resolved runtime log level (lowercase `warning`, `error` / uppercase `WARNING`, `ERROR`), auto-generating level-specific directories.
+3. **`%Y/%m/%d` Hierarchical Date Partitioning**:
    - Parsed via `datetime.now().strftime(...)` to automatically organize logs into year/month/day directory trees.
-3. **`%Y%m%dT%H%M%S` ISO Compact Timestamp**:
-   - Assigns a unique execution timestamp (e.g. `20260904T230715`), ensuring subsequent runs on the same date do not overwrite prior logs.
-4. **Recursive Parent Directory Creation (`mkdir(parents=True, exist_ok=True)`)**:
-   - Automatically builds missing nested directories (e.g. `logs/pipeline/debug/2026/09/04/`) before creating the file handler.
+4. **`%Y%m%dT%H%M%S` ISO Compact Timestamp**:
+   - Assigns a unique execution timestamp (e.g. `20260908T183000`), ensuring subsequent runs on the same date do not overwrite prior logs.
+5. **Recursive Parent Directory Creation (`mkdir(parents=True, exist_ok=True)`)**:
+   - Automatically builds missing nested directories (e.g. `logs/pipeline/2026/09/08/warning/`) before creating the file handler.
 
 #### Dynamic Path Resolution Example:
 ```text
 [Template in config.yml]
-debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
+log_file: "logs/pipeline/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log"
 
 [Runtime Invocation]
-ProjectLogger.configure(app_name="data_extractor", file_logging=True)
-Execution Timestamp: 2026-09-04 23:07:15
+ProjectLogger.configure(app_name_str="data_extractor", file_logging_bool=True)
+Execution Timestamp: 2026-09-08 18:30:00
 
 [Resolved Log File Path]
-logs/pipeline/debug/2026/09/04/data_extractor_debug_20260904T230715.log
+logs/pipeline/2026/09/08/warning/data_extractor_out_20260908T183000.log
 ```
 
 ### 3.4. Graceful Degradation on Permission/OS Errors
@@ -143,16 +142,13 @@ logging:
   # Message template dictionary language (KO or EN)
   language: "KO"
   
-  format: "[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d %(funcName)s()] %(message)s"
+  # Log format and date format (name: program/app name, caller: Class.method() or function())
+  format: "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller)s] %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   file_logging: true
   
-  # Production routing templates (enterprise pipeline standard)
-  out_file: "logs/pipeline/out/%Y/%m/%d/{app_name}_out_%Y%m%dT%H%M%S.log"
-  debug_file: "logs/pipeline/debug/%Y/%m/%d/{app_name}_debug_%Y%m%dT%H%M%S.log"
-  
-  # Fallback log file path
-  file: "logs/%Y%m%d/{app_name}.log"
+  # Standard consolidated log file template (auto-creates level subdirectories via {log_level})
+  log_file: "logs/pipeline/out/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log"
 ```
 
 ---
@@ -167,9 +163,9 @@ from agent_common.logger import ProjectLogger
 def main():
     # 1. Initialize logging configuration once at process startup
     ProjectLogger.configure(
-        app_name="data_migrator",
-        file_logging=True,
-        default_log_file="logs/migrator.log"
+        app_name_str="data_migrator",
+        file_logging_bool=True,
+        default_log_file_str="logs/migrator.log"
     )
 
     # 2. Obtain logger instances in business modules
@@ -193,7 +189,7 @@ group.add_argument("--no-file-log", "-nfl", dest="file_log", action="store_false
 args = parser.parse_args()
 
 # Pass CLI preference directly (defaults to config.yml when None)
-ProjectLogger.configure(app_name="batch_job", file_logging=args.file_log)
+ProjectLogger.configure(app_name_str="batch_job", file_logging_bool=args.file_log)
 ```
 
 ---

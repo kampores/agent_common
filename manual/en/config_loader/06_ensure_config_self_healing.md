@@ -98,7 +98,7 @@ loader = ConfigLoader()
 # [Core Principle] Define all constants in the schema at the very beginning of the app.
 # Eliminates in-code hardcoding and exposes all tunables transparently in config.yml.
 # ==============================================================================
-APP_DEFAULT_SCHEMA = {
+APP_DEFAULT_SCHEMA_DICT = {
     "transfer": {
         "max_workers_int": 4,          # Worker count constant
         "batch_size_int": 500,         # Batch row size constant
@@ -107,15 +107,15 @@ APP_DEFAULT_SCHEMA = {
     },
     "logging": {
         "level_str": "INFO",           # Default log level constant
-        "language": "EN"               # Logging language
+        "language_str": "EN"           # Logging language constant
     }
 }
 
 # 1. Register baseline schema
-loader.register_schema(APP_DEFAULT_SCHEMA)
+loader.register_schema(APP_DEFAULT_SCHEMA_DICT)
 
 # 2. Materialize all constants into config.yml (forcibly inject missing constants)
-config_path = loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA)
+config_path = loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA_DICT)
 print(f"Configuration file materialized with all constants: {config_path}")
 ```
 

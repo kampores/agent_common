@@ -17,11 +17,12 @@ class DateTimeUtils:
     날짜 및 시간 규격을 표준화하여 제공하는 공용 유틸리티 Tool 클래스입니다.
     """
 
-    FORMAT_DATE_YYYYMMDD: str = "%Y%m%d"
-    FORMAT_DATETIME_STD: str = "%Y-%m-%d %H:%M:%S+09:00"
-    FORMAT_DATETIME_NO_TZ: str = "%Y-%m-%d %H:%M:%S"
-    FORMAT_DATETIME_KST: str = "%Y-%m-%d %H:%M:%S+09:00"
-    FORMAT_DATETIME_COMPACT: str = "%Y%m%d%H%M%S"
+    FORMAT_DATE_YYYYMMDD_STR: str = "%Y%m%d"
+    FORMAT_DATETIME_STD_STR: str = "%Y-%m-%d %H:%M:%S+09:00"
+    FORMAT_DATETIME_NO_TZ_STR: str = "%Y-%m-%d %H:%M:%S"
+    FORMAT_DATETIME_KST_STR: str = "%Y-%m-%d %H:%M:%S+09:00"
+    FORMAT_DATETIME_COMPACT_STR: str = "%Y%m%d%H%M%S"
+
 
     @classmethod
     def get_today_yyyymmdd(cls) -> str:
@@ -30,7 +31,7 @@ class DateTimeUtils:
 
         :return: 'YYYYMMDD' 형식의 당일 날짜 문자열 (예: '20260821')
         """
-        return time.strftime(cls.FORMAT_DATE_YYYYMMDD)
+        return time.strftime(cls.FORMAT_DATE_YYYYMMDD_STR)
 
     @classmethod
     def get_now_formatted(cls, fmt_str: Optional[str] = None) -> str:
@@ -40,7 +41,7 @@ class DateTimeUtils:
         :param fmt_str: 사용할 strftime 포맷 문자열 (기본값: '%Y-%m-%d %H:%M:%S+09:00')
         :return: 포맷팅된 현재 일시 문자열 (예: '2026-08-21 13:10:00+09:00')
         """
-        target_fmt_str: str = fmt_str or cls.FORMAT_DATETIME_STD
+        target_fmt_str: str = fmt_str or cls.FORMAT_DATETIME_STD_STR
         return time.strftime(target_fmt_str)
 
     @classmethod
@@ -50,4 +51,4 @@ class DateTimeUtils:
 
         :return: 'YYYYMMDDHHMMSS' 형식의 타임스탬프 문자열 (예: '20260821131000')
         """
-        return time.strftime(cls.FORMAT_DATETIME_COMPACT)
+        return time.strftime(cls.FORMAT_DATETIME_COMPACT_STR)

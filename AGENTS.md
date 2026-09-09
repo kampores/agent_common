@@ -36,19 +36,30 @@
 
 1.4.6. **No Superficial Shell / Pass-through Functions (껍데기 함수 금지)**: Prohibit creating trivial wrapper or forwarding functions that merely delegate calls to another function without adding meaningful logic, validation, or structural abstraction. Consolidate logic directly into the substantive target function to eliminate unnecessary call layers and keep the architecture direct and uncluttered.
 
-### 1.5. Common Module Architecture & No Speculative/Workaround Coding
+### 1.5. Common Module Architecture, No Speculative Coding & Strict Prohibition of Defensive Coding
 
 1.5.1. Universal features (logging, config, errors) must be centralized in `agent_common`. Shared domain logic must be extracted into dedicated program-group common modules. Do not use `print()` for runtime logging in production.
 
 1.5.2. Never write speculative logic, heuristic fallback code, or assume unverified file/schema structures when domain rules or data contracts are ambiguous. Always ask the user directly for explicit clarification before implementing.
 
+1.5.3. **Strict Prohibition of Defensive Coding (방어 코드 작성 엄격 금지 및 Fail-Fast 실현)**:
+- **No `**kwargs: Any` or `kwargs.get(...)` for Backward Compatibility / Defensiveness**: Strictly prohibit declaring `**kwargs: Any` or using `kwargs.get()` in functions and methods to absorb undeclared, legacy, or misspelled arguments. Declare only explicit, strictly type-suffixed parameters (`_str`, `_int`, `_bool`, `_list`, `_dict`). Let unexpected arguments raise `TypeError` immediately (Fail-Fast). (The only permissible use of `**kwargs` is for dynamic message formatting in structured loggers, e.g., `logger.info(msg, key=val)`.)
+- **No Defensive Right-Hand Type Casting (방어적 우향 형변환 금지)**: Do not wrap variables or function parameters in defensive type conversion functions (`str(...)`, `int(...)`, `bool(...)`) to suppress type discrepancies. Such wrappers mask defects (e.g., converting `None` to `"None"`, or `"false"` to `True`). Ensure unadulterated types flow through the code so contract violations fail fast.
+- **No Defensive Null/Empty Fallback Variables (방어적 대체 변수 및 중간 임시 변수 양산 금지)**: Prohibit creating defensive fallback copies inside functions (e.g., `folders_list = target_folders_list if target_folders_list is not None else []` or `[e for e in (effective_list or ["default"])]`). Pass and use canonical parameters directly; do not generate redundant alias variables that clutter logic and cause `NameError` defects.
+- **No Permissive / Fuzzy Key Match Fallbacks (퍼지 매칭 및 변형 키 탐색 금지)**: Prohibit implementing permissive key lookup mechanisms (e.g., automatically stripping or attaching type suffixes, case-insensitive key hunting) to accommodate incorrect callers. Every caller and configuration consumer must reference the exact, canonical key name.
+
 ### 1.6. Strict Variable Type Suffix Naming & Exception Handling
 
 1.6.1. **Mandatory Type-Suffix Variable Naming**: Append exact data type names as suffixes (`_<type_name>`) to variable names, parameters, and logging keys (e.g., `_str`, `_int`, `_float`, `_list`, `_dict`, `_bool` such as `ecs_key_str`, `total_count_int`).
 
-1.6.2. Avoid reusing confusing, mismatched domain identifiers across different data contexts (e.g., never name a variable `oid` if it represents `asstId`).
+1.6.2. **Strict Prohibition of Abbreviated Identifiers & Full Descriptive Naming Principle**:
+- Strictly prohibit vague abbreviations or shortened names (e.g., `out_file`, `debug_file`, `tmp`, `dir`, `chk`) in variable names, constants, configuration (YAML) keys, and function arguments.
+- Write full, descriptive names that fully convey their role, purpose, and domain context (e.g., `output_error_log_file_str`, `debug_log_file_str`, `default_log_file_str`).
+- Prevent confusion and defects such as assuming a missing setting and redundantly duplicating variables/keys (e.g., recreating `log_file`).
 
-1.6.3. Keep `try` blocks as small as possible. Specify explicit exception classes first, with top-level `Exception` at the bottom. Log errors with business context and traceback details exclusively using `logger.exception`.
+1.6.3. Avoid reusing confusing, mismatched domain identifiers across different data contexts (e.g., never name a variable `oid` if it represents `asstId`).
+
+1.6.4. Keep `try` blocks as small as possible. Specify explicit exception classes first, with top-level `Exception` at the bottom. Log errors with business context and traceback details exclusively using `logger.exception`.
 
 ### 1.7. Schema-Driven Input & Namespace Variable Management
 
@@ -59,6 +70,11 @@
 1.7.3. **Wildcard Support**: Support wildcard standards (`*`, `?`, `{json.*}`, `{json.meta_*}`) for metadata mapping to serialize data safely without key collisions.
 
 1.7.4. **Single Responsibility for Context Building**: Delegate context creation to `RuleEvaluator.build_context()`.
+
+1.7.5. **Mandatory Project-Wide Default Schema Definition & Self-Healing**:
+- All projects and modules must eliminate source code hardcoding and declaratively define all operational configuration values and constants as a **Default Schema** dictionary. (The constant name is not restricted to `APP_DEFAULT_SCHEMA`; single-program projects may use `APP_DEFAULT_SCHEMA`, while multi-program environments can use clear domain-specific schema names such as `ECS_TO_GCS_SCHEMA`, `ECS_TO_BIGQUERY_SCHEMA` in `app_schema.py`.)
+- Executable programs (entry points) must pass their respective default schema to `ConfigLoader.register_schema(schema)` and `ConfigLoader.ensure_config_file("config.yml", default_schema=schema)` at early startup to guarantee file auto-creation and missing-key self-healing.
+- Common library packages without a main entry point (such as `agent_common`) must define module-specific default schemas in each file to preserve lazy loading and modularity (prohibit forced package-wide schema synthesis).
 
 ### 1.8. CLI Input Parameter Option Standardization
 

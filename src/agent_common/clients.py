@@ -21,15 +21,31 @@ if TYPE_CHECKING:
     from google.cloud import storage, bigquery
     from google.oauth2 import service_account
 
-from agent_common.config_loader import ConfigLoader
+from agent_common.config_loader import ConfigLoader, config
 from agent_common.logger import ProjectLogger
 
+# ==============================================================================
+# 스토리지 및 데이터베이스 클라이언트 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
+# ==============================================================================
+APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
+    "transfer": {
+        "timeout_seconds_int": 120,
+        "chunk_size_int": 8388608,
+    },
+    "bigquery": {
+        "ignore_unknown_values_bool": True,
+        "timezone_offset_str": "+09:00",
+        "max_retries_int": 3,
+    },
+}
+
+
 # 서드파티 SDK 지연 로딩(Lazy Loading) 캐시 변수
-_boto3: Any = None
-_boto_config: Any = None
-_storage: Any = None
-_bigquery: Any = None
-_service_account: Any = None
+_boto3_module: Any = None
+_boto_config_cls: Any = None
+_storage_module: Any = None
+_bigquery_module: Any = None
+_service_account_module: Any = None
 
 
 
@@ -40,19 +56,19 @@ def _get_boto3() -> Tuple[Any, Any]:
     :return: (boto3 모듈, BotoConfig 클래스) 튜플
     :raises ImportError: boto3 패키지가 설치되어 있지 않은 경우 발생
     """
-    global _boto3, _boto_config
-    if _boto3 is None or _boto_config is None:
+    global _boto3_module, _boto_config_cls
+    if _boto3_module is None or _boto_config_cls is None:
         try:
             import boto3
             from botocore.client import Config as BotoConfig
-            _boto3 = boto3
-            _boto_config = BotoConfig
+            _boto3_module = boto3
+            _boto_config_cls = BotoConfig
         except ImportError as exc:
             raise ImportError(
                 "AWS S3 및 Dell ECS 기능을 사용하려면 'boto3' 패키지가 필요합니다. "
                 "'pip install boto3' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
             ) from exc
-    return _boto3, _boto_config
+    return _boto3_module, _boto_config_cls
 
 
 def _get_gcs() -> Tuple[Any, Any]:
@@ -62,19 +78,19 @@ def _get_gcs() -> Tuple[Any, Any]:
     :return: (storage 모듈, service_account 모듈) 튜플
     :raises ImportError: google-cloud-storage 또는 google-auth 패키지가 설치되어 있지 않은 경우 발생
     """
-    global _storage, _service_account
-    if _storage is None or _service_account is None:
+    global _storage_module, _service_account_module
+    if _storage_module is None or _service_account_module is None:
         try:
             from google.cloud import storage
             from google.oauth2 import service_account
-            _storage = storage
-            _service_account = service_account
+            _storage_module = storage
+            _service_account_module = service_account
         except ImportError as exc:
             raise ImportError(
                 "Google Cloud Storage(GCS) 기능을 사용하려면 'google-cloud-storage' 패키지가 필요합니다. "
                 "'pip install google-cloud-storage' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
             ) from exc
-    return _storage, _service_account
+    return _storage_module, _service_account_module
 
 
 def _get_bigquery() -> Tuple[Any, Any]:
@@ -84,19 +100,19 @@ def _get_bigquery() -> Tuple[Any, Any]:
     :return: (bigquery 모듈, service_account 모듈) 튜플
     :raises ImportError: google-cloud-bigquery 또는 google-auth 패키지가 설치되어 있지 않은 경우 발생
     """
-    global _bigquery, _service_account
-    if _bigquery is None or _service_account is None:
+    global _bigquery_module, _service_account_module
+    if _bigquery_module is None or _service_account_module is None:
         try:
             from google.cloud import bigquery
             from google.oauth2 import service_account
-            _bigquery = bigquery
-            _service_account = service_account
+            _bigquery_module = bigquery
+            _service_account_module = service_account
         except ImportError as exc:
             raise ImportError(
                 "Google Cloud BigQuery 기능을 사용하려면 'google-cloud-bigquery' 패키지가 필요합니다. "
                 "'pip install google-cloud-bigquery' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
             ) from exc
-    return _bigquery, _service_account
+    return _bigquery_module, _service_account_module
 
 
 
@@ -113,7 +129,6 @@ class S3Client:
         bucket_name_str: str = "",
         timeout_seconds_int: int | None = None,
         region_name_str: str | None = None,
-        **kwargs: Any,
     ):
         """
         AWS S3 또는 Dell ECS 클라이언트를 초기화합니다.
@@ -124,25 +139,16 @@ class S3Client:
         :param bucket_name_str: 조회의 대상이 되는 S3/ECS 버킷명 (필수)
         :param timeout_seconds_int: 네트워크 연결 및 읽기 타임아웃 초 (미지정 시 설정 파일 transfer.timeout_seconds 참조)
         :param region_name_str: AWS 리전명 (예: 'ap-northeast-2', Dell ECS의 경우 생략 가능)
-        :param kwargs: 하위 호환성을 위한 레거시 매개변수 (endpoint_url, access_key, secret_key, bucket_name, timeout_seconds, region_name)
         :raises ValueError: 필수 파라미터인 bucket_name이 누락된 경우 발생
         :raises ConnectionError: 저장소 연결 또는 버킷 접근 권한 검증에 실패한 경우 발생
         """
-        # 레거시 키워드 인자 호환성 보장
-        self.endpoint_url_str: str | None = endpoint_url_str or kwargs.get("endpoint_url")
-        self.access_key_str: str | None = access_key_str or kwargs.get("access_key")
-        self.secret_key_str: str | None = secret_key_str or kwargs.get("secret_key")
-        resolved_bucket_name_str: str = bucket_name_str or kwargs.get("bucket_name", "")
-        if not resolved_bucket_name_str:
+        self.endpoint_url_str: str | None = endpoint_url_str
+        self.access_key_str: str | None = access_key_str
+        self.secret_key_str: str | None = secret_key_str
+        if not bucket_name_str:
             raise ValueError("S3/ECS 버킷명(bucket_name_str)은 필수 입력 항목입니다.")
-        self.bucket_name_str: str = resolved_bucket_name_str.strip()
-        self.region_name_str: str | None = region_name_str or kwargs.get("region_name")
-
-        # 레거시 프로퍼티 호환 지원 (기존 self.endpoint_url, self.bucket_name 등을 참조하는 코드 대비)
-        self.endpoint_url: str | None = self.endpoint_url_str
-        self.access_key: str | None = self.access_key_str
-        self.secret_key: str | None = self.secret_key_str
-        self.bucket_name: str = self.bucket_name_str
+        self.bucket_name_str: str = bucket_name_str.strip()
+        self.region_name_str: str | None = region_name_str
 
         # logger 초기화
         self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
@@ -152,12 +158,9 @@ class S3Client:
         resolved_timeout_int = (
             timeout_seconds_int
             if timeout_seconds_int is not None
-            else kwargs.get("timeout_seconds")
+            else self.config_loader.require_setting("transfer.timeout_seconds_int")
         )
-        if resolved_timeout_int is None:
-            resolved_timeout_int = self.config_loader.require_setting("transfer.timeout_seconds")
         self.timeout_seconds_int: int = int(resolved_timeout_int)
-        self.timeout_seconds: int = self.timeout_seconds_int
 
         # client: boto3 s3 클라이언트 인스턴스
         self.client: Any = None
@@ -198,7 +201,7 @@ class S3Client:
                 self.logger.exception("connection_failed", service_name=target_service_str, error=str(exc))
             ) from exc
 
-    def list_objects(self, prefix_str: str = "", **kwargs: Any) -> Generator[Dict[str, Any], None, None]:
+    def list_objects(self, prefix_str: str = "") -> Generator[Dict[str, Any], None, None]:
         """
         지정된 버킷 및 프리픽스 범위 하위의 S3/ECS 오브젝트 목록을 안전하게 조회(페이징)합니다.
 
@@ -206,19 +209,18 @@ class S3Client:
         :return: 오브젝트 메타데이터 딕셔너리 제너레이터
         :raises RuntimeError: 목록 조회 실패 시 발생
         """
-        resolved_prefix_str: str = prefix_str or kwargs.get("prefix", "")
         try:
-            paginator = self.client.get_paginator("list_objects_v2")
-            pages = paginator.paginate(Bucket=self.bucket_name_str, Prefix=resolved_prefix_str)
-            for page in pages:
-                if "Contents" in page:
-                    for obj in page["Contents"]:
-                        yield obj
+            paginator_obj: Any = self.client.get_paginator("list_objects_v2")
+            pages_iterable: Any = paginator_obj.paginate(Bucket=self.bucket_name_str, Prefix=prefix_str)
+            for page_dict in pages_iterable:
+                if "Contents" in page_dict:
+                    for object_item_dict in page_dict["Contents"]:
+                        yield object_item_dict
         except Exception as exc:
             storage_type_str: str = "Dell ECS" if self.endpoint_url_str else "AWS S3"
             raise RuntimeError(self.logger.exception("list_failed", storage_type=storage_type_str, error=str(exc))) from exc
 
-    def get_object_stream(self, key_str: str = "", **kwargs: Any) -> Any:
+    def get_object_stream(self, key_str: str = "") -> Any:
         """
         특정 파일의 파일 스트림 객체(StreamingBody)를 S3/ECS로부터 획득합니다.
 
@@ -226,62 +228,55 @@ class S3Client:
         :return: StreamingBody 스트림 객체
         :raises RuntimeError: 스트림 조회 실패 시 발생
         """
-        resolved_key_str: str = key_str or kwargs.get("key", "")
         try:
-            response = self.client.get_object(Bucket=self.bucket_name_str, Key=resolved_key_str)
-            return response["Body"]
+            response_dict: dict[str, Any] = self.client.get_object(Bucket=self.bucket_name_str, Key=key_str)
+            return response_dict["Body"]
         except Exception as exc:
-            raise RuntimeError(self.logger.exception("transfer_failed", file_name=resolved_key_str, error=str(exc))) from exc
+            raise RuntimeError(self.logger.exception("transfer_failed", file_name=key_str, error=str(exc))) from exc
 
-    def get_object_size(self, key_str: str = "", **kwargs: Any) -> int | None:
+    def get_object_size(self, key_str: str = "") -> int | None:
         """
         S3/ECS 오브젝트의 파일 크기(bytes)를 헤더(head_object)로 빠르게 조회합니다.
 
         :param key_str: 대상 오브젝트 키 경로
         :return: 파일 크기(바이트) 또는 조회 실패 시 None
         """
-        resolved_key_str: str = key_str or kwargs.get("key", "")
         try:
-            response = self.client.head_object(Bucket=self.bucket_name_str, Key=resolved_key_str)
-            return response.get("ContentLength")
+            response_dict: dict[str, Any] = self.client.head_object(Bucket=self.bucket_name_str, Key=key_str)
+            return response_dict.get("ContentLength")
         except Exception:
             return None
 
     def transfer_to_gcs(
         self,
-        gcs_client: GcsClient,
+        gcs_client_obj: GcsClient,
         s3_key_str: str = "",
         gcs_blob_name_str: str = "",
-        size_int: int | None = None,
-        **kwargs: Any,
+        size_int: int = 0,
     ) -> bool:
         """
         단일 파일에 대해 GCS 존재 여부 및 용량을 사전 검사하여, 동일 용량 파일 존재 시 복사를 건너뛰고(Skip),
         신규 파일이거나 용량이 다른 경우 S3/ECS 스트림을 열고 GCS로 실시간 전송하며,
         구간별 통계 시간 및 단일 행 표준 로깅을 공통 처리합니다.
 
-        :param gcs_client: 목적지 GCS 클라이언트 인스턴스
+        :param gcs_client_obj: 목적지 GCS 클라이언트 인스턴스
         :param s3_key_str: 소스 S3/ECS 객체 키 경로
         :param gcs_blob_name_str: 목적지 GCS 블롭 경로명
         :param size_int: 파일 바이트 크기
         :return: 전송 성공 또는 Skip 시 True, 실패 시 False
         """
-        resolved_s3_key_str: str = s3_key_str or kwargs.get("ecs_key", "")
-        resolved_blob_name_str: str = gcs_blob_name_str or kwargs.get("gcs_blob_name", "")
-        resolved_size_int: int = size_int if size_int is not None else int(kwargs.get("size", 0))
-
-        total_start_float = time.time()
-        context_info_str = f"[S3_Key={resolved_s3_key_str} GCS_Blob={resolved_blob_name_str} Size={resolved_size_int}]"
+        total_start_float: float = time.time()
+        context_info_str: str = f"[S3_Key={s3_key_str} GCS_Blob={gcs_blob_name_str} Size={size_int}]"
 
         try:
             # 1. GCS 목적지의 기존 파일 존재 여부 및 바이트 크기 조회
-            check_start_float = time.time()
-            existing_size_int = gcs_client.get_blob_size(resolved_blob_name_str)
-            check_elapsed_float = time.time() - check_start_float
+            check_start_float: float = time.time()
+            existing_size_int: int | None = gcs_client_obj.get_blob_size(gcs_blob_name_str)
+            check_elapsed_float: float = time.time() - check_start_float
 
             # 이미 GCS에 존재하고 용량이 동일한 경우 복사 건너뛰기
-            if existing_size_int is not None and existing_size_int == resolved_size_int:
-                self.logger.info("transfer_skipped", file_name=resolved_s3_key_str, dst_type="GCS")
+            if existing_size_int is not None and existing_size_int == size_int:
+                self.logger.info("transfer_skipped", file_name=s3_key_str, dst_type="GCS")
                 self.logger.info(
                     "elapsed_time",
                     action_name="GCS 파일 검사",
@@ -291,17 +286,17 @@ class S3Client:
                 return True
 
             # 2. S3/ECS StreamingBody 스트림 객체 생성 시간 측정
-            stream_start_float = time.time()
-            stream_obj = self.get_object_stream(resolved_s3_key_str)
-            stream_elapsed_float = time.time() - stream_start_float
+            stream_start_float: float = time.time()
+            stream_obj: Any = self.get_object_stream(s3_key_str)
+            stream_elapsed_float: float = time.time() - stream_start_float
 
             # 3. GCS 업로드 스트림 시간 측정
-            upload_start_float = time.time()
-            gcs_client.upload_stream(stream_obj, resolved_blob_name_str, resolved_size_int)
-            upload_elapsed_float = time.time() - upload_start_float
+            upload_start_float: float = time.time()
+            gcs_client_obj.upload_stream(stream_obj, gcs_blob_name_str, size_int)
+            upload_elapsed_float: float = time.time() - upload_start_float
 
-            total_elapsed_float = time.time() - total_start_float
-            self.logger.info("transfer_completed", file_name=resolved_s3_key_str, size_bytes=resolved_size_int)
+            total_elapsed_float: float = time.time() - total_start_float
+            self.logger.info("transfer_completed", file_name=s3_key_str, size_bytes=size_int)
             self.logger.info(
                 "elapsed_time",
                 action_name="GCS 파일 전송",
@@ -314,7 +309,7 @@ class S3Client:
             return True
         except Exception as exc:
             total_elapsed_float = time.time() - total_start_float
-            self.logger.exception("transfer_failed", file_name=resolved_s3_key_str, error=str(exc))
+            self.logger.exception("transfer_failed", file_name=s3_key_str, error=str(exc))
             self.logger.error(
                 "elapsed_time",
                 action_name="GCS 파일 전송 오류",
@@ -335,44 +330,53 @@ class GcsClient:
 
     def __init__(
         self,
-        bucket_name: str,
-        credentials_path: str,
-        timeout_seconds: int | None = None,
+        bucket_name_str: str = "",
+        credentials_path_str: str = "",
+        timeout_seconds_int: int | None = None,
     ):
-        # bucket_name: 대상 GCS 버킷명
-        self.bucket_name: str = str(bucket_name).strip()
-        # credentials_path: GCP 서비스 계정 키 JSON 경로
-        self.credentials_path: str = credentials_path if credentials_path is not None else ""
+        """
+        Google Cloud Storage(GCS) 클라이언트를 초기화합니다.
+
+        :param bucket_name_str: 대상 GCS 버킷명
+        :param credentials_path_str: GCP 서비스 계정 인증 키 JSON 경로 (미지정 시 ADC 사용)
+        :param timeout_seconds_int: 네트워크 연결 및 스트림 업로드 타임아웃 제한 시간(초)
+        """
+        if not bucket_name_str:
+            raise ValueError("GCS 버킷명(bucket_name_str)은 필수 입력 항목입니다.")
+        self.bucket_name_str: str = bucket_name_str.strip()
+        self.credentials_path_str: str = credentials_path_str.strip() if credentials_path_str else ""
+
         # logger: 로거 초기화
         self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
         self.config_loader: ConfigLoader = ConfigLoader()
-        # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
-        resolved_timeout = (
-            timeout_seconds
-            if timeout_seconds is not None
-            else self.config_loader.require_setting("transfer.timeout_seconds")
+
+        resolved_timeout_int = (
+            timeout_seconds_int
+            if timeout_seconds_int is not None
+            else self.config_loader.require_setting("transfer.timeout_seconds_int")
         )
-        self.timeout_seconds: int = int(resolved_timeout)
+        self.timeout_seconds_int: int = int(resolved_timeout_int)
+
         # client: google-cloud-storage 클라이언트 인스턴스
         self.client: Any = None
         # bucket: 연결 완료된 GCS Bucket 객체
         self.bucket: Any = None
         self._connect()
 
-    def _connect(self):
+    def _connect(self) -> None:
         """
-        Google Cloud Storage 클라이언트를 초기화하고 해당 버킷의 연결/접근 권한 상태를 검증합니다.
+        Google Cloud Storage 클라이언트를 초기화하고 해당 버킷의 연결/접근 권한 상태를 검증합니다 (Fail-Fast).
         """
         storage_module, service_account_module = _get_gcs()
         try:
-            if self.credentials_path and self.credentials_path.strip() != "":
-                cred_path = Path(self.credentials_path)
+            if self.credentials_path_str and self.credentials_path_str.strip() != "":
+                cred_path = Path(self.credentials_path_str)
                 if not cred_path.is_absolute():
                     cred_path = self.config_loader.project_path(cred_path)
                 if not cred_path.exists():
                     raise FileNotFoundError(
-                        f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path}')"
+                        f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path_str}')"
                     )
                 credentials = service_account_module.Credentials.from_service_account_file(
                     str(cred_path)
@@ -382,39 +386,51 @@ class GcsClient:
                 self.client = storage_module.Client()
 
             # 버킷에 대한 접근 권한 및 존재 여부 검사 (타임아웃 적용)
-            self.bucket = self.client.get_bucket(self.bucket_name, timeout=self.timeout_seconds)
+            self.bucket = self.client.get_bucket(self.bucket_name_str, timeout=self.timeout_seconds_int)
         except Exception as e:
             raise ConnectionError(self.logger.exception("connection_failed", service_name="GCS", error=str(e))) from e
 
-    def get_blob_size(self, destination_blob_name: str) -> int | None:
+    def get_blob_size(self, destination_blob_name_str: str = "") -> int | None:
         """GCS 목적지 blob의 존재 여부 및 바이트 크기(bytes)를 조회한다.
 
-        Args:
-            destination_blob_name: 조회할 GCS 오브젝트 blob 경로명
-
-        Returns:
-            int | None: blob이 존재하면 바이트 크기를 반환하며, 미존재 시 None을 반환한다.
+        :param destination_blob_name_str: 조회할 GCS 오브젝트 blob 경로명
+        :return: blob이 존재하면 바이트 크기를 반환하며, 미존재 시 None을 반환한다.
         """
         try:
-            blob = self.bucket.get_blob(destination_blob_name, timeout=self.timeout_seconds)
-            if blob is not None:
-                return blob.size
+            blob_obj: Any = self.bucket.get_blob(destination_blob_name_str, timeout=self.timeout_seconds_int)
+            if blob_obj is not None:
+                return blob_obj.size
             return None
         except Exception as e:
-            self.logger.exception("storage_meta_error", storage_type="GCS", target_name=destination_blob_name, error=str(e))
+            self.logger.exception("storage_meta_error", storage_type="GCS", target_name=destination_blob_name_str, error=str(e))
             return None
 
-    def upload_stream(self, stream: Any, destination_blob_name: str, size: int, timeout: int | None = None):
+    def upload_stream(
+        self,
+        stream_any: Any = None,
+        destination_blob_name_str: str = "",
+        size_int: int = 0,
+        timeout_int: int | None = None,
+    ) -> None:
         """
         입력되는 스트림 데이터를 GCS 목적지 blob에 직접 스트리밍 업로드합니다.
+
+        :param stream_any: 업로드할 원천 스트림 데이터 객체
+        :param destination_blob_name_str: GCS 목적지 저장 blob 경로
+        :param size_int: 업로드할 스트림의 정확한 바이트 크기
+        :param timeout_int: 업로드 제한 시간 (초 단위, 미지정 시 self.timeout_seconds_int 사용)
         """
-        upload_timeout = timeout if timeout is not None else self.timeout_seconds
+        upload_timeout_int: int = (
+            timeout_int
+            if timeout_int is not None
+            else self.timeout_seconds_int
+        )
         try:
-            blob = self.bucket.blob(destination_blob_name)
+            blob_obj: Any = self.bucket.blob(destination_blob_name_str)
             # size 인수를 반드시 제공하며 지정된 timeout 내 업로드를 완료하도록 처리
-            blob.upload_from_file(stream, size=size, timeout=upload_timeout)
+            blob_obj.upload_from_file(stream_any, size=size_int, timeout=upload_timeout_int)
         except Exception as e:
-            raise RuntimeError(self.logger.exception("transfer_failed", file_name=destination_blob_name, error=str(e))) from e
+            raise RuntimeError(self.logger.exception("transfer_failed", file_name=destination_blob_name_str, error=str(e))) from e
 
 
 
@@ -425,44 +441,49 @@ class BigQueryClient:
 
     def __init__(
         self,
-        project_id: str,
-        dataset_id: str,
-        table_id: str,
-        credentials_path: str,
-        timeout_seconds: int | None = None,
-        ignore_unknown_values: bool | None = None,
+        project_id_str: str = "",
+        dataset_id_str: str = "",
+        table_id_str: str = "",
+        credentials_path_str: str = "",
+        timeout_seconds_int: int | None = None,
+        ignore_unknown_values_bool: bool | None = None,
     ):
-        # project_id: GCP 프로젝트 ID
-        self.project_id: str = project_id
-        # dataset_id: BigQuery 데이터셋 ID
-        self.dataset_id: str = dataset_id
-        # table_id: BigQuery 테이블 ID
-        self.table_id: str = table_id
-        # credentials_path: GCP 서비스 계정 키 JSON 경로 (비어있으면 기본 ADC 사용)
-        self.credentials_path: str = credentials_path
+        """
+        Google Cloud BigQuery(BQ) 클라이언트를 초기화합니다.
+
+        :param project_id_str: GCP 프로젝트 ID
+        :param dataset_id_str: BigQuery 데이터셋 ID
+        :param table_id_str: BigQuery 테이블 ID
+        :param credentials_path_str: GCP 서비스 계정 키 JSON 경로 (비어있으면 기본 ADC 사용)
+        :param timeout_seconds_int: 작업 제한 시간(초)
+        :param ignore_unknown_values_bool: 미정의 필드 무시 여부 (None 시 config 참조)
+        """
+        self.project_id_str: str = project_id_str
+        self.dataset_id_str: str = dataset_id_str
+        self.table_id_str: str = table_id_str
+        self.credentials_path_str: str = credentials_path_str
+
         # logger: _logger 백킹 필드 초기화
         self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
         self.config_loader: ConfigLoader = ConfigLoader()
-        # timeout_seconds: [Fail-Fast 정책 준수] 필수 설정값 조회 (누락 시 require_setting에서 sys.exit(1)로 즉시 강제 종료)
-        resolved_timeout = (
-            timeout_seconds
-            if timeout_seconds is not None
-            else self.config_loader.require_setting("transfer.timeout_seconds")
+
+        resolved_timeout_int = (
+            timeout_seconds_int
+            if timeout_seconds_int is not None
+            else self.config_loader.require_setting("transfer.timeout_seconds_int")
         )
-        self.timeout_seconds: int = int(resolved_timeout)
-        # ignore_unknown_values: 옵션 설정값 조회 (기본값: True)
-        self.ignore_unknown_values: bool = (
-            ignore_unknown_values
-            if ignore_unknown_values is not None
-            else bool(self.config_loader.setting("bigquery.ignore_unknown_values", True))
+        self.timeout_seconds_int: int = int(resolved_timeout_int)
+
+        self.ignore_unknown_values_bool: bool = (
+            ignore_unknown_values_bool
+            if ignore_unknown_values_bool is not None
+            else config.bigquery.ignore_unknown_values_bool
         )
-        # timezone_offset_str: BigQuery TIMESTAMP 컬럼 적재 시 기본 적용할 타임존 오프셋 (기본값: +09:00)
-        self.timezone_offset_str: str = str(
-            self.config_loader.setting("bigquery.timezone_offset", "+09:00")
-        ).strip()
-        # _use_streaming_only: load_table_from_json 권한 문제 등으로 실패 시 즉시 스트리밍 전용 모드로 전환 플래그
-        self._use_streaming_only: bool = False
+
+        # timezone_offset_str: BigQuery TIMESTAMP 컬럼 적재 시 기본 적용할 타임존 오프셋 (_str 접미사로 자동 str 보증)
+        self.timezone_offset_str: str = config.bigquery.timezone_offset_str
+
         # client: google-cloud-bigquery 클라이언트 인스턴스
         self.client: Any = None
         self._connect()
@@ -475,180 +496,218 @@ class BigQueryClient:
         return self._logger
 
     @logger.setter
-    def logger(self, val: ProjectLogger) -> None:
-        self._logger = val
+    def logger(self, val_logger_obj: ProjectLogger) -> None:
+        self._logger = val_logger_obj
 
-    def _connect(self):
+    def _connect(self) -> None:
         """
         Google Cloud BigQuery 클라이언트를 초기화하고 연결 및 테이블 스키마 상태를 검증합니다 (Fail-Fast).
         """
         bigquery_module, service_account_module = _get_bigquery()
         try:
-            if self.credentials_path and self.credentials_path.strip() != "":
-                cred_path = Path(self.credentials_path)
+            if self.credentials_path_str and self.credentials_path_str.strip() != "":
+                cred_path = Path(self.credentials_path_str)
                 if not cred_path.is_absolute():
                     cred_path = self.config_loader.project_path(cred_path)
                 if not cred_path.exists():
                     raise FileNotFoundError(
-                        f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path}')"
+                        f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path_str}')"
                     )
                 credentials = service_account_module.Credentials.from_service_account_file(
                     str(cred_path)
                 )
-                self.client = bigquery_module.Client(credentials=credentials, project=self.project_id)
+                self.client = bigquery_module.Client(credentials=credentials, project=self.project_id_str)
             else:
-                self.client = bigquery_module.Client(project=self.project_id)
+                self.client = bigquery_module.Client(project=self.project_id_str)
             
             # BigQuery Table 객체를 조회하여 스키마 타입(JSON, TIMESTAMP 등) 사전 캐싱 및 연결 상태 검증 (Fail-Fast)
-            table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
-            self.table_obj = self.client.get_table(table_ref)
+            table_ref_str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
+            self.table_obj = self.client.get_table(table_ref_str)
         except Exception as e:
             raise ConnectionError(self.logger.exception("connection_failed", service_name="BigQuery", error=str(e))) from e
 
-    def load_table_from_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None, write_disposition: str | None = None) -> None:
+    def load_table_from_json_data(
+        self,
+        json_data_any: Any,
+        timeout_int: int | None = None,
+        ignore_unknown_values_bool: bool | None = None,
+        write_disposition_str: str | None = None,
+    ) -> None:
         """
         self.client.load_table_from_json(배치 로드 Job)만을 사용하여 JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
 
-        :param json_data: 적재할 단일 dict 또는 dict 리스트
-        :param timeout: 작업 제한 시간(초)
-        :param ignore_unknown_values: 미정의 필드 무시 여부
-        :param write_disposition: BigQuery 쓰기 옵션 ('WRITE_TRUNCATE', 'WRITE_APPEND', 'WRITE_EMPTY' 등)
+        :param json_data_any: 적재할 단일 dict 또는 dict 리스트
+        :param timeout_int: 작업 제한 시간(초)
+        :param ignore_unknown_values_bool: 미정의 필드 무시 여부
+        :param write_disposition_str: BigQuery 쓰기 옵션 ('WRITE_TRUNCATE', 'WRITE_APPEND', 'WRITE_EMPTY' 등)
         """
-        insert_timeout = timeout if timeout is not None else self.timeout_seconds
-        skip_unknown = (
-            ignore_unknown_values
-            if ignore_unknown_values is not None
-            else self.ignore_unknown_values
+        insert_timeout_int: int = (
+            timeout_int
+            if timeout_int is not None
+            else self.timeout_seconds_int
         )
-        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
-        table_target = self.table_obj if getattr(self, "table_obj", None) else table_ref
-        rows_to_insert = [json_data] if isinstance(json_data, dict) else (json_data if isinstance(json_data, list) else None)
-        if rows_to_insert is None:
-            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
+        skip_unknown_bool: bool = (
+            ignore_unknown_values_bool
+            if ignore_unknown_values_bool is not None
+            else self.ignore_unknown_values_bool
+        )
+        table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
+        table_target_any: Any = self.table_obj if getattr(self, "table_obj", None) else table_ref_str
+        rows_to_insert_list: list[dict[str, Any]] | None = (
+            [json_data_any] if isinstance(json_data_any, dict) else (json_data_any if isinstance(json_data_any, list) else None)
+        )
+        if rows_to_insert_list is None:
+            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data_any)}")
 
         bigquery_module, _ = _get_bigquery()
         try:
-            write_disp = write_disposition if write_disposition else bigquery_module.WriteDisposition.WRITE_APPEND
-            job_config = bigquery_module.LoadJobConfig(
+            write_disposition_effective_str: str = (
+                write_disposition_str
+                if write_disposition_str
+                else bigquery_module.WriteDisposition.WRITE_APPEND
+            )
+            job_config_obj: Any = bigquery_module.LoadJobConfig(
                 source_format=bigquery_module.SourceFormat.NEWLINE_DELIMITED_JSON,
-                write_disposition=write_disp,
-                ignore_unknown_values=skip_unknown,
+                write_disposition=write_disposition_effective_str,
+                ignore_unknown_values=skip_unknown_bool,
             )
             if hasattr(self, "table_obj") and isinstance(self.table_obj, bigquery_module.Table):
-                job_config.schema = self.table_obj.schema
+                job_config_obj.schema = self.table_obj.schema
 
-            load_job = self.client.load_table_from_json(
-                rows_to_insert,
-                table_target,
-                job_config=job_config,
-                timeout=insert_timeout,
+            load_job_obj: Any = self.client.load_table_from_json(
+                rows_to_insert_list,
+                table_target_any,
+                job_config=job_config_obj,
+                timeout=insert_timeout_int,
             )
-            load_job.result(timeout=insert_timeout)
-        except Exception as load_err:
-            sub_err_list = []
-            if hasattr(load_err, "errors") and getattr(load_err, "errors"):
-                for s_err in getattr(load_err, "errors"):
-                    loc = s_err.get("location", "unknown_field") if isinstance(s_err, dict) else "unknown"
-                    msg_str = s_err.get("message", str(s_err)) if isinstance(s_err, dict) else str(s_err)
-                    sub_err_list.append(f"[Loc={loc}] {msg_str}")
-            detailed_info = " | SubErrors: " + " ; ".join(sub_err_list) if sub_err_list else ""
-            clean_err = str(load_err) + detailed_info
+            load_job_obj.result(timeout=insert_timeout_int)
+        except Exception as load_exc:
+            sub_error_list: list[str] = []
+            if hasattr(load_exc, "errors") and getattr(load_exc, "errors"):
+                for sub_error_item_dict in getattr(load_exc, "errors"):
+                    location_str: str = (
+                        sub_error_item_dict.get("location", "unknown_field")
+                        if isinstance(sub_error_item_dict, dict)
+                        else "unknown"
+                    )
+                    message_str: str = (
+                        sub_error_item_dict.get("message", str(sub_error_item_dict))
+                        if isinstance(sub_error_item_dict, dict)
+                        else str(sub_error_item_dict)
+                    )
+                    sub_error_list.append(f"[Loc={location_str}] {message_str}")
+            detailed_info_str: str = " | SubErrors: " + " ; ".join(sub_error_list) if sub_error_list else ""
+            clean_error_str: str = str(load_exc) + detailed_info_str
             self.logger.exception(
                 "load_table_from_json_failed",
                 service_name="BigQuery",
-                target_name=self.table_id,
-                error=clean_err,
+                target_name=self.table_id_str,
+                error=clean_error_str,
             )
             raise RuntimeError(
                 self.logger.error(
                     "load_table_from_json_failed",
                     service_name="BigQuery",
-                    target_name=self.table_id,
-                    error=clean_err,
+                    target_name=self.table_id_str,
+                    error=clean_error_str,
                 )
-            ) from load_err
+            ) from load_exc
 
-    def insert_rows_json_data(self, json_data: Any, timeout: int | None = None, ignore_unknown_values: bool | None = None) -> None:
+    def insert_rows_json_data(
+        self,
+        json_data_any: Any,
+        timeout_int: int | None = None,
+        ignore_unknown_values_bool: bool | None = None,
+    ) -> None:
         """
         self.client.insert_rows_json(스트리밍 적재 API)만을 사용하여 JSON 객체(dict 또는 list)를 BigQuery 테이블에 적재합니다.
 
-        :param json_data: 적재할 단일 dict 또는 dict 리스트
-        :param timeout: 작업 제한 시간(초)
-        :param ignore_unknown_values: 미정의 필드 무시 여부
+        :param json_data_any: 적재할 단일 dict 또는 dict 리스트
+        :param timeout_int: 작업 제한 시간(초)
+        :param ignore_unknown_values_bool: 미정의 필드 무시 여부
         """
-        insert_timeout = timeout if timeout is not None else self.timeout_seconds
-        skip_unknown = (
-            ignore_unknown_values
-            if ignore_unknown_values is not None
-            else self.ignore_unknown_values
+        insert_timeout_int: int = (
+            timeout_int
+            if timeout_int is not None
+            else self.timeout_seconds_int
         )
-        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
-        table_target = self.table_obj if getattr(self, "table_obj", None) else table_ref
+        skip_unknown_bool: bool = (
+            ignore_unknown_values_bool
+            if ignore_unknown_values_bool is not None
+            else self.ignore_unknown_values_bool
+        )
+        table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
+        table_target_any: Any = self.table_obj if getattr(self, "table_obj", None) else table_ref_str
 
-        rows_to_insert = [json_data] if isinstance(json_data, dict) else (json_data if isinstance(json_data, list) else None)
-        if rows_to_insert is None:
-            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data)}")
+        rows_to_insert_list: list[dict[str, Any]] | None = (
+            [json_data_any] if isinstance(json_data_any, dict) else (json_data_any if isinstance(json_data_any, list) else None)
+        )
+        if rows_to_insert_list is None:
+            raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data_any)}")
 
         try:
-            errors = self.client.insert_rows_json(
-                table_target,
-                rows_to_insert,
-                ignore_unknown_values=skip_unknown,
-                timeout=insert_timeout,
+            insert_errors_list: list[dict[str, Any]] = self.client.insert_rows_json(
+                table_target_any,
+                rows_to_insert_list,
+                ignore_unknown_values=skip_unknown_bool,
+                timeout=insert_timeout_int,
             )
-            if errors:
-                err_details = []
-                for err_item in errors:
-                    idx = err_item.get("index", 0)
-                    for e in err_item.get("errors", []):
-                        loc = e.get("location", "unknown_field")
-                        msg_str = e.get("message", "")
-                        rsn = e.get("reason", "")
-                        err_details.append(f"[Row={idx} Field={loc} Reason={rsn}] {msg_str}")
-                combined_err_msg = " | ".join(err_details) if err_details else str(errors)
-                raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_err_msg}")
-        except Exception as e:
-            clean_insert_err = str(e)
-            raise RuntimeError(self.logger.exception("insert_failed", service_name="BigQuery", target_name=self.table_id, error=clean_insert_err)) from e
+            if insert_errors_list:
+                error_details_list: list[str] = []
+                for error_item_dict in insert_errors_list:
+                    row_index_int: int = error_item_dict.get("index", 0)
+                    for single_error_dict in error_item_dict.get("errors", []):
+                        location_str: str = single_error_dict.get("location", "unknown_field")
+                        message_str: str = single_error_dict.get("message", "")
+                        reason_str: str = single_error_dict.get("reason", "")
+                        error_details_list.append(f"[Row={row_index_int} Field={location_str} Reason={reason_str}] {message_str}")
+                combined_error_message_str: str = " | ".join(error_details_list) if error_details_list else str(insert_errors_list)
+                raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_error_message_str}")
+        except Exception as insert_exc:
+            clean_insert_error_str: str = str(insert_exc)
+            raise RuntimeError(self.logger.exception("insert_failed", service_name="BigQuery", target_name=self.table_id_str, error=clean_insert_error_str)) from insert_exc
 
-
-    def query(self, query_str: str, timeout: int | None = None) -> list[dict[str, Any]]:
+    def query(self, query_str: str, timeout_int: int | None = None) -> list[dict[str, Any]]:
         """
         임의의 BigQuery SQL 쿼리(예: 공통 코드 테이블 SELECT 등)를 실행하고,
         조회된 결과 행들을 딕셔너리 리스트([dict, ...])로 반환합니다.
 
         :param query_str: 실행할 SQL 쿼리 문자열
-        :param timeout: 쿼리 타임아웃 제한 시간(초)
+        :param timeout_int: 쿼리 타임아웃 제한 시간(초)
         :return: 딕셔너리 리스트 형태의 쿼리 결과
         """
-        query_timeout_int: int = timeout if timeout is not None else self.timeout_seconds
+        query_timeout_int: int = (
+            timeout_int
+            if timeout_int is not None
+            else self.timeout_seconds_int
+        )
         try:
-            query_job = self.client.query(query_str, timeout=query_timeout_int)
-            results = query_job.result(timeout=query_timeout_int)
-            rows_list: list[dict[str, Any]] = [dict(row.items()) for row in results]
+            query_job_obj: Any = self.client.query(query_str, timeout=query_timeout_int)
+            query_results_obj: Any = query_job_obj.result(timeout=query_timeout_int)
+            rows_list: list[dict[str, Any]] = [dict(row.items()) for row in query_results_obj]
             return rows_list
-        except Exception as q_err:
-            clean_err_str: str = str(q_err)
-            self.logger.warning("query_execution_failed", service_name="BigQuery", query=query_str, error=clean_err_str)
+        except Exception as query_exc:
+            clean_error_str: str = str(query_exc)
+            self.logger.warning("query_execution_failed", service_name="BigQuery", query=query_str, error=clean_error_str)
             raise RuntimeError(
-                self.logger.error("query_execution_failed", service_name="BigQuery", error=clean_err_str)
-            ) from q_err
+                self.logger.error("query_execution_failed", service_name="BigQuery", error=clean_error_str)
+            ) from query_exc
 
-    def get_existing_keys(self, field_name: str = "recvPath") -> set[str]:
+    def get_existing_keys(self, field_name_str: str = "recvPath") -> set[str]:
         """
         BigQuery 테이블에서 특정 필드(기본값: recvPath)의 기존 값들을 조회하여 set 구조로 반환합니다.
 
-        :param field_name: 기존 값을 조회할 컬럼명 (기본값: recvPath 또는 ecs_key)
+        :param field_name_str: 기존 값을 조회할 컬럼명 (기본값: recvPath 또는 ecs_key)
         :return: 이미 적재된 키 값들의 set 집합
         """
-        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
-        query = f"SELECT DISTINCT `{field_name}` FROM `{table_ref}` WHERE `{field_name}` IS NOT NULL"
+        table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
+        query_str: str = f"SELECT DISTINCT `{field_name_str}` FROM `{table_ref_str}` WHERE `{field_name_str}` IS NOT NULL"
         try:
-            query_job = self.client.query(query, timeout=self.timeout_seconds)
-            results = query_job.result()
-            return {str(row[field_name]) for row in results if row[field_name] is not None}
-        except Exception as e:
-            self.logger.exception("existing_keys_fetch_failed", service_name="BigQuery", error=str(e))
+            query_job_obj: Any = self.client.query(query_str, timeout=self.timeout_seconds_int)
+            query_results_obj: Any = query_job_obj.result()
+            return {str(row[field_name_str]) for row in query_results_obj if row[field_name_str] is not None}
+        except Exception as fetch_exc:
+            self.logger.exception("existing_keys_fetch_failed", service_name="BigQuery", error=str(fetch_exc))
             return set()
 
     def merge_table_from_json_data(
@@ -691,8 +750,8 @@ class BigQueryClient:
         if not rows_list:
             return
 
-        merge_timeout_int: int = timeout_int if timeout_int is not None else self.timeout_seconds
-        target_table_ref_str: str = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        merge_timeout_int: int = timeout_int if timeout_int is not None else self.timeout_seconds_int
+        target_table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
         preserve_cols_set: set[str] = set(preserve_columns_list or [])
         preserve_cols_set.add(pk_key_str)
 
@@ -784,19 +843,19 @@ WHEN MATCHED THEN
                 chunk_rows_list: list[dict[str, Any]] = rows_list[start_idx_int:end_idx_int]
 
                 json_payload_str: str = json.dumps(chunk_rows_list, ensure_ascii=False, default=str)
-                job_config = bigquery_module.QueryJobConfig(
+                job_config_obj: Any = bigquery_module.QueryJobConfig(
                     query_parameters=[
                         bigquery_module.ScalarQueryParameter("json_payload", "STRING", json_payload_str)
                     ]
                 )
 
                 chunk_start_float: float = time.time()
-                query_job = self.client.query(
+                query_job_obj: Any = self.client.query(
                     merge_sql_template_str,
-                    job_config=job_config,
+                    job_config=job_config_obj,
                     timeout=merge_timeout_int
                 )
-                query_job.result(timeout=merge_timeout_int)
+                query_job_obj.result(timeout=merge_timeout_int)
                 chunk_elapsed_float: float = time.time() - chunk_start_float
 
                 self.logger.info(
@@ -809,25 +868,25 @@ WHEN MATCHED THEN
 
             # 5. 후속 쿼리(연쇄 업데이트 등)가 주입된 경우 동적 실행
             if post_queries_list:
-                for p_idx_int, p_item_dict in enumerate(post_queries_list):
-                    p_sql_str: str = p_item_dict.get("sql", "")
-                    p_params_list = p_item_dict.get("params") or []
-                    if p_sql_str:
-                        p_job_config = bigquery_module.QueryJobConfig(query_parameters=p_params_list) if p_params_list else None
-                        p_job = self.client.query(p_sql_str, job_config=p_job_config, timeout=merge_timeout_int)
-                        p_job.result(timeout=merge_timeout_int)
+                for post_idx_int, post_item_dict in enumerate(post_queries_list):
+                    post_sql_str: str = post_item_dict.get("sql", "")
+                    post_params_list: list[Any] = post_item_dict.get("params") or []
+                    if post_sql_str:
+                        post_job_config_obj: Any = bigquery_module.QueryJobConfig(query_parameters=post_params_list) if post_params_list else None
+                        post_job_obj: Any = self.client.query(post_sql_str, job_config=post_job_config_obj, timeout=merge_timeout_int)
+                        post_job_obj.result(timeout=merge_timeout_int)
 
             self.logger.info("db_inline_merge_all_completed", service_name="BigQuery", target_table=target_table_ref_str, total_rows=total_rows_int)
-        except Exception as merge_err:
-            clean_err_str: str = str(merge_err)
+        except Exception as merge_exc:
+            clean_error_str: str = str(merge_exc)
             raise RuntimeError(
                 self.logger.exception(
                     "db_table_merge_failed",
                     service_name="BigQuery",
-                    target_name=self.table_id,
-                    error=clean_err_str,
+                    target_name=self.table_id_str,
+                    error=clean_error_str,
                 )
-            ) from merge_err
+            ) from merge_exc
 
     def convert_to_bigquery_timestamp(self, val_any: Any, default_tz_offset_str: Optional[str] = None) -> Optional[str]:
         """
@@ -844,51 +903,51 @@ WHEN MATCHED THEN
         if not val_str or val_str.lower() in ("none", "null", "{}") or "{" in val_str:
             return None
 
-        applied_tz_offset = default_tz_offset_str if default_tz_offset_str is not None else getattr(self, "timezone_offset_str", "+09:00")
+        applied_tz_offset_str: str = default_tz_offset_str if default_tz_offset_str is not None else self.timezone_offset_str
 
         # 타임존 오프셋 추출 정규식 (+09:00, +0900, -05:00, Z 등)
-        tz_pattern = r"(?P<tz>Z|[+-]\d{2}:?\d{2})$"
-        tz_match = re.search(tz_pattern, val_str)
-        tz_suffix = applied_tz_offset
-        if tz_match:
-            raw_tz = tz_match.group("tz")
-            if raw_tz == "Z":
-                tz_suffix = "Z"
-            elif len(raw_tz) == 5 and raw_tz[0] in "+-":
-                tz_suffix = f"{raw_tz[:3]}:{raw_tz[3:]}"
+        tz_pattern_str: str = r"(?P<tz>Z|[+-]\d{2}:?\d{2})$"
+        tz_match_obj: Any = re.search(tz_pattern_str, val_str)
+        tz_suffix_str: str = applied_tz_offset_str
+        if tz_match_obj:
+            raw_tz_str: str = tz_match_obj.group("tz")
+            if raw_tz_str == "Z":
+                tz_suffix_str = "Z"
+            elif len(raw_tz_str) == 5 and raw_tz_str[0] in "+-":
+                tz_suffix_str = f"{raw_tz_str[:3]}:{raw_tz_str[3:]}"
             else:
-                tz_suffix = raw_tz
-            val_str = val_str[:tz_match.start()].strip()
+                tz_suffix_str = raw_tz_str
+            val_str = val_str[:tz_match_obj.start()].strip()
 
         # 1. YYYY-MM-DD HH:MM:SS (또는 T 구분자)
         match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2})", val_str)
         if match_obj:
-            dt_part = match_obj.group(1).replace("T", " ").replace("/", "-")
-            return f"{dt_part}{tz_suffix}"
+            datetime_part_str: str = match_obj.group(1).replace("T", " ").replace("/", "-")
+            return f"{datetime_part_str}{tz_suffix_str}"
 
         # 2. YYYY-MM-DD HH:MM
         match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2})", val_str)
         if match_obj:
-            dt_part = match_obj.group(1).replace("T", " ").replace("/", "-")
-            return f"{dt_part}:00{tz_suffix}"
+            datetime_part_str = match_obj.group(1).replace("T", " ").replace("/", "-")
+            return f"{datetime_part_str}:00{tz_suffix_str}"
 
         # 3. YYYY-MM-DD
         match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2})", val_str)
         if match_obj:
-            dt_part = match_obj.group(1).replace("/", "-")
-            return f"{dt_part} 00:00:00{tz_suffix}"
+            datetime_part_str = match_obj.group(1).replace("/", "-")
+            return f"{datetime_part_str} 00:00:00{tz_suffix_str}"
 
         # 4. YYYYMMDDHHMMSS (14자리 숫자)
         match_obj = re.search(r"(\d{14})", val_str)
         if match_obj:
-            num_str = match_obj.group(1)
-            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} {num_str[8:10]}:{num_str[10:12]}:{num_str[12:14]}{tz_suffix}"
+            num_str: str = match_obj.group(1)
+            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} {num_str[8:10]}:{num_str[10:12]}:{num_str[12:14]}{tz_suffix_str}"
 
         # 5. YYYYMMDD (8자리 숫자)
         match_obj = re.search(r"(\d{8})", val_str)
         if match_obj:
             num_str = match_obj.group(1)
-            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} 00:00:00{tz_suffix}"
+            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} 00:00:00{tz_suffix_str}"
 
         return None
 

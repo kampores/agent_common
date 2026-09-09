@@ -2,6 +2,139 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.51 (2026-09-09)
+- **`LlmClient` 내 불필요한 껍데기(Pass-through) 게터 프로퍼티 19종 전면 삭제 및 간결화 (규칙 1.4.5, 1.4.6 준수)**:
+  - `llm.py`:
+    - `LlmClient` 클래스에서 `model_config` 속성을 단순 위임/전달하던 19개의 미사용 `@property` 게터(`provider_str`, `enabled_bool`, `api_key_env_str`, `base_url_str`, `chat_completions_path_str`, `api_format_str`, `model_str`, `llm_id_int`, `client_env_str`, `user_env_str`, `timeout_seconds_int`, `max_tokens_int`, `temperature_float`, `model_path_str`, `n_ctx_int`, `n_threads_int`, `n_batch_int`, `n_gpu_layers_int`, `verbose_bool`)를 전면 삭제.
+    - 불필요한 껍데기 래퍼 계층 약 95라인을 제거하고 모델 설정 접근 경로를 불변 설정 객체인 `self.model_config`로 완전히 단일화하여 아키텍처 간결성 및 YAGNI 원칙 달성.
+
+### v0.4.50 (2026-09-09)
+- **`ProjectLogger.configure` 내 방어적 퍼지 탐색 및 레거시 키 폴백 전면 삭제 (규칙 1.5.3 준수)**:
+  - `logger.py`:
+    - `ProjectLogger.configure`에서 `logging.level_dict` / `logging.level_str` / `logging.level` 3중 체인 및 프로그램명 대소문자/하이픈 퍼지 검색 루프를 전면 제거.
+    - `level_dict` 직접 매핑 및 `logging.level_str`로 정규화.
+    - 미사용 레거시 키 폴백(`logging.format`, `logging.datefmt`, `logging.file_logging`, `logging.log_file`) 및 `str(...)`, `bool(...)` 방어적 형변환을 완전 삭제하고 정규 타입 접미사 설정 키로 일원화.
+
+### v0.4.49 (2026-09-09)
+- **`ReadOnlyConfig` 내 퍼지 접미사 탐색 방어 코드 전면 삭제 및 Fail-Fast 실현 (규칙 1.5.3 준수)**:
+  - `config_loader.py`:
+    - `ReadOnlyConfig.__getattr__` 및 `__contains__`에서 설정 키의 타입 접미사 자동 탈부착 및 퍼지 탐색 루프(`for suffix_str in ("_str", "_int", ...): ...`)를 전면 삭제.
+    - 정규 키(`key_str`)로 직접 딕셔너리를 조회(`data[key_str]`)하여, 미정의 키나 접미사 불일치 유입 시 즉시 `AttributeError`가 발생하도록(Fail-Fast) 조치.
+    - `effective_key_str` 등의 중간 불필요 임시 변수를 제거하고 `coerce_type_by_key_suffix(key_str, val_any)`로 단순/명료화.
+
+### v0.4.48 (2026-09-09)
+- **클라이언트(`clients.py`) 및 LLM(`llm.py`) 모듈 내 방어적 `**kwargs: Any` 및 `kwargs.get(...)` 전면 삭제 (규칙 1.3.1, 1.5.2, 1.6.1 준수)**:
+  - `clients.py`:
+    - `S3Client.__init__`, `list_objects`, `get_object_stream`, `get_object_size`, `transfer_to_gcs`: `**kwargs: Any` 및 레거시 인자 호환성 명목의 방어적 폴백 로직(`kwargs.get("prefix")`, `kwargs.get("endpoint_url")` 등)을 전면 제거하고 명시적 타입 접미사 인자(`endpoint_url_str`, `prefix_str` 등)로 완전 고정.
+    - `GcsClient.__init__`, `get_blob_size`, `upload_stream`: `**kwargs: Any` 제거 및 명시적 파라미터(`bucket_name_str`, `blob_name_str` 등)로 일원화.
+    - `BigQueryClient.__init__`, `load_table_from_json_data`, `insert_rows_json_data`, `query`, `get_existing_keys`: `**kwargs: Any` 및 `write_disp` 등의 방어적 인자 폴백 코드 완전 삭제.
+  - `llm.py`:
+    - `LlmClient.__init__`, `generate`: `**kwargs: Any` 및 `kwargs.get("prompt")` 등 방어적 래퍼 전면 제거. `prompt_str`, `system_prompt_str` 등 정규 시그니처만 허용하여 잘못된 인자 전달 시 즉시 에러가 발생하도록(Fail-Fast) 조치.
+
+### v0.4.47 (2026-09-09)
+- **`LlmClient` 불변 설정 직접 접근 전환, `self` 정적 설정 복제 변수 및 방어적 형변환 전면 제거 (규칙 1.4.2, 1.4.5, 1.6.1 준수)**:
+  - `llm.py`:
+    - `LlmClient.__init__`에서 19개 정적 설정을 `self` 인스턴스 변수로 중복 복제하던 로직(`self.provider_str = str(...)`, `self.max_tokens_int = int(...)` 등)을 전면 제거하고 `self.model_config`(ReadOnlyConfig) 또는 `config.llm_pool[self.model_name_str]`로 직접 조회하도록 단일화.
+    - `int(os.getenv(..., str(self.max_tokens_int)))` 식의 불필요한 우향 방어적 형변환 래퍼를 전면 배제하여 타입 이상 시 조기 감지(Fail-Fast)되도록 정비.
+    - `APP_DEFAULT_SCHEMA_DICT["llm"]`에서 인위적 폴백 키(`default_provider_str` 등 19종)를 전면 삭제하여 스키마를 경량화.
+    - `LlmClient` 외부 호출 호환성을 위해 `model_config` 기반 프로퍼티 게터(Getter) 제공.
+  - `llmpool.yml`:
+    - 모든 모델 프로필의 설정 키에 엄격한 타입 접미사(`provider_str`, `enabled_bool`, `api_key_env_str`, `base_url_str`, `chat_completions_path_str`, `model_str`, `timeout_seconds_int`, `max_tokens_int`, `temperature_float`, `api_format_str`, `llm_id_int`, `client_env_str`, `user_env_str`, `model_path_str`, `n_ctx_int`, `n_threads_int`, `n_batch_int`, `n_gpu_layers_int`, `verbose_bool`) 적용.
+  - `config_loader.py`:
+    - `ReadOnlyConfig.__getattr__` 및 `__contains__`에서 접미사 유무에 따른 상호 보완 조회 지원으로 하위 호환성 및 편의성 강화.
+
+### v0.4.46 (2026-09-09)
+- **방어적 우항 껍데기 형변환(`str(...)`) 배제 및 Fail-Fast 원칙 강화 (규칙 1.3.1 및 1.5.2 준수)**:
+  - `logger.py`: `ProjectLogger.__init__`에서 버그를 은폐할 수 있는 불필요한 `str(name)` 형변환 껍데기를 배제하고 `name or ""`로 순수하게 전달하여 비문자열 유입 시 조기 감지(Fail-Fast) 지원.
+
+### v0.4.45 (2026-09-09)
+- **LLM 모듈(`llm.py`) 및 로깅(`logger.py`) 엄격한 타입 접미사 표준화 및 하드코딩 제거 (규칙 1.1, 1.6.1, 1.7.5 준수)**:
+  - `llm.py`:
+    - 기본 설정 스키마(`APP_DEFAULT_SCHEMA_DICT`) 내 모든 설정 키에 타입 접미사(`default_provider_str`, `default_enabled_bool`, `default_timeout_seconds_int`, `default_max_tokens_int`, `default_temperature_float`, `vertex_model_str`, `gemini_model_str`, `ollama_model_str`, `ollama_endpoint_str`, `router_model_str`, `sql_generator_model_str`, `validator_model_str`)를 부여하고 소스코드 내 하드코딩 완전 배제.
+    - 모듈 임포트 시 전역 설정(`config._source`)에 `APP_DEFAULT_SCHEMA_DICT`를 자동 등록하도록 개선.
+    - `LlmClient` 클래스의 인스턴스 변수(`last_generated_by_str`), 메서드 인자(`purpose_str`, `prompt_str`, `system_prompt_str`, `model_name_str`, `provider_str`, `timeout_seconds_int`, `max_tokens_int`, `temperature_float`)에 엄격한 타입 접미사를 100% 적용 (기존 키워드 인자 하위 호환성 유지).
+  - `logger.py`:
+    - `ProjectLogger.configure`: 스키마 변경에 맞춰 타입 접미사가 적용된 설정 키(`logging.level_dict`, `logging.level_str`, `logging.format_str`, `logging.datefmt_str`, `logging.file_logging_bool`, `logging.log_file_str`)를 1차 조회하고 기존 레거시 키를 자동 폴백하도록 개선.
+  - `README.md`: 한국어 및 영문 `LlmClient` 사용법 예제 코드 내 인자 명칭(`purpose_str`, `prompt_str`, `system_prompt_str`, `last_generated_by_str`) 동기화.
+
+### v0.4.44 (2026-09-09)
+- **전 모듈 내 미접미사 별칭 상수/변수 바인딩 전면 삭제 및 타입 접미사 식별자로 단일화**:
+  - `llm.py`: 미접미사 별칭 변수 `_LOCAL_LLMS = _LOCAL_LLMS_DICT` 및 `APP_DEFAULT_SCHEMA = APP_DEFAULT_SCHEMA_DICT` 삭제, 모델 캐시 참조부를 `_LOCAL_LLMS_DICT`로 일원화.
+  - `config_loader.py`, `logger.py`, `tool_parser.py`: 각 모듈 레벨 `APP_DEFAULT_SCHEMA = APP_DEFAULT_SCHEMA_DICT` 별칭 삭제 및 `logger.__all__` 정비.
+  - `date_time_utils.py`: `FORMAT_DATE_YYYYMMDD`, `FORMAT_DATETIME_STD`, `FORMAT_DATETIME_NO_TZ`, `FORMAT_DATETIME_KST`, `FORMAT_DATETIME_COMPACT` 등 5종의 미접미사 클래스 상수 별칭 전면 삭제, 내부 및 외부 호출부(`logger.py`, `tool_parser.py`, `utils.py`)를 `_STR` 접미사 상수로 100% 단일화.
+  - `medallion/tool/code/date_check_to_code.py`: 레거시 별칭 함수 바인딩(`date_check`, `evaluate_date_status`) 삭제.
+
+### v0.4.43 (2026-09-09)
+- **클라이언트 모듈(`clients.py`) 내 전 함수/메서드 지역 변수 및 인자 타입 접미사 전면 표준화 (규칙 1.6.1 및 1.6.2 엄격 준수)**:
+  - `BigQueryClient.insert_rows_json_data`: `table_target` -> `table_target_any`, `rows_to_insert` -> `rows_to_insert_list`, `errors` -> `insert_errors_list`, `err_details` -> `error_details_list`, `idx` -> `row_index_int`, `e`/`loc`/`rsn` -> `single_error_dict`, `location_str`, `reason_str`, `combined_err_msg` -> `combined_error_message_str`, `clean_insert_err` -> `clean_insert_error_str` 적용.
+  - `BigQueryClient.load_table_from_json_data`: `table_target` -> `table_target_any`, `rows_to_insert` -> `rows_to_insert_list`, `write_disp` -> `write_disposition_effective_str`, `job_config` -> `job_config_obj`, `load_job` -> `load_job_obj`, `sub_err_list`/`s_err`/`loc` -> `sub_error_list`, `sub_error_item_dict`, `location_str`, `clean_err` -> `clean_error_str` 적용.
+  - `BigQueryClient.query`, `get_existing_keys`, `merge_table_from_json_data`: `query_job` -> `query_job_obj`, `results` -> `query_results_obj`, `job_config` -> `job_config_obj`, `p_job` -> `post_job_obj`, `clean_err_str` -> `clean_error_str` 적용.
+  - `BigQueryClient.convert_to_bigquery_timestamp`: `tz_pattern` -> `tz_pattern_str`, `tz_match` -> `tz_match_obj`, `tz_suffix` -> `tz_suffix_str`, `raw_tz` -> `raw_tz_str`, `dt_part` -> `datetime_part_str` 적용.
+  - `S3Client`, `GcsClient`: `paginator` -> `paginator_obj`, `pages` -> `pages_iterable`, `page`/`obj` -> `page_dict`/`object_item_dict`, `response` -> `response_dict`, `blob` -> `blob_obj`, `resolved_stream` -> `resolved_stream_any` 등 전면 개편.
+  - 모듈 레벨 지연 로딩 캐시 변수: `_boto3_module`, `_boto_config_cls`, `_storage_module`, `_bigquery_module`, `_service_account_module`로 명확화.
+
+### v0.4.42 (2026-09-09)
+- **클라이언트 모듈(`clients.py`) 내 중복 비접미사 별칭 변수 전면 삭제 및 규칙 1.6.1 엄격 준수**:
+  - `BigQueryClient`: 중복 할당되던 비접미사 인스턴스 변수(`self.project_id`, `self.dataset_id`, `self.table_id`, `self.credentials_path`, `self.timeout_seconds`, `self.ignore_unknown_values`, `self.timezone_offset`) 및 미사용 내부 플래그(`self._use_streaming_only`) 전면 삭제.
+  - `S3Client`, `GcsClient`: 기존 중복 비접미사 인스턴스 변수(`self.endpoint_url`, `self.access_key`, `self.secret_key`, `self.bucket_name`, `self.credentials_path`, `self.timeout_seconds`) 전면 정리.
+  - `clients.py` 상단 미사용 모듈 레벨 `APP_DEFAULT_SCHEMA` 별칭 제거 (선언부 단일화).
+  - 상위 애플리케이션(`app/`): `ecs_to_bigquery.py`, `ecs_to_gcs.py`, `ecs_to_gcsbigquery_merge.py`, `table_transformer.py`의 클라이언트 속성 접근부를 엄격한 타입 접미사 필드(`dataset_id_str`, `table_id_str`, `project_id_str`, `bucket_name_str`)로 100% 동기화.
+
+### v0.4.41 (2026-09-09)
+- **클라이언트 모듈(`clients.py`) 엄격한 타입 접미사(`_int`, `_str`, `_bool`) 전면 복원 및 불필요한 껍데기 형변환(`bool()`, `int()`, `str()`) 제거**:
+  - `clients.py` 기본 스키마(`APP_DEFAULT_SCHEMA_DICT`)의 모든 설정 키에 규칙 1.6.1에 부합하도록 타입 접미사(`timeout_seconds_int`, `chunk_size_int`, `ignore_unknown_values_bool`, `timezone_offset_str`, `max_retries_int`)를 복원.
+  - `BigQueryClient`, `GcsClient`: 생성자 파라미터, 인스턴스 변수 및 메서드 인자에 타입 접미사(`_str`, `_int`, `_bool`)를 전면 표준화하고 기존 외부 호출부 호환성을 위한 프로퍼티 및 키워드 인자(`**kwargs`) 지원.
+  - `ReadOnlyConfig`의 자동 타입 보증 기능(`coerce_type_by_key_suffix`)을 활용하여 불필요한 수동 중복 껍데기 형변환(`bool()`, `int()`, `str()`)을 배제하고 직접 속성 접근으로 단일화.
+
+### v0.4.40 (2026-09-09)
+- **추측성 키 접미사(`suffixes`) 자동 매칭/우회 방어 로직 전면 제거 및 1:1 엄격 일치(Fail-Fast) 원칙 확립**:
+  - `ReadOnlyConfig.__getattr__`: 호출자 속성명과 설정 파일 키 간 접미사(`_str`, `_int` 등)를 자동 보완/제거하던 `suffixes` 순회 추측 로직을 전면 제거하고 미정의 키에 대해 즉시 `AttributeError`를 발생시키도록 단순화.
+  - `ReadOnlyConfig.__contains__`: 접미사 유연 매칭을 배제하고 `key_str in data`로 엄격한 1:1 존재 여부 검사로 단일화.
+  - `ConfigLoader.ensure_config_file`: 설정 파일 자동 복원(Self-healing) 시 접미사 유사 키를 추측 비교하던 로직을 제거하고 스키마 키와 파일 키의 완전 1:1 일치로 검증.
+  - `ConfigLoader.setting`: 문자열 경로 탐색 시 접미사 임의 변환 순회를 제거하고 명시된 키 경로로만 1:1 직접 조회.
+  - `app/app_schema.py`: 상위 애플리케이션 스키마의 모든 키를 `config/config.yml`의 실제 키 명칭과 100% 1:1로 일치시켜 불필요한 자동 보정 주입 원천 차단.
+
+### v0.4.39 (2026-09-09)
+- **기본 설정 스키마(`APP_DEFAULT_SCHEMA_DICT`) 상수명 및 내부 설정 키 자료형 접미사(`_str`, `_int`, `_bool`, `_list`, `_dict`) 전면 표준화**:
+  - `agent_common` 전 모듈(`clients`, `logger`, `config_loader`, `llm`, `tool_parser`)의 스키마 딕셔너리 상수명을 규정 1.6.1에 맞춰 `APP_DEFAULT_SCHEMA_DICT`로 선언하고 하위 호환성 별칭(`APP_DEFAULT_SCHEMA`)을 제공.
+  - `DateTimeUtils`의 시간/날짜 포맷 상수명에 `_STR` 접미사(`FORMAT_DATE_YYYYMMDD_STR`, `FORMAT_DATETIME_STD_STR` 등) 적용.
+  - `ConfigLoader`: `__init__`에서 패키지 스키마를 강제 등록하여 애플리케이션 `config.yml`에 불필요한 섹션이 자동 주입되던 현상을 원천 방지하고, 템플릿 설정 필요 시 `APP_DEFAULT_SCHEMA_DICT`에서 투명하게 폴백 조회하도록 개선.
+  - 상위 애플리케이션 스키마(`app/app_schema.py`): `_BASE_*_SCHEMA_DICT` 및 `ECS_TO_*_SCHEMA_DICT`의 모든 키(`prefix_str`, `target_folders_list`, `date_prefix_str`, `path_regex_str`, `table_id_str`, `max_retries_int`, `chunk_size_int`, `timeout_seconds_int` 등)에 엄격한 타입 접미사 일괄 부여.
+
+### v0.4.38 (2026-09-09)
+- **추측성·방어적 코드 전면 제거 및 불변 전역 설정 객체(`config`) 직접 속성 접근 표준화**:
+  - `ToolParser`: 하드코딩 기본값(`"medallion/tool"`)과 디렉토리 추측 탐색 목록(`cand_dirs_list = [...]`)을 전면 제거하고, `config.transfer.tool_dir_str`을 통해 선언된 단일 표준 경로만 직접 조회하도록 일원화.
+  - `BigQueryClient`: 코드 내부 하드코딩 fallback(`setting(..., True)`, `setting(..., "+09:00")`) 및 방어적 `getattr(self, "timezone_offset_str", "+09:00")` 코드를 제거하고 `config.bigquery.ignore_unknown_values`, `config.bigquery.timezone_offset` 직접 접근으로 전환.
+  - `LlmClient`: `prompts.* or llm.*` 식의 추측성 설정 조회 체인을 전면 폐기하고 `config.llm.system_prompt_str`, `config.llm.router_model_str`, `config.llm.sql_generator_model_str`로 직관적 단일화.
+  - `ProjectLogger`: `loader.setting()` 호출 시 소스코드 내 불필요하게 중복 지정되던 하드코딩 기본값 매개변수 전면 제거.
+  - `ConfigLoader.ensure_config_file`: `setting("templates.config_notice_header")` 및 `setting("templates.config_repair_inline_comment")`의 하드코딩 fallback 문자열 제거.
+  - 상위 애플리케이션(`app/`): `getattr(config.transfer, "save_error_json_bool", False)` 등 불필요한 방어 코드를 `config.transfer.save_error_json_bool` 직접 접근으로 정비.
+
+### v0.4.37 (2026-09-09)
+- **라이브러리 모듈 독립성 및 지연 로딩(Lazy Loading) 보장을 위한 패키지 통합 스키마(`default_schema.py`) 폐기**:
+  - `agent_common`의 경량 모듈화 철학(필요한 기능만 선택적 사용)에 따라, 사용하지 않는 컴포넌트까지 일괄 결합하던 패키지 단위 통합 스키마(`default_schema.py`) 및 최상위 `APP_DEFAULT_SCHEMA`/`AGENT_COMMON_DEFAULT_SCHEMA` export를 전면 제거.
+  - 사용자가 필요한 모듈(`logger`, `clients`, `config_loader` 등)만 가볍게 독립적으로 활용할 수 있도록 모듈별 스키마 자율성을 보장하고 불필요한 결합도를 제거.
+  - 아키텍처 규정(1.7.5) 개정: 공통 라이브러리 패키지는 각 모듈별 기본 스키마를 독립 선언하며 패키지 통합 스키마 강제 합성을 금지함.
+
+### v0.4.36 (2026-09-08)
+- **로거 이름(`%(name)s`)의 프로그램명 통일 및 스택 프레임 기반 호출자(`%(caller)s`, `%(className)s`) 자동 분리 추출**:
+  - 엔터프라이즈 분산 모니터링 및 중앙 로그 수집(Cloud Logging, BigQuery 등) 환경에 최적화하여, 로거 이름(`name`)에는 프로그램/배치 애플리케이션 명칭(`ProjectLogger.configure(app_name_str=...)`)이 일관되게 바인딩되도록 개선.
+  - 로그 호출 지점의 파이썬 실행 스택 프레임(Stack Frame)을 역추적하여, 클래스 메서드 내부에서 호출 시 `self.__class__.__name__`을 자동 감지하여 `caller`(`ClassName.method()`) 및 `className` 속성을 100% 자동으로 보정.
+  - 클래스 밖 모듈 일반 함수 또는 스크립트 진입점(`main()`, `run_pipeline()` 등)에서 호출 시에는 점(`.`) 없이 함수명만(`function()`) 깔끔하게 표기되도록 지원.
+  - 기본 로그 포맷을 `[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller)s] %(message)s`로 표준화.
+
+### v0.4.35 (2026-09-08)
+- **전 모듈 `APP_DEFAULT_SCHEMA` 도입 및 선언적 설정 스키마 표준화**:
+  - main 진입점이 없는 `agent_common` 라이브러리의 아키텍처에 맞춰 각 소스 파일(모듈: `logger`, `config_loader`, `clients`, `tool_parser`, `llm`)별로 사용하는 모든 기본 설정·상수를 `APP_DEFAULT_SCHEMA` 상수로 선언.
+  - 각 모듈 스키마를 합성하는 `default_schema.py` 신설 및 최상위 패키지(`agent_common`) 레벨에서 `APP_DEFAULT_SCHEMA`와 `AGENT_COMMON_DEFAULT_SCHEMA`를 노출, `ConfigLoader` 기본 등록 연동.
+- **주관적 로그 파일 분기(`out_file` vs `debug_file`) 폐기 및 `{log_level}` 기반 `log_file` 단일화**:
+  - 모호한 약식 명칭이었던 `out_file`과 `debug_file` 이원화 체계를 전면 폐기하고, 단일 표준 경로 템플릿 `logging.log_file`로 통합.
+  - 경로 템플릿 내 `{log_level}`(소문자) 및 `{LOG_LEVEL}`(대문자) 동적 치환 태그를 지원하여, 프로세스 실행 로그 레벨에 부합하는 디렉터리를 자동으로 생성하고 로그 파일을 격리 보관하도록 개선.
+  - 기존 설정 파일과의 100% 하위 호환성을 위해 `log_file` 미정의 시 레거시 키(`out_file`, `debug_file`, `file`) fallback 지원 유지.
+- **약식/축약 식별자 엄격 금지 및 상세·구체적 명명 원칙 준수 (AGENTS 규정 1.6.2 & 1.7.5 반영)**:
+  - `logger.py` 내부의 약식 변수명(`out_file`, `debug_file`, `log_file` 등)을 `output_error_log_file_str`, `debug_log_file_str`, `default_log_file_str`, `target_log_file_path_str`, `file_logging_enabled_bool` 등으로 전면 정비.
+  - 모호한 약식 명칭으로 인해 설정/변수가 누락된 것으로 오인하고 중복 키를 재작성하는 혼선과 오류 원천 차단.
+
 ### v0.4.34 (2026-09-08)
 - **AWS S3 및 Dell ECS 범용 클라이언트 `S3Client` 신설 및 `EcsClient` 하위 호환 보장**:
   - 기존 Dell ECS 전용으로 명명된 `EcsClient`를 AWS S3 및 Dell ECS(S3 호환 스토리지) 모두를 유연하게 지원하는 범용 클라이언트 `S3Client`로 전면 개편.

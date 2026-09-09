@@ -14,11 +14,28 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from agent_common.config_loader import ConfigLoader
+from agent_common.config_loader import ConfigLoader, ReadOnlyConfig, config
 from agent_common.logger import ProjectLogger
 
+# ==============================================================================
+# LLM 클라이언트 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
+# ==============================================================================
+APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
+    "llm": {
+        "router_model_str": "groq_gpt_oss",
+        "sql_generator_model_str": "openai_gpt4o",
+        "system_prompt_str": "You are a helpful AI assistant.",
+        "default_purpose_str": "sql_generator",
+    },
+    "llm_pool": {},
+}
+
 # 로컬 GGUF 모델들의 캐시 딕셔너리. 파일 경로를 키로 하고 Llama 객체를 값으로 갖는다.
-_LOCAL_LLMS: dict[str, Any] = {}
+_LOCAL_LLMS_DICT: dict[str, Any] = {}
+
+# 전역 설정 객체(config)에 LLM 모듈 기본 스키마 자동 등록
+if hasattr(config, "_source") and isinstance(config._source, ConfigLoader):
+    config._source.register_schema(APP_DEFAULT_SCHEMA_DICT)
 
 
 class LlmInferenceError(Exception):
@@ -37,395 +54,383 @@ class LlmClient:
     """
 
     # 마지막 추론 생성에 실제로 사용된 LLM 경로 종류 ("external_llm" 또는 "local_llm")
-    last_generated_by: str | None
+    last_generated_by_str: str | None
 
     # 이 인스턴스가 담당하는 LLM의 작동 목적을 의미한다. ("sql_generator" 또는 "router" 등)
-    purpose: str
+    purpose_str: str
 
     # config/llmpool.yml에 정의된 풀(Pool) 내의 고유한 LLM 프로필 모델 명칭이다.
-    model_name: str
-
-    # LLM 모델을 제공하는 방식이다. ("local" 또는 "external")
-    provider: str
-
-    # 외부 LLM API 활성화 여부를 나타낸다. (True인 경우에만 외부 API 전송 허용)
-    enabled: bool
-
-    # 외부 API 호출 시 활용할 환경변수 기반 인증 키 이름이다. (예: "GROQ_API_KEY")
-    api_key_env: str
-
-    # 외부 LLM API 요청을 보낼 기본 접속 도메인 및 base 경로이다.
-    base_url: str
-
-    # 외부 LLM API의 세부 채팅 엔드포인트 리소스 경로이다. (기본값: "/chat/completions")
-    chat_completions_path: str
-
-    # API 요청 형식이다. ("standard": OpenAI 호환, "fabrix_api": Fabrix 전용 형식)
-    api_format: str
-
-    # 호출 대상 외부 LLM 모델의 식별 명칭이다. (예: "openai/gpt-oss-120b")
-    model: str
-
-    # Fabrix API 전용 LLM 식별자 (integer, standard API에서는 미사용)
-    llm_id: int
-
-    # Fabrix API 전용 인증 환경변수 이름 (x-generative-ai-client)
-    client_env: str
-
-    # Fabrix API 전용 인증 환경변수 이름 (x-client-user)
-    user_env: str
-    
-    # 외부 API 서버 응답 지연을 방지하기 위한 최대 커넥션 타임아웃 제한 시간(초)이다. (범위: 1 ~ 300)
-    timeout_seconds: int
-
-    # LLM 추론 시 생성할 출력 텍스트의 최대 토큰 수이다. (범위: 1 ~ 4096)
-    max_tokens: int
-
-    # LLM 답변의 다양성 및 창의성 수준을 결정하는 값이다.
-    temperature: float
-
-    # 로컬 CPU/GPU 추론 엔진 작동 시 참조할 GGUF 모델 파일의 프로젝트 내 상대 경로이다.
-    model_path: str
-
-    # 로컬 추론 시 입력 프롬프트와 생성 답변을 포괄하는 최대 컨텍스트 윈도우 토큰 용량이다.
-    n_ctx: int
-
-    # 로컬 CPU 추론 속도 최적화를 위해 점유할 멀티스레딩 개수이다. (실제 CPU 코어 수에 준해 조절)
-    n_threads: int
-
-    # 로컬 LLM 프롬프트 토큰 분석 시의 처리 배치 크기이다. (범위: 1 ~ 512)
-    n_batch: int
-
-    # 로컬 GPU 연산 가속을 위해 VRAM에 올릴 모델 가중치 레이어 개수이다. (0은 CPU 단독 실행)
-    n_gpu_layers: int
-
-    # llama.cpp의 디버그용 및 최적화 분석용 텍스트 상세 로그 출력 여부이다.
-    verbose: bool
+    model_name_str: str
 
     def __init__(
         self,
-        model_name: str | None = None,
-        purpose: str | None = None,
-        config_dir: str | Path | None = None,
+        model_name_str: str | None = None,
+        purpose_str: str | None = None,
+        config_dir_path: str | Path | None = None,
     ) -> None:
-        """설정 풀로부터 특정 모델명 또는 용도에 맞는 LLM 세부 사양을 로드하여 인스턴스를 초기화한다.
+        """설정 풀로부터 특정 모델명 또는 용도에 맞는 LLM 세부 사양을 로드하여 인스턴스를 초기화합니다.
 
-        Args:
-            model_name: llmpool.yml 설정 풀에 정의된 고유한 LLM 프로필 모델 명칭.
-            purpose: LLM 사용 용도 구분자 ("sql_generator", "router" 등).
-                     model_name이 주어지지 않고 purpose가 주어지면, 설정의 llm.router_model 혹은 llm.sql_generator_model에서 model_name을 결정합니다.
-            config_dir: 설정 파일들이 위치한 디렉토리 경로 (옵션).
+        :param model_name_str: llmpool.yml 설정 풀에 정의된 고유한 LLM 프로필 모델 명칭.
+        :param purpose_str: LLM 사용 용도 구분자 ("sql_generator", "router" 등).
+        :param config_dir_path: 설정 파일들이 위치한 디렉토리 경로 (옵션).
         """
-        self.last_generated_by = None
-        self.purpose = purpose or "sql_generator"
-        self.logger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
-        # self 객체 내에 독립적인 ConfigLoader 인스턴스를 바인딩하여 사용
-        self.config_loader: ConfigLoader = ConfigLoader(config_dir=config_dir)
+        self.last_generated_by_str = None
+        self.purpose_str: str = purpose_str or config.llm.default_purpose_str
+        self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+        # self 객체 내에 독립적인 ConfigLoader 인스턴스를 바인딩하고 스키마 등록
+        self.config_loader: ConfigLoader = ConfigLoader(config_dir=config_dir_path)
+        self.config_loader.register_schema(APP_DEFAULT_SCHEMA_DICT)
 
-        if model_name:
-            self.model_name = model_name
+        if model_name_str:
+            self.model_name_str = model_name_str
         else:
-            if self.purpose == "router":
-                self.model_name = str(self.config_loader.setting("llm.router_model", "groq_gpt_oss"))
+            if self.purpose_str == "router":
+                self.model_name_str = config.llm.router_model_str
             else:
-                self.model_name = str(self.config_loader.setting("llm.sql_generator_model", "openai_gpt4o"))
+                self.model_name_str = config.llm.sql_generator_model_str
 
-        # llmpool.yml의 상세 설정을 로드한다.
-        pool_config = self.config_loader.setting(f"llm_pool.{self.model_name}", {})
-        if not pool_config:
-            raise LlmInferenceError(self.logger.error("config_load_failed", error=f"llmpool.yml 내 '{self.model_name}' 모델 설정이 누락되었습니다."))
+        # llmpool.yml 내 모델 설정 존재 여부 확인 (Fail-Fast)
+        pool_config_any = self.config_loader.setting(f"llm_pool.{self.model_name_str}")
+        if not pool_config_any and self.model_name_str not in config.llm_pool:
+            raise LlmInferenceError(self.logger.error("config_load_failed", error=f"llmpool.yml 내 '{self.model_name_str}' 모델 설정이 누락되었습니다."))
 
-        # 설정 항목들을 객체 변수로 바인딩한다.
-        self.provider = str(pool_config.get("provider", "external")).lower()
-        self.enabled = bool(pool_config.get("enabled", True))
-        self.api_key_env = str(pool_config.get("api_key_env", "EXTERNAL_LLM_API_KEY"))
-        self.base_url = str(pool_config.get("base_url", ""))
-        self.chat_completions_path = str(pool_config.get("chat_completions_path", "/chat/completions"))
-        self.api_format = str(pool_config.get("api_format", "standard")).lower()
-        self.model = str(pool_config.get("model", ""))
-        self.llm_id = int(pool_config.get("llm_id", 0))
-        self.client_env = str(pool_config.get("client_env", ""))
-        self.user_env = str(pool_config.get("user_env", ""))
-        self.timeout_seconds = int(pool_config.get("timeout_seconds", 60))
-        self.max_tokens = int(pool_config.get("max_tokens", 512))
-        self.temperature = float(pool_config.get("temperature", 0))
-        self.model_path = str(pool_config.get("model_path", ""))
-        self.n_ctx = int(pool_config.get("n_ctx", 4096))
-        self.n_threads = int(pool_config.get("n_threads", 12))
-        self.n_batch = int(pool_config.get("n_batch", 512))
-        self.n_gpu_layers = int(pool_config.get("n_gpu_layers", 0))
-        self.verbose = bool(pool_config.get("verbose", False))
+    @property
+    def model_config(self) -> ReadOnlyConfig:
+        """현재 인스턴스가 참조하는 모델의 읽기 전용 설정을 반환합니다.
 
-    def generate(self, prompt: str, system_prompt: str | None = None) -> str | None:
-        """설정된 provider 우선순위에 따라 외부 또는 로컬 LLM에 텍스트 생성을 요청한다.
-
-        system_prompt가 주어지면 기본 시스템 지침 대신 해당 지침을 사용한다.
+        :return: 해당 LLM 모델의 ReadOnlyConfig 설정 객체
         """
-        self.last_generated_by = None
-        provider = os.getenv("LLM_PROVIDER", self.provider).lower()
-        if provider not in {"auto", "external", "local"}:
-            raise LlmInferenceError(self.logger.error("config_load_failed", error=f"지원하지 않는 LLM_PROVIDER 설정입니다: {provider}"))
+        pool_config_any = self.config_loader.setting(f"llm_pool.{self.model_name_str}")
+        if isinstance(pool_config_any, dict):
+            return ReadOnlyConfig(pool_config_any, source_name_str="llmpool.yml")
+        if isinstance(pool_config_any, ReadOnlyConfig):
+            return pool_config_any
+        return config.llm_pool[self.model_name_str]
 
-        # 시스템 프롬프트가 제공되지 않은 경우 설정 파일에서 적절한 기본 시스템 지침을 로드한다.
-        if system_prompt is None:
-            if self.purpose == "router":
-                system_prompt = str(self.config_loader.setting("prompts.routing_system_prompt") or self.config_loader.setting("llm.routing_system_prompt"))
-            else:
-                system_prompt = str(self.config_loader.setting("prompts.system_prompt") or self.config_loader.setting("llm.system_prompt"))
+    def generate(
+        self,
+        prompt_str: str = "",
+        system_prompt_str: str | None = None,
+    ) -> str | None:
+        """설정된 provider 우선순위에 따라 외부 또는 로컬 LLM에 텍스트 생성을 요청합니다.
 
-        if provider in {"auto", "external"}:
-            external_res = self._generate_external(prompt, system_prompt)
-            if external_res is not None:
-                self.last_generated_by = "external_llm"
-                return external_res
-            if provider == "external":
+        :param prompt_str: LLM에 전달할 사용자 프롬프트 문자열
+        :param system_prompt_str: 시스템 지침 프롬프트 (미지정 시 설정 기본값 적용)
+        :return: 생성된 텍스트 응답 문자열 (실패 시 None)
+        :raises LlmInferenceError: 지원되지 않는 provider 설정이거나 API 통신 장애 발생 시
+        """
+        self.last_generated_by_str = None
+
+        provider_env_str: str | None = os.getenv("LLM_PROVIDER")
+        provider_str: str = (provider_env_str or self.model_config.provider_str).lower()
+        if provider_str not in {"auto", "external", "local"}:
+            raise LlmInferenceError(self.logger.error("config_load_failed", error=f"지원하지 않는 LLM_PROVIDER 설정입니다: {provider_str}"))
+
+        # 시스템 프롬프트가 제공되지 않은 경우 설정 파일에서 기본 시스템 지침을 로드한다.
+        resolved_system_prompt_str: str = system_prompt_str if system_prompt_str is not None else config.llm.system_prompt_str
+
+        if provider_str in {"auto", "external"}:
+            external_res_str = self._generate_external(prompt_str, resolved_system_prompt_str)
+            if external_res_str is not None:
+                self.last_generated_by_str = "external_llm"
+                return external_res_str
+            if provider_str == "external":
                 return None
 
-        if provider in {"auto", "local"}:
-            local_res = self._generate_local(prompt, system_prompt)
-            if local_res is not None:
-                self.last_generated_by = "local_llm"
-                return local_res
+        if provider_str in {"auto", "local"}:
+            local_res_str = self._generate_local(prompt_str, resolved_system_prompt_str)
+            if local_res_str is not None:
+                self.last_generated_by_str = "local_llm"
+                return local_res_str
 
         return None
 
-    def _generate_external(self, prompt: str, system_prompt: str | None = None) -> str | None:
-        """OpenAI 호환 chat/completions API로 텍스트 생성을 요청한다."""
-        enabled = self._external_llm_enabled()
-        api_key = self._external_api_key()
+    def _generate_external(self, prompt_str: str, system_prompt_str: str | None = None) -> str | None:
+        """OpenAI 호환 chat/completions API로 텍스트 생성을 요청합니다.
+
+        :param prompt_str: LLM에 전달할 사용자 프롬프트 문자열
+        :param system_prompt_str: 시스템 지침 프롬프트
+        :return: 생성된 텍스트 응답 문자열 (실패 시 None)
+        :raises LlmInferenceError: HTTP 오류, 네트워크 장애 또는 응답 파싱 실패 시 발생
+        """
+        enabled_bool: bool = self._external_llm_enabled()
+        api_key_str: str | None = self._external_api_key()
 
         self.logger.info(
             "api_call_started",
             service_name="외부 LLM API",
-            purpose=self.purpose,
-            model_name=self.model_name,
+            purpose=self.purpose_str,
+            model_name=self.model_name_str,
         )
 
-        if not enabled:
+        if not enabled_bool:
             self.logger.warning("api_disabled", service_name="외부 LLM API")
             return None
-        if not api_key:
-            self.logger.warning("api_key_missing", service_name="외부 LLM API", api_key_env=self.api_key_env)
+        if not api_key_str:
+            self.logger.warning("api_key_missing", service_name="외부 LLM API", api_key_env=self.model_config.api_key_env_str)
             return None
 
-        # system_prompt는 generate 메서드 단계에서 미리 보장되므로, 만약에 대비해 fallback만 둔다.
-        if system_prompt is None:
-            if self.purpose == "router":
-                system_prompt = str(self.config_loader.setting("prompts.routing_system_prompt") or self.config_loader.setting("llm.routing_system_prompt"))
-            else:
-                system_prompt = str(self.config_loader.setting("prompts.system_prompt") or self.config_loader.setting("llm.system_prompt"))
+        resolved_system_prompt_str: str = system_prompt_str if system_prompt_str is not None else config.llm.system_prompt_str
 
         # Fabrix 전용 API 형식 처리
-        if self.api_format == "fabrix_api":
-            return self._generate_fabrix(prompt, system_prompt)
+        if getattr(self.model_config, "api_format_str", "standard") == "fabrix_api":
+            return self._generate_fabrix(prompt_str, resolved_system_prompt_str)
 
         # 표준 OpenAI 호환 API 형식 처리
-        base_url = os.getenv("EXTERNAL_LLM_BASE_URL", self.base_url).rstrip("/")
-        endpoint = os.getenv("EXTERNAL_LLM_CHAT_COMPLETIONS_PATH", self.chat_completions_path)
-        url = f"{base_url}{endpoint if endpoint.startswith('/') else '/' + endpoint}"
-        payload = {
-            "model": os.getenv("EXTERNAL_LLM_MODEL", self.model),
+        base_url_str: str = os.getenv("EXTERNAL_LLM_BASE_URL", self.model_config.base_url_str).rstrip("/")
+        endpoint_str: str = os.getenv("EXTERNAL_LLM_CHAT_COMPLETIONS_PATH", self.model_config.chat_completions_path_str)
+        url_str: str = f"{base_url_str}{endpoint_str if endpoint_str.startswith('/') else '/' + endpoint_str}"
+
+        max_tokens_env_str: str | None = os.getenv("EXTERNAL_LLM_MAX_TOKENS")
+        max_tokens_int: int = int(max_tokens_env_str) if max_tokens_env_str is not None else self.model_config.max_tokens_int
+
+        temperature_env_str: str | None = os.getenv("EXTERNAL_LLM_TEMPERATURE")
+        temperature_float: float = float(temperature_env_str) if temperature_env_str is not None else self.model_config.temperature_float
+
+        payload_dict: dict[str, Any] = {
+            "model": os.getenv("EXTERNAL_LLM_MODEL", self.model_config.model_str),
             "messages": [
                 {
                     "role": "system",
-                    "content": system_prompt,
+                    "content": resolved_system_prompt_str,
                 },
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": prompt_str},
             ],
-            "max_tokens": int(os.getenv("EXTERNAL_LLM_MAX_TOKENS", str(self.max_tokens))),
-            "temperature": float(os.getenv("EXTERNAL_LLM_TEMPERATURE", str(self.temperature))),
+            "max_tokens": max_tokens_int,
+            "temperature": temperature_float,
         }
-        request = Request(
-            url,
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        request_obj = Request(
+            url_str,
+            data=json.dumps(payload_dict, ensure_ascii=False).encode("utf-8"),
             headers={
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {api_key_str}",
                 "Content-Type": "application/json",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             },
             method="POST",
         )
-        timeout = int(os.getenv("EXTERNAL_LLM_TIMEOUT_SECONDS", str(self.timeout_seconds)))
+        timeout_env_str: str | None = os.getenv("EXTERNAL_LLM_TIMEOUT_SECONDS")
+        timeout_seconds_int: int = int(timeout_env_str) if timeout_env_str is not None else self.model_config.timeout_seconds_int
         try:
-            with urlopen(request, timeout=timeout) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            with urlopen(request_obj, timeout=timeout_seconds_int) as response:
+                data_dict = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace").replace("\n", " ").replace("\r", " ")
-            raise LlmInferenceError(self.logger.error("api_http_error", service_name="외부 LLM API", code=exc.code, detail=body)) from exc
+            body_str = exc.read().decode("utf-8", errors="replace").replace("\n", " ").replace("\r", " ")
+            raise LlmInferenceError(self.logger.error("api_http_error", service_name="외부 LLM API", code=exc.code, detail=body_str)) from exc
         except URLError as exc:
             raise LlmInferenceError(self.logger.error("api_connection_error", service_name="외부 LLM API", detail=str(exc.reason))) from exc
 
         try:
-            content = data["choices"][0]["message"]["content"]
-            content_flat = str(content).replace("\n", " ").replace("\r", "")
-            self.logger.info("api_call_success", service_name="외부 LLM API", detail=content_flat)
+            content_str = data_dict["choices"][0]["message"]["content"]
+            content_flat_str = str(content_str).replace("\n", " ").replace("\r", "")
+            self.logger.info("api_call_success", service_name="외부 LLM API", detail=content_flat_str)
         except (KeyError, IndexError, TypeError) as exc:
             raise LlmInferenceError(self.logger.error("api_missing_field", service_name="외부 LLM API", field_name="choices[0].message.content")) from exc
 
-        return str(content)
+        return str(content_str)
 
-    def _generate_fabrix(self, prompt: str, system_prompt: str | None = None) -> str | None:
-        """Fabrix GenAI 허브 전용 API로 텍스트 생성을 요청한다."""
-        enabled = self._external_llm_enabled()
+    def _generate_fabrix(self, prompt_str: str, system_prompt_str: str | None = None) -> str | None:
+        """Fabrix GenAI 허브 전용 API로 텍스트 생성을 요청합니다.
+
+        :param prompt_str: LLM에 전달할 사용자 프롬프트 문자열
+        :param system_prompt_str: 시스템 지침 프롬프트
+        :return: 생성된 텍스트 응답 문자열 (실패 시 None)
+        :raises LlmInferenceError: HTTP 오류, 네트워크 장애 또는 필드 누락 시 발생
+        """
+        enabled_bool: bool = self._external_llm_enabled()
         # 외부 API 키 조회 (x-openapi-token)
-        api_key = self._external_api_key()
-        url = self.base_url.rstrip("/")
-        llm_id = int(os.getenv("FABRIX_LLM_ID", str(self.llm_id)))
-        client_key = os.getenv(self.client_env, "") if self.client_env else ""
-        user_email = os.getenv(self.user_env, "") if self.user_env else ""
-        
+        api_key_str: str | None = self._external_api_key()
+        url_str: str = self.model_config.base_url_str.rstrip("/")
+
+        llm_id_env_str: str | None = os.getenv("FABRIX_LLM_ID")
+        llm_id_int: int = int(llm_id_env_str) if llm_id_env_str is not None else self.model_config.llm_id_int
+
+        client_env_key_str: str = getattr(self.model_config, "client_env_str", "")
+        user_env_key_str: str = getattr(self.model_config, "user_env_str", "")
+        client_key_str: str = os.getenv(client_env_key_str, "") if client_env_key_str else ""
+        user_email_str: str = os.getenv(user_env_key_str, "") if user_env_key_str else ""
+
         self.logger.info(
             "api_call_started",
             service_name="Fabrix API",
-            purpose=self.purpose,
-            model_name=self.model_name,
+            purpose=self.purpose_str,
+            model_name=self.model_name_str,
         )
 
-        if not enabled:
+        if not enabled_bool:
             self.logger.warning("api_disabled", service_name="Fabrix API")
             return None
-        if not api_key:
-            self.logger.warning("api_key_missing", service_name="Fabrix API", api_key_env=self.api_key_env)
+        if not api_key_str:
+            self.logger.warning("api_key_missing", service_name="Fabrix API", api_key_env=self.model_config.api_key_env_str)
             return None
 
-        # system_prompt는 generate 메서드 단계에서 미리 보장되므로, 만약에 대비해 fallback만 둔다.
-        if system_prompt is None:
-            if self.purpose == "router":
-                system_prompt = str(self.config_loader.setting("prompts.routing_system_prompt") or self.config_loader.setting("llm.routing_system_prompt"))
-            else:
-                system_prompt = str(self.config_loader.setting("prompts.system_prompt") or self.config_loader.setting("llm.system_prompt"))
+        resolved_system_prompt_str: str = system_prompt_str if system_prompt_str is not None else config.llm.system_prompt_str
 
         # Fabrix API는 contents 배열에 메시지를 전달한다.
-        default_system_prompt = str(self.config_loader.setting("prompts.system_prompt") or self.config_loader.setting("llm.system_prompt"))
-        if system_prompt and system_prompt != default_system_prompt:
-            contents = [f"{system_prompt}\n\n{prompt}"]
+        default_system_prompt_str = config.llm.system_prompt_str
+        if resolved_system_prompt_str and resolved_system_prompt_str != default_system_prompt_str:
+            contents_list = [f"{resolved_system_prompt_str}\n\n{prompt_str}"]
         else:
-            contents = [prompt]
+            contents_list = [prompt_str]
 
-        payload = {
-            "llmId": llm_id,
-            "contents": contents,
+        payload_dict: dict[str, Any] = {
+            "llmId": llm_id_int,
+            "contents": contents_list,
             "isStream": "False",
         }
 
-        request = Request(
-            url,
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        request_obj = Request(
+            url_str,
+            data=json.dumps(payload_dict, ensure_ascii=False).encode("utf-8"),
             headers={
-                "x-openapi-token": api_key,
+                "x-openapi-token": api_key_str,
                 "Content-Type": "application/json",
             },
             method="POST",
         )
         # 추가 인증 헤더 (client_key, user_email이 설정된 경우)
-        if client_key:
-            request.add_header("x-generative-ai-client", client_key)
-        if user_email:
-            request.add_header("x-client-user", user_email)
+        if client_key_str:
+            request_obj.add_header("x-generative-ai-client", client_key_str)
+        if user_email_str:
+            request_obj.add_header("x-client-user", user_email_str)
 
-        timeout = int(os.getenv("FABRIX_TIMEOUT_SECONDS", str(self.timeout_seconds)))
+        timeout_env_str: str | None = os.getenv("FABRIX_TIMEOUT_SECONDS")
+        timeout_seconds_int: int = int(timeout_env_str) if timeout_env_str is not None else self.model_config.timeout_seconds_int
         try:
-            with urlopen(request, timeout=timeout) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            with urlopen(request_obj, timeout=timeout_seconds_int) as response:
+                data_dict = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace").replace("\n", " ").replace("\r", " ")
-            raise LlmInferenceError(self.logger.error("api_http_error", service_name="Fabrix API", code=exc.code, detail=body)) from exc
+            body_str = exc.read().decode("utf-8", errors="replace").replace("\n", " ").replace("\r", " ")
+            raise LlmInferenceError(self.logger.error("api_http_error", service_name="Fabrix API", code=exc.code, detail=body_str)) from exc
         except URLError as exc:
             raise LlmInferenceError(self.logger.error("api_connection_error", service_name="Fabrix API", detail=str(exc.reason))) from exc
 
         # Fabrix API 응답 형식: 최상위 content 필드
         try:
-            content = data["content"]
-            content_flat = str(content).replace("\n", " ").replace("\r", "")
-            self.logger.info("api_call_success", service_name="Fabrix API", detail=content_flat)
+            content_str = data_dict["content"]
+            content_flat_str = str(content_str).replace("\n", " ").replace("\r", "")
+            self.logger.info("api_call_success", service_name="Fabrix API", detail=content_flat_str)
         except (KeyError, TypeError) as exc:
             raise LlmInferenceError(self.logger.error("api_missing_field", service_name="Fabrix API", field_name="content")) from exc
 
-        return str(content)
+        return str(content_str)
 
-    def _generate_local(self, prompt: str, system_prompt: str | None = None) -> str | None:
-        """설정된 GGUF 모델이 있으면 llama-cpp-python으로 텍스트 생성을 요청한다."""
-        model_path = os.getenv("LOCAL_LLM_MODEL_PATH", self.model_path)
-        resolved_model_path = self.config_loader.project_path(model_path)
+    def _generate_local(self, prompt_str: str, system_prompt_str: str | None = None) -> str | None:
+        """설정된 GGUF 모델이 있으면 llama-cpp-python으로 텍스트 생성을 요청합니다.
+
+        :param prompt_str: LLM에 전달할 사용자 프롬프트 문자열
+        :param system_prompt_str: 시스템 지침 프롬프트
+        :return: 생성된 텍스트 응답 문자열 (모델 미발견 시 None)
+        """
+        model_path_str: str = os.getenv("LOCAL_LLM_MODEL_PATH", self.model_config.model_path_str)
+        resolved_model_path = self.config_loader.project_path(model_path_str)
         if not resolved_model_path.exists():
             return None
 
-        # system_prompt는 generate 메서드 단계에서 미리 보장되므로, 만약에 대비해 fallback만 둔다.
-        if system_prompt is None:
-            if self.purpose == "router":
-                system_prompt = str(self.config_loader.setting("prompts.routing_system_prompt") or self.config_loader.setting("llm.routing_system_prompt"))
-            else:
-                system_prompt = str(self.config_loader.setting("prompts.system_prompt") or self.config_loader.setting("llm.system_prompt"))
+        resolved_system_prompt_str: str = system_prompt_str if system_prompt_str is not None else config.llm.system_prompt_str
 
-        n_ctx = int(os.getenv("LOCAL_LLM_N_CTX", str(self.n_ctx)))
-        n_threads = int(os.getenv("LOCAL_LLM_N_THREADS", str(self.n_threads)))
-        n_batch = int(os.getenv("LOCAL_LLM_N_BATCH", str(self.n_batch)))
-        n_gpu_layers = int(os.getenv("LOCAL_LLM_N_GPU_LAYERS", str(self.n_gpu_layers)))
-        verbose = os.getenv("LOCAL_LLM_VERBOSE", str(self.verbose)).lower() == "true"
+        n_ctx_env_str: str | None = os.getenv("LOCAL_LLM_N_CTX")
+        n_ctx_int: int = int(n_ctx_env_str) if n_ctx_env_str is not None else self.model_config.n_ctx_int
 
-        llm = _get_local_llm(
-            model_path=str(resolved_model_path),
-            n_ctx=n_ctx,
-            n_threads=n_threads,
-            n_batch=n_batch,
-            n_gpu_layers=n_gpu_layers,
-            verbose=verbose,
+        n_threads_env_str: str | None = os.getenv("LOCAL_LLM_N_THREADS")
+        n_threads_int: int = int(n_threads_env_str) if n_threads_env_str is not None else self.model_config.n_threads_int
+
+        n_batch_env_str: str | None = os.getenv("LOCAL_LLM_N_BATCH")
+        n_batch_int: int = int(n_batch_env_str) if n_batch_env_str is not None else self.model_config.n_batch_int
+
+        n_gpu_layers_env_str: str | None = os.getenv("LOCAL_LLM_N_GPU_LAYERS")
+        n_gpu_layers_int: int = int(n_gpu_layers_env_str) if n_gpu_layers_env_str is not None else self.model_config.n_gpu_layers_int
+
+        verbose_env_str: str | None = os.getenv("LOCAL_LLM_VERBOSE")
+        verbose_bool: bool = (verbose_env_str.lower() == "true") if verbose_env_str is not None else self.model_config.verbose_bool
+
+        llm_obj = _get_local_llm(
+            model_path_str=str(resolved_model_path),
+            n_ctx_int=n_ctx_int,
+            n_threads_int=n_threads_int,
+            n_batch_int=n_batch_int,
+            n_gpu_layers_int=n_gpu_layers_int,
+            verbose_bool=verbose_bool,
         )
-        output = llm.create_chat_completion(
+        max_tokens_env_str: str | None = os.getenv("LOCAL_LLM_MAX_TOKENS")
+        max_tokens_int: int = int(max_tokens_env_str) if max_tokens_env_str is not None else self.model_config.max_tokens_int
+
+        temperature_env_str: str | None = os.getenv("LOCAL_LLM_TEMPERATURE")
+        temperature_float: float = float(temperature_env_str) if temperature_env_str is not None else self.model_config.temperature_float
+
+        output_dict = llm_obj.create_chat_completion(
             messages=[
                 {
                     "role": "system",
-                    "content": system_prompt,
+                    "content": resolved_system_prompt_str,
                 },
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": prompt_str},
             ],
-            max_tokens=int(os.getenv("LOCAL_LLM_MAX_TOKENS", str(self.max_tokens))),
-            temperature=float(os.getenv("LOCAL_LLM_TEMPERATURE", str(self.temperature))),
+            max_tokens=max_tokens_int,
+            temperature=temperature_float,
             stop=["\n\nQuestion:", "\n\nModel:"],
         )
-        content = output["choices"][0]["message"]["content"]
+        content_str = output_dict["choices"][0]["message"]["content"]
 
-        return str(content)
+        return str(content_str)
 
     def _external_llm_enabled(self) -> bool:
-        """설정과 환경변수를 기준으로 외부 LLM 사용 여부를 판단한다."""
-        enabled = os.getenv("EXTERNAL_LLM_ENABLED", str(self.enabled)).lower()
-        return enabled in {"1", "true", "yes", "on"}
+        """설정과 환경변수를 기준으로 외부 LLM 사용 여부를 판단합니다.
+
+        :return: 외부 LLM 활성화 여부 불리언 값
+        """
+        enabled_str = os.getenv("EXTERNAL_LLM_ENABLED")
+        if enabled_str is not None:
+            return enabled_str.lower() in {"1", "true", "yes", "on"}
+        return self.model_config.enabled_bool
 
     def _external_api_key(self) -> str | None:
-        """외부 LLM API key를 설정된 환경변수 이름에서 읽어온다."""
-        return os.getenv(self.api_key_env) or os.getenv("EXTERNAL_LLM_API_KEY")
+        """외부 LLM API key를 설정된 환경변수 이름에서 읽어옵니다.
+
+        :return: 환경변수에 설정된 API 키 문자열 또는 None
+        """
+        return os.getenv(self.model_config.api_key_env_str) or os.getenv("EXTERNAL_LLM_API_KEY")
 
 
 def _get_local_llm(
-    model_path: str,
-    n_ctx: int,
-    n_threads: int,
-    n_batch: int,
-    n_gpu_layers: int,
-    verbose: bool
+    model_path_str: str,
+    n_ctx_int: int,
+    n_threads_int: int,
+    n_batch_int: int,
+    n_gpu_layers_int: int,
+    verbose_bool: bool
 ) -> Any:
-    """GGUF 모델을 lazy-load하고 프로세스 안에서 재사용한다."""
-    global _LOCAL_LLMS
-    if model_path in _LOCAL_LLMS:
-        return _LOCAL_LLMS[model_path]
+    """GGUF 모델을 lazy-load하고 프로세스 안에서 재사용합니다.
+
+    :param model_path_str: GGUF 모델 파일 경로 문자열
+    :param n_ctx_int: 최대 컨텍스트 토큰 크기
+    :param n_threads_int: CPU 멀티스레딩 스레드 수
+    :param n_batch_int: 배치 토큰 크기
+    :param n_gpu_layers_int: GPU 가속 레이어 수
+    :param verbose_bool: 상세 디버그 로깅 활성화 여부
+    :return: 초기화된 Llama 모델 인스턴스
+    :raises LlmInferenceError: llama_cpp 모듈 미설치 또는 모델 파일 미존재 시 발생
+    """
+    global _LOCAL_LLMS_DICT
+    if model_path_str in _LOCAL_LLMS_DICT:
+        return _LOCAL_LLMS_DICT[model_path_str]
 
     try:
         from llama_cpp import Llama
     except ImportError as exc:
-        msg = ProjectLogger.get_log_msg("ERROR", "config_load_failed", error="llama-cpp-python 패키지가 설치되어 있지 않습니다.")
-        raise LlmInferenceError(msg) from exc
+        msg_str = ProjectLogger.get_log_msg("ERROR", "config_load_failed", error="llama-cpp-python 패키지가 설치되어 있지 않습니다.")
+        raise LlmInferenceError(msg_str) from exc
 
-    if not os.path.exists(model_path):
-        msg = ProjectLogger.get_log_msg("ERROR", "config_file_not_found", path=model_path)
-        raise LlmInferenceError(msg)
+    if not os.path.exists(model_path_str):
+        msg_str = ProjectLogger.get_log_msg("ERROR", "config_file_not_found", path=model_path_str)
+        raise LlmInferenceError(msg_str)
 
-    _LOCAL_LLMS[model_path] = Llama(
-        model_path=model_path,
-        n_ctx=n_ctx,
-        n_threads=n_threads,
-        n_batch=n_batch,
-        n_gpu_layers=n_gpu_layers,
-        verbose=verbose,
+    _LOCAL_LLMS_DICT[model_path_str] = Llama(
+        model_path=model_path_str,
+        n_ctx=n_ctx_int,
+        n_threads=n_threads_int,
+        n_batch=n_batch_int,
+        n_gpu_layers=n_gpu_layers_int,
+        verbose=verbose_bool,
     )
-    return _LOCAL_LLMS[model_path]
+    return _LOCAL_LLMS_DICT[model_path_str]

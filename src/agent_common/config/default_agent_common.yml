@@ -3,19 +3,21 @@
 # 설계자 이메일: bakkus@daum.net
 
 logging:
-  level: "INFO"
-  format: "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d %(funcName)s()] %(message)s"
-  datefmt: "%Y-%m-%d %H:%M:%S"
-  language: "KO"  # 로그 메시지 언어 (KO: 한국어 [기본값], EN: 영어)
+  level_str: "INFO"
+  format_str: "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller)s] %(message)s"
+  datefmt_str: "%Y-%m-%d %H:%M:%S"
+  language_str: "KO"  # 로그 메시지 언어 (KO: 한국어 [기본값], EN: 영어)
+  file_logging_bool: true
+  log_file_str: "logs/%Y/%m/%d/{log_level}/{app_name}_%Y%m%dT%H%M%S.log"
 
 transfer:
-  timeout_seconds: 120
+  timeout_seconds_int: 120
 
 bigquery:
-  ignore_unknown_values: true
+  ignore_unknown_values_bool: true
 
 templates:
-  config_notice_header: |
+  config_notice_header_str: |
     # ==============================================================================
     # [안내 / NOTICE]
     # 본 설정 파일({config_file_name})은 프로그램 실행 시 기존 파일이 존재하지 않아
@@ -26,4 +28,4 @@ templates:
     # 자동 생성일시: {now_dt_str}
     # ==============================================================================
 
-  config_repair_inline_comment: "# [자동 추가: {now_dt_str}]"
+  config_repair_inline_comment_str: "# [자동 추가: {now_dt_str}]"
