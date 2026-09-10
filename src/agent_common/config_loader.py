@@ -40,6 +40,26 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
 }
 
 
+_ENV_VAR_PATTERN: re.Pattern = re.compile(r"\$\{([A-Za-z0-9_]+)(?::-([^}]*))?\}")
+
+
+def _replace_env_match(match_obj: re.Match) -> str:
+    """
+    정규식 매칭 객체로부터 환경변수명과 기본값을 추출하여 실제 환경변수 값 또는 기본값으로 치환합니다.
+
+    :param match_obj: re.Pattern 매칭 객체 (그룹 1: 환경변수명, 그룹 2: 기본값)
+    :return: 치환된 문자열
+    """
+    var_name_str: str = match_obj.group(1)
+    default_val_str: Optional[str] = match_obj.group(2)
+    env_val_str: Optional[str] = os.environ.get(var_name_str)
+    if env_val_str is not None and env_val_str != "":
+        return env_val_str
+    if default_val_str is not None:
+        return default_val_str
+    return ""
+
+
 
 def coerce_type_by_key_suffix(key_str: str, val_any: Any) -> Any:
     """키 접미사(_int, _str, _bool, _float, _list, _dict)에 따라 값을 보증된 파이썬 표준 데이터 타입으로 엄격히 변환합니다.
@@ -234,6 +254,14 @@ class ReadOnlyConfig:
         """내부 원본 딕셔너리를 반환합니다."""
         return self._get_data()
 
+    def apply_cli_overrides(self, overrides_dict: dict[str, Any]) -> None:
+        """커스텀 딕셔너리 형태의 오버라이드 설정을 전역 설정에 즉시 최우선순위로 반영합니다."""
+        src: Any = object.__getattribute__(self, "_source")
+        if hasattr(src, "apply_cli_overrides") and callable(src.apply_cli_overrides):
+            src.apply_cli_overrides(overrides_dict)
+        elif isinstance(src, dict):
+            ConfigLoader.apply_cli_overrides_to_loader(src, overrides_dict)
+
     def __repr__(self) -> str:
         """객체 문자열 표현을 반환합니다."""
         data: dict[str, Any] = self._get_data()
@@ -305,6 +333,8 @@ class ConfigLoader:
 
     # 전역 런타임 언어 강제 설정값 ('KO' 또는 'EN')
     _global_language_override_str: Optional[str] = None
+    _global_cli_overrides_dict: dict[str, Any] = {}
+    _global_registered_schemas_dict: dict[str, Any] = {}
 
     def __init__(self, config_dir: str | Path | None = None):
         """ConfigLoader 인스턴스를 생성하고 self.logger 및 설정 디렉토리를 초기화합니다."""
@@ -312,8 +342,10 @@ class ConfigLoader:
 
         self._config_dir: Path = self.project_path(config_dir) if config_dir else self.ROOT / "config"
         self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
-        self._registered_schemas: dict[str, Any] = {}
+        self._registered_schemas: dict[str, Any] = self._global_registered_schemas_dict
+        self._cli_overrides: dict[str, Any] = self._global_cli_overrides_dict
         self._cached_lang_str: Optional[str] = None
+        self._cached_settings: dict[str, Any] | None = None
 
     @classmethod
     def set_language(cls, lang_str: str) -> None:
@@ -361,7 +393,23 @@ class ConfigLoader:
         """
         if isinstance(schema_dict, dict):
             self._deep_merge(self._registered_schemas, schema_dict)
+            self._deep_merge(ConfigLoader._global_registered_schemas_dict, schema_dict)
             self._cached_settings = None
+
+    def apply_cli_overrides(self, overrides_dict: dict[str, Any]) -> None:
+        """CLI 인자 및 런타임 오버라이드 딕셔너리를 설정에 최우선순위로 반영합니다."""
+        if not isinstance(overrides_dict, dict):
+            return
+        ConfigLoader._deep_merge(ConfigLoader._global_cli_overrides_dict, overrides_dict)
+        ConfigLoader._deep_merge(self._cli_overrides, overrides_dict)
+        self._cached_settings = None
+
+    @classmethod
+    def apply_cli_overrides_to_loader(cls, loader_or_dict: Any, overrides_dict: dict[str, Any]) -> None:
+        """임의의 데이터 소스 또는 로더에 CLI 오버라이드를 적용합니다."""
+        if isinstance(loader_or_dict, dict):
+            cls._deep_merge(loader_or_dict, overrides_dict)
+        cls._deep_merge(cls._global_cli_overrides_dict, overrides_dict)
 
     def ensure_config_file(self, config_file_name: str = "config.yml", default_schema: Optional[dict[str, Any]] = None) -> Path:
         """설정 파일의 실체 존재 여부를 검증하고, 미존재 시 기본 스키마 템플릿으로 자동 생성하거나
@@ -595,6 +643,15 @@ class ConfigLoader:
         # 6. proxy, no_proxy 설정을 NO_PROXY 환경 변수로 적용한다.
         self._apply_no_proxy(settings)
 
+        # 6-1. 설정 딕셔너리 내 모든 문자열의 환경변수(${VAR_NAME:-default}) 재귀 치환 적용
+        settings = self._interpolate_env_vars(settings)
+
+        # 7. CLI 인자 오버라이드 최우선순위 병합 (전역 및 인스턴스)
+        if ConfigLoader._global_cli_overrides_dict:
+            self._deep_merge(settings, ConfigLoader._global_cli_overrides_dict)
+        elif self._cli_overrides:
+            self._deep_merge(settings, self._cli_overrides)
+
         self._cached_settings = settings
         self._cached_lang_str = selected_lang_str
         return settings
@@ -608,6 +665,23 @@ class ConfigLoader:
                 os.environ["NO_PROXY"] = f"{existing},{no_proxy_value}"
             else:
                 os.environ["NO_PROXY"] = str(no_proxy_value)
+
+    @staticmethod
+    def _interpolate_env_vars(data_any: Any) -> Any:
+        """
+        설정 데이터 내 문자열에 포함된 ${VAR_NAME} 및 ${VAR_NAME:-default} 형식의
+        환경변수 템플릿을 실제 OS 환경변수 값으로 재귀 치환합니다.
+
+        :param data_any: 치환 대상 설정 데이터 (dict, list, str 또는 기타 타입)
+        :return: 환경변수가 치환된 설정 데이터
+        """
+        if isinstance(data_any, dict):
+            return {k: ConfigLoader._interpolate_env_vars(v) for k, v in data_any.items()}
+        if isinstance(data_any, list):
+            return [ConfigLoader._interpolate_env_vars(item) for item in data_any]
+        if isinstance(data_any, str):
+            return _ENV_VAR_PATTERN.sub(_replace_env_match, data_any)
+        return data_any
 
     def setting(self, path: str, default: Any = None) -> Any:
         """
@@ -745,7 +819,7 @@ class ConfigLoader:
 
         if not isinstance(settings, dict):
             raise ValueError(f"YAML 설정 파일이 올바른 딕셔너리 구조가 아닙니다: {path} (실제 타입: {type(settings)})")
-        return settings
+        return ConfigLoader._interpolate_env_vars(settings)
 
     @staticmethod
     def _deep_merge(target: dict[str, Any], incoming: dict[str, Any]) -> None:

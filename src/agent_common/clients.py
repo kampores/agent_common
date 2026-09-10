@@ -9,6 +9,7 @@ AWS S3, Dell ECS(S3 호환), Google Cloud Storage(GCS), Google Cloud BigQuery(BQ
 
 from __future__ import annotations
 
+import os
 import re
 import time
 import json
@@ -319,8 +320,52 @@ class S3Client:
             return False
 
 
-# 하위 호환성을 위한 기존 클래스명 별칭(Alias) 제공
-EcsClient = S3Client
+def _resolve_gcp_credentials(
+    credentials_path_str: str,
+    config_loader_obj: ConfigLoader,
+    service_account_module: Any,
+) -> Any:
+    """
+    GCP 서비스 계정 인증 자격 증명을 3단계 우선순위에 따라 해결하여 반환합니다.
+    1순위: GCP_KEYFILE_JSON 또는 GOOGLE_KEYFILE_JSON 환경변수 (인메모리 JSON)
+    2순위: credentials_path_str 파일 경로 (.json 키 파일)
+    3순위: None (Google ADC 기본 인증 활용)
+
+    :param credentials_path_str: 로컬 키 파일 경로 문자열 (미지정 시 "")
+    :param config_loader_obj: 프로젝트 루트 경로 계산용 ConfigLoader 인스턴스
+    :param service_account_module: google.oauth2.service_account 모듈
+    :return: google.auth.credentials.Credentials 인스턴스 또는 None
+    :raises FileNotFoundError: 2순위 파일 경로가 지정되었으나 존재하지 않는 경우 발생
+    :raises ValueError: 1순위 환경변수 JSON 파싱 실패 시 발생
+    """
+    # 1순위: 환경변수(GCP_KEYFILE_JSON, GOOGLE_KEYFILE_JSON) 인메모리 JSON 검사
+    env_keyfile_json_str: Optional[str] = (
+        os.environ.get("GCP_KEYFILE_JSON") or os.environ.get("GOOGLE_KEYFILE_JSON")
+    )
+    if env_keyfile_json_str and env_keyfile_json_str.strip():
+        try:
+            key_info_dict: dict[str, Any] = json.loads(env_keyfile_json_str.strip())
+        except Exception as json_err:
+            raise ValueError(f"GCP_KEYFILE_JSON 환경변수의 JSON 파싱에 실패했습니다: {json_err}") from json_err
+
+        try:
+            return service_account_module.Credentials.from_service_account_info(key_info_dict)
+        except Exception as cred_err:
+            raise ValueError(f"GCP 서비스 계정 키 인증 객체 생성에 실패했습니다: {cred_err}") from cred_err
+
+    # 2순위: credentials_path_str 지정 파일 경로 검사
+    if credentials_path_str and credentials_path_str.strip():
+        cred_path: Path = Path(credentials_path_str)
+        if not cred_path.is_absolute():
+            cred_path = config_loader_obj.project_path(cred_path)
+        if not cred_path.exists():
+            raise FileNotFoundError(
+                f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{credentials_path_str}')"
+            )
+        return service_account_module.Credentials.from_service_account_file(str(cred_path))
+
+    # 3순위: None 반환 -> storage.Client() / bigquery.Client()가 ADC(기본 인증) 사용
+    return None
 
 
 class GcsClient:
@@ -370,17 +415,12 @@ class GcsClient:
         """
         storage_module, service_account_module = _get_gcs()
         try:
-            if self.credentials_path_str and self.credentials_path_str.strip() != "":
-                cred_path = Path(self.credentials_path_str)
-                if not cred_path.is_absolute():
-                    cred_path = self.config_loader.project_path(cred_path)
-                if not cred_path.exists():
-                    raise FileNotFoundError(
-                        f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path_str}')"
-                    )
-                credentials = service_account_module.Credentials.from_service_account_file(
-                    str(cred_path)
-                )
+            credentials = _resolve_gcp_credentials(
+                credentials_path_str=self.credentials_path_str,
+                config_loader_obj=self.config_loader,
+                service_account_module=service_account_module,
+            )
+            if credentials is not None:
                 self.client = storage_module.Client(credentials=credentials)
             else:
                 self.client = storage_module.Client()
@@ -505,23 +545,23 @@ class BigQueryClient:
         """
         bigquery_module, service_account_module = _get_bigquery()
         try:
-            if self.credentials_path_str and self.credentials_path_str.strip() != "":
-                cred_path = Path(self.credentials_path_str)
-                if not cred_path.is_absolute():
-                    cred_path = self.config_loader.project_path(cred_path)
-                if not cred_path.exists():
-                    raise FileNotFoundError(
-                        f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{self.credentials_path_str}')"
-                    )
-                credentials = service_account_module.Credentials.from_service_account_file(
-                    str(cred_path)
-                )
-                self.client = bigquery_module.Client(credentials=credentials, project=self.project_id_str)
+            effective_project_id_str: str = (
+                os.environ.get("GCP_PROJECT_ID")
+                or os.environ.get("GOOGLE_CLOUD_PROJECT")
+                or self.project_id_str
+            )
+            credentials = _resolve_gcp_credentials(
+                credentials_path_str=self.credentials_path_str,
+                config_loader_obj=self.config_loader,
+                service_account_module=service_account_module,
+            )
+            if credentials is not None:
+                self.client = bigquery_module.Client(credentials=credentials, project=effective_project_id_str)
             else:
-                self.client = bigquery_module.Client(project=self.project_id_str)
+                self.client = bigquery_module.Client(project=effective_project_id_str)
             
             # BigQuery Table 객체를 조회하여 스키마 타입(JSON, TIMESTAMP 등) 사전 캐싱 및 연결 상태 검증 (Fail-Fast)
-            table_ref_str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
+            table_ref_str = f"{effective_project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
             self.table_obj = self.client.get_table(table_ref_str)
         except Exception as e:
             raise ConnectionError(self.logger.exception("connection_failed", service_name="BigQuery", error=str(e))) from e
@@ -716,6 +756,7 @@ class BigQueryClient:
         pk_key_str: str = "id",
         preserve_columns_list: list[str] | None = None,
         column_types_dict: dict[str, str] | None = None,
+        matched_condition_str: str | None = None,
         not_matched_condition_str: str | None = None,
         post_queries_list: list[dict[str, Any]] | None = None,
         chunk_size_int: int = 100,
@@ -730,6 +771,7 @@ class BigQueryClient:
         :param pk_key_str: 테이블 병합 매칭 기준이 되는 기본키(Primary Key) 컬럼명 (기본값: 'id')
         :param preserve_columns_list: UPDATE 시 덮어쓰지 않고 최초 값을 보존할 컬럼명 리스트 (예: 최초 생성일시 등)
         :param column_types_dict: 컬럼별 명시적 SQL 타입 매핑 딕셔너리 (예: {"size": "INT64", "meta": "JSON"}). 미지정 시 데이터 타입 기반 자동 추론
+        :param matched_condition_str: WHEN MATCHED 절에 추가할 조건식 (예: "AND (S.amndHMS > T.amndHMS OR T.amndHMS IS NULL)")
         :param not_matched_condition_str: WHEN NOT MATCHED 절에 추가할 조건식 (예: "AND S.status != 'DELETED'")
         :param post_queries_list: MERGE 완료 후 실행할 후속 쿼리 목록 ([{"sql": "UPDATE ...", "params": [...]}, ...])
         :param chunk_size_int: 쿼리 파라미터 크기 제한을 고려한 청크 분할 단위 (기본값: 100)
@@ -803,7 +845,8 @@ class BigQueryClient:
             select_expressions_list.append(expr_str)
         unnest_select_clause_str: str = ",\n      ".join(select_expressions_list)
 
-        # 4. 신규 INSERT 방어 조건절 구성 (호출자 주입식)
+        # 4. 신규 INSERT 및 수정 UPDATE 방어 조건절 구성 (호출자 주입식)
+        matched_clause_str: str = f"WHEN MATCHED {matched_condition_str} THEN" if matched_condition_str else "WHEN MATCHED THEN"
         not_matched_clause_str: str = f"WHEN NOT MATCHED {not_matched_condition_str} THEN" if not_matched_condition_str else "WHEN NOT MATCHED THEN"
 
         merge_sql_template_str: str = f"""
@@ -814,7 +857,7 @@ USING (
     FROM UNNEST(JSON_QUERY_ARRAY(@json_payload)) AS item
 ) S
 ON T.`{pk_key_str}` = S.`{pk_key_str}`
-WHEN MATCHED THEN
+{matched_clause_str}
   UPDATE SET
     {update_set_clause_str}
 {not_matched_clause_str}

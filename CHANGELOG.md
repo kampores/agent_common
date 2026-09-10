@@ -2,6 +2,49 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.57 (2026-09-10)
+- **`clients.py` 내 레거시 클래스 별칭 `EcsClient = S3Client` 삭제 및 클라이언트 명칭 일원화 (규칙 1.4.5, 1.4.6, 1.6.3 준수)**:
+  - `clients.py`:
+    - 범용 `S3Client` 전환 완료 후 잔존하던 하위 호환 별칭 `EcsClient = S3Client`를 완전히 삭제하여 불필요한 별칭 레이어를 제거하고 클라이언트 명칭을 `S3Client`로 일원화.
+  - `__init__.py`:
+    - 최상위 패키지 임포트 및 `__all__` 노출 목록에서 `EcsClient` 제거.
+  - `README.md`:
+    - `S3Client` 소개 설명에서 `EcsClient` 별칭 하위 호환 관련 안내 문구 정리.
+
+### v0.4.56 (2026-09-10)
+- **`GcsClient` 및 `BigQueryClient`에 인메모리 JSON 키(`GCP_KEYFILE_JSON`) 지원 및 파일 경로 100% 호환 인증 확장 (규칙 1.1.1, 1.4.1, 1.5.1 준수)**:
+  - `clients.py`:
+    - 공통 인증 해석 함수 `_resolve_gcp_credentials`를 신설하여 3단계 우선순위(1순위: `GCP_KEYFILE_JSON` / `GOOGLE_KEYFILE_JSON` 인메모리 JSON ➔ 2순위: `credentials_path_str` 파일 경로 ➔ 3순위: Google ADC) 자동 해결 지원.
+    - Airflow K8s Secret 및 Connection(`google_cloud_default`)의 `keyfile_dict`를 인메모리로 안전하게 전달받아 파일 생성 없이 `Credentials.from_service_account_info`로 즉시 인증 가능.
+    - 로컬 개발 환경의 파일 기반 인증(`Credentials.from_service_account_file`)과의 100% 하위 호환성 보장.
+    - `BigQueryClient` 연결 시 환경변수 `GCP_PROJECT_ID` 또는 `GOOGLE_CLOUD_PROJECT`가 주입되면 프로젝트 ID 최우선 자동 반영.
+
+### v0.4.55 (2026-09-10)
+- **`ConfigLoader`에 범용 환경변수 템플릿 치환(`${VAR:-default}`) 기능 추가 (규칙 1.1.1, 1.4.1, 1.5.1 준수)**:
+  - `config_loader.py`:
+    - `_ENV_VAR_PATTERN` 정규식 및 `_replace_env_match` 헬퍼 함수를 추가하여 YAML 파일 및 설정 딕셔너리 내 모든 문자열의 `${VAR_NAME}` 및 `${VAR_NAME:-default}` 구문을 OS 환경변수로 재귀 자동 치환하는 `_interpolate_env_vars` 기능 구현.
+    - 도메인/프로젝트 종속적인 하드코딩 없이 모든 에이전트 및 데이터 파이프라인에서 민감한 인증 정보(Access Key, Secret Key, API URL 등)를 외부 환경변수(Airflow, Kubernetes, Docker 등)로부터 선언적으로 안전하게 주입받을 수 있도록 범용성 보장.
+
+### v0.4.54 (2026-09-10)
+- **`ConfigLoader` 및 `ReadOnlyConfig`에서 프로젝트 특정 도메인 결합 제거 및 순수 범용 오버라이드 인터페이스로 정제 (규칙 1.1.1, 1.4.1, 1.5.1 준수)**:
+  - `config_loader.py`:
+    - `apply_cli_args` 메서드 내에 하드코딩되어 있던 특정 프로젝트(`bucket_test`) 전용 섹션(`transfer`, `bigquery`) 및 도메인 필드(`lodin_dstlc_cd_str`, `write_disposition_str` 등) 매핑 로직을 전면 제거.
+    - 도메인 무관 순수 계층 딕셔너리를 설정 트리에 최우선 오버라이드 반영하는 범용 인터페이스인 `apply_cli_overrides(overrides_dict)`를 중심으로 설정 갱신 책임 단일화.
+    - 공통 라이브러리인 `agent_common`의 범용성(Agnosticism) 및 SRP(단일 책임 원칙) 완벽 회복.
+
+### v0.4.53 (2026-09-10)
+- **`ConfigLoader` 및 `ReadOnlyConfig`에 CLI 인자 통합 취합(`apply_cli_args`, `apply_cli_overrides`) 기능 추가 (규칙 1.4.2, 1.4.4, 1.5.1 준수)**:
+  - `config_loader.py`:
+    - `ConfigLoader`와 `ReadOnlyConfig`에 `apply_cli_args(args)` 및 `apply_cli_overrides(overrides_dict)` 메서드 추가.
+    - 프로그램 진입점(`main`)에서 파싱된 CLI `args`(Namespace 또는 dict)를 전달받아 `limit_int`, `target_type_str`, `target_folder_str`, `lodin_dstlc_cd_str`, `start_date_str`, `end_date_str`, `file_logging_bool`, `save_error_json_bool`, `write_disposition_str` 등의 항목을 전역 `config`에 최우선순위로 일괄 반영.
+    - `_cached_settings` 자동 무효화를 통해 애플리케이션 어디서든 `config.*` 점 표기법으로 취합된 최종 유효값을 조회할 수 있도록 단일화하고, 각 프로그램 `main()`의 수동 3항 연산자 폴백 및 매개변수 패스스루 체인을 제거.
+
+### v0.4.52 (2026-09-09)
+- **`BigQueryClient.merge_table_from_json_data`에 `matched_condition_str` 조건절 주입 지원 추가 (규칙 1.5.1, 1.6.1 준수)**:
+  - `clients.py`:
+    - `BigQueryClient.merge_table_from_json_data` 메서드 시그니처에 `matched_condition_str: str | None = None` 파라미터 추가.
+    - BigQuery MERGE SQL 템플릿의 `WHEN MATCHED` 절을 `WHEN MATCHED {matched_condition_str} THEN` 형태로 동적 조립하도록 지원하여, 호출자가 원천문서수정시간 비교 등의 도메인 조건을 유연하게 주입할 수 있도록 범용 기능 확장.
+
 ### v0.4.51 (2026-09-09)
 - **`LlmClient` 내 불필요한 껍데기(Pass-through) 게터 프로퍼티 19종 전면 삭제 및 간결화 (규칙 1.4.5, 1.4.6 준수)**:
   - `llm.py`:

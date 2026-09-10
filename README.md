@@ -26,6 +26,7 @@
 - **1.4. [Fail-Fast 필수 설정 검증 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/04_fail_fast_require_setting.md)**: 프로그램 시작 시 필수 설정값 누락 시 상세 원인 출력 후 프로세스 즉시 종료.
 - **1.5. [네트워크 프록시 제어 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/05_network_proxy_control.md)**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
 - **1.6. [모든 상수의 설정 파일화 및 템플릿 보정 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/06_ensure_config_self_healing.md)**: 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정.
+- **1.7. [환경변수 템플릿 치환 (`_interpolate_env_vars`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/01_hierarchical_yaml_merge.md)**: YAML 파일 및 설정 딕셔너리 내 `${VAR_NAME:-default}` 구문 자동 치환을 통한 선언적 환경변수 바인딩 지원 (v0.4.55).
 
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 호출 스택 기반 호출자/클래스명(`%(caller)s`, `%(className)s`) 자동 분리 추출 및 프로그램 로거 이름(`%(name)s`) 통일 지원 (v0.4.36)
@@ -35,9 +36,9 @@
 - **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md)**: 소요 시간, 처리 속도, 전송량 및 에러/제외 사유별 상세 내역(`get_log_id_description`)이 포함된 표준 요약 블록 자동 출력
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
-- `S3Client`: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득 (`EcsClient` 별칭 하위 호환 지원)
-- `GcsClient`: Google Cloud Storage 연결, 파일 존재 검증 및 대용량 멀티스레드 스트리밍 업로드
-- `BigQueryClient`: Google Cloud BigQuery 연결, JSON 데이터 스트리밍 입력(`insert_rows_json`), 배치 로드(`load_table_from_json_data`), 인라인 MERGE(`merge_table_from_json_data` - 한글/특수문자/예약어 컬럼 백틱 지원 및 413 방지 기본 청크 100건 분할), 범용 SQL 쿼리(`query`)
+- `S3Client`: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득
+- `GcsClient`: Google Cloud Storage 연결, 파일 존재 검증 및 대용량 멀티스레드 스트리밍 업로드 (인메모리 JSON 키 `GCP_KEYFILE_JSON` 및 파일 경로 3단계 우선순위 인증 지원 - v0.4.56)
+- `BigQueryClient`: Google Cloud BigQuery 연결, JSON 데이터 스트리밍 입력(`insert_rows_json`), 배치 로드(`load_table_from_json_data`), 인라인 MERGE(`merge_table_from_json_data` - 한글/특수문자/예약어 컬럼 백틱 지원 및 413 방지 기본 청크 100건 분할), 범용 SQL 쿼리(`query`) (인메모리 JSON 키 `GCP_KEYFILE_JSON` 및 프로젝트 자동 오버라이드 지원 - v0.4.56)
 
 #### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
 - **이원화된 Tool 디렉터리 계층 탐색**:
@@ -267,7 +268,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **2.5. [Automatic Summary Report Generation (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation.md)**: Emits structured 80-column execution summary reports with duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
 
 #### 3. Storage and Database Infrastructure Clients (`agent_common.clients`)
-- `S3Client`: AWS S3 and Dell ECS (S3-compatible) storage connection, object listing, metadata extraction, and in-memory streaming retrieval (`EcsClient` provided as backward compatibility alias).
+- `S3Client`: AWS S3 and Dell ECS (S3-compatible) storage connection, object listing, metadata extraction, and in-memory streaming retrieval.
 - `GcsClient`: Google Cloud Storage connection, blob existence verification, and high-throughput multithreaded streaming uploads.
 - `BigQueryClient`: Google Cloud BigQuery client supporting streaming ingestion (`insert_rows_json`), batch loading (`load_table_from_json_data`), inline MERGE (`merge_table_from_json_data` with backtick escaping and 100-record chunking to prevent HTTP 413), and general SQL execution (`query`).
 

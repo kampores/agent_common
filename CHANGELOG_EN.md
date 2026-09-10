@@ -2,6 +2,35 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.57 (2026-09-10)
+- **Eliminated Legacy `EcsClient = S3Client` Class Alias and Unified Client Naming (Rules 1.4.5, 1.4.6, 1.6.3)**:
+  - `clients.py`:
+    - Removed the redundant `EcsClient = S3Client` backward compatibility alias now that migration to universal `S3Client` is complete, eliminating unnecessary aliasing layers and unifying client references to `S3Client`.
+  - `__init__.py`:
+    - Removed `EcsClient` from top-level package imports and `__all__` export list.
+  - `README.md`:
+    - Cleaned up documentation notes regarding `EcsClient` backward compatibility alias under `S3Client`.
+
+### v0.4.56 (2026-09-10)
+- **Added In-Memory JSON Key (`GCP_KEYFILE_JSON`) Support and 100% File Path Backward Compatibility in `GcsClient` and `BigQueryClient` (Rules 1.1.1, 1.4.1, 1.5.1)**:
+  - `clients.py`:
+    - Introduced common helper `_resolve_gcp_credentials` implementing a 3-tier priority resolution (1st: `GCP_KEYFILE_JSON` / `GOOGLE_KEYFILE_JSON` in-memory JSON ➔ 2nd: `credentials_path_str` file path ➔ 3rd: Google ADC).
+    - Enables secure injection of `keyfile_dict` from Airflow K8s Secret / Connection (`google_cloud_default`) directly in memory via `Credentials.from_service_account_info` without writing files to disk.
+    - Preserves 100% backward compatibility with local file-based development environments (`Credentials.from_service_account_file`).
+    - Added automatic override of project ID in `BigQueryClient` via `GCP_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT`.
+
+### v0.4.55 (2026-09-10)
+- **Added Universal Environment Variable Interpolation (`${VAR:-default}`) in `ConfigLoader` (Rules 1.1.1, 1.4.1, 1.5.1)**:
+  - `config_loader.py`:
+    - Added `_ENV_VAR_PATTERN` regex and `_replace_env_match` helper to recursively interpolate environment variable templates (`${VAR_NAME}` and `${VAR_NAME:-default}`) across all YAML configuration files and settings dictionaries (`_interpolate_env_vars`).
+    - Empowers declarative, secure injection of sensitive credentials (API keys, secrets, URLs) from external orchestrators (Airflow, Kubernetes, Docker) across all agents and data pipelines without domain-specific hardcoding.
+
+### v0.4.52 (2026-09-09)
+- **Added `matched_condition_str` Injection Support in `BigQueryClient.merge_table_from_json_data` (Rules 1.5.1, 1.6.1)**:
+  - `clients.py`:
+    - Added `matched_condition_str: str | None = None` parameter to `BigQueryClient.merge_table_from_json_data`.
+    - Dynamically assemble the BigQuery MERGE SQL `WHEN MATCHED` clause as `WHEN MATCHED {matched_condition_str} THEN`, empowering callers to inject domain conditions (such as source document modification timestamp comparisons) cleanly and generically.
+
 ### v0.4.51 (2026-09-09)
 - **Elimination of 19 Redundant Pass-Through Getter Properties in `LlmClient` (Rules 1.4.5, 1.4.6)**:
   - `llm.py`:
