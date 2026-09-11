@@ -133,10 +133,6 @@ class ProjectLogger:
     # 중복 basicConfig 호출로 handler가 겹치지 않도록 로깅 초기화 여부를 기억합니다.
     _configured = False
     _app_name_str: str | None = None
-    # 클래스 전역 결과 건수 및 에러/제외 집계
-    _success_count_int: int = 0
-    _failure_count_int: int = 0
-    _excluded_count_int: int = 0
     _error_counts_dict: dict[str, int] = {}
     _excluded_counts_dict: dict[str, int] = {}
 
@@ -461,15 +457,12 @@ class ProjectLogger:
         inc_int: int = max(1, count_int)
         if excluded_bool:
             self.excluded_count_int += inc_int
-            ProjectLogger._excluded_count_int += inc_int
             if log_id_str:
                 self.record_exclusion(log_id_str, count_int=inc_int)
         elif success_bool:
             self.success_count_int += inc_int
-            ProjectLogger._success_count_int += inc_int
         else:
             self.failure_count_int += inc_int
-            ProjectLogger._failure_count_int += inc_int
             if log_id_str:
                 self.record_error(log_id_str, count_int=inc_int)
 
@@ -508,11 +501,10 @@ class ProjectLogger:
 
     def get_result_counts(self) -> dict[str, int]:
         """성공, 실패, 제외 건수 딕셔너리를 반환합니다."""
-        has_instance_counts_bool: bool = bool(self.success_count_int or self.failure_count_int or self.excluded_count_int)
         return {
-            "success": self.success_count_int if has_instance_counts_bool else ProjectLogger._success_count_int,
-            "failure": self.failure_count_int if has_instance_counts_bool else ProjectLogger._failure_count_int,
-            "excluded": self.excluded_count_int if has_instance_counts_bool else ProjectLogger._excluded_count_int,
+            "success": self.success_count_int,
+            "failure": self.failure_count_int,
+            "excluded": self.excluded_count_int,
         }
 
     def reset_result_counts(self) -> None:
@@ -520,9 +512,6 @@ class ProjectLogger:
         self.success_count_int = 0
         self.failure_count_int = 0
         self.excluded_count_int = 0
-        ProjectLogger._success_count_int = 0
-        ProjectLogger._failure_count_int = 0
-        ProjectLogger._excluded_count_int = 0
         self.reset_error_counts()
         self.reset_excluded_counts()
 
@@ -732,10 +721,9 @@ class ProjectLogger:
             start_datetime_str = getattr(tracker_obj, "start_datetime_str", start_datetime_str)
             total_bytes_int = getattr(tracker_obj, "total_bytes_int", total_bytes_int)
 
-        counts_dict: dict[str, int] = self.get_result_counts()
-        eff_success_count_int: int = success_count_int or counts_dict["success"]
-        eff_failure_count_int: int = failure_count_int or counts_dict["failure"]
-        eff_excluded_count_int: int = excluded_count_int or counts_dict["excluded"]
+        effective_success_count_int: int = success_count_int or self.success_count_int
+        effective_failure_count_int: int = failure_count_int or self.failure_count_int
+        effective_excluded_count_int: int = excluded_count_int or self.excluded_count_int
 
         import time
         from agent_common.tool.date.date_time_utils import DateTimeUtils
@@ -745,71 +733,88 @@ class ProjectLogger:
         elapsed_float: float = time.time() - effective_start_time_float
         end_datetime_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ_STR)
 
-        mins_int: int = int(elapsed_float // 60)
-        secs_float: float = elapsed_float % 60
-        time_display_str: str = f"{mins_int}분 {secs_float:.1f}초 ({elapsed_float:.2f}초)" if mins_int > 0 else f"{elapsed_float:.2f}초"
+        minutes_int: int = int(elapsed_float // 60)
+        seconds_float: float = elapsed_float % 60
+        time_display_str: str = f"{minutes_int}분 {seconds_float:.1f}초 ({elapsed_float:.2f}초)" if minutes_int > 0 else f"{elapsed_float:.2f}초"
 
-        lines_list: list[str] = [
+        # '전체 = 성공 + 실패 + 제외' 수치 정합성 자동 보장
+        calculated_sum_items_int: int = effective_success_count_int + effective_failure_count_int + effective_excluded_count_int
+        effective_total_items_int: int = calculated_sum_items_int if calculated_sum_items_int > 0 else total_items_int
+
+        success_ratio_float: float = (effective_success_count_int / effective_total_items_int * 100.0) if effective_total_items_int > 0 else 0.0
+        failure_ratio_float: float = (effective_failure_count_int / effective_total_items_int * 100.0) if effective_total_items_int > 0 else 0.0
+        excluded_ratio_float: float = (effective_excluded_count_int / effective_total_items_int * 100.0) if effective_total_items_int > 0 else 0.0
+
+        rate_float: float = effective_total_items_int / max(0.001, elapsed_float)
+
+        table_lines_list: list[str] = [
             "=" * 80,
-            f"                    [{task_name_str} 작업 결과 요약]",
+            f"                    [{task_name_str} 작업 결과 요약 표]",
             "=" * 80,
-            f"- 작업 시작 / 종료 시간 : {effective_start_datetime_str} ~ {end_datetime_str}",
-            f"- 총 소요 시간          : {time_display_str}",
-            "-" * 80,
-            f"- 총 처리 대상 건수     : {total_items_int:,} 건",
-            f"- 처리 성공 / 실패      : {eff_success_count_int:,} 건 / {eff_failure_count_int:,} 건",
-            f"- 처리 제외 (Skip)      : {eff_excluded_count_int:,} 건",
+            "| 구분 | 세부 항목 | 내용 / 수치 | 비고 |",
+            "| :--- | :--- | :--- | :--- |",
+            f"| 실행 시간 | 작업 일시 | {effective_start_datetime_str} ~ {end_datetime_str} | {time_display_str} |",
+            f"| **처리 건수** | **전체 건수 (Total)** | **{effective_total_items_int:,} 건** | **전체 = 성공 + 실패 + 제외** |",
+            f"| | ├─ 처리 성공 | {effective_success_count_int:,} 건 | {success_ratio_float:.1f}% |",
+            f"| | ├─ 처리 실패 | {effective_failure_count_int:,} 건 | {failure_ratio_float:.1f}% |",
+            f"| | └─ 처리 제외 | {effective_excluded_count_int:,} 건 | {excluded_ratio_float:.1f}% |",
+            f"| 처리 성능 | 평균 처리 속도 | {rate_float:.2f} items/sec | |",
         ]
 
-        # 에러 통계 조회: 인자로 전달된 error_counts_dict 우선, 없으면 로거의 get_error_counts() 사용
-        errors_map_dict: dict[str, int] = error_counts_dict if error_counts_dict is not None else self.get_error_counts()
-
-        if errors_map_dict:
-            total_errors_int: int = sum(errors_map_dict.values())
-            lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {total_errors_int:,}건):")
-            for err_log_id_str, err_cnt_int in sorted(errors_map_dict.items(), key=lambda x: (-x[1], x[0])):
-                desc_str: str = self.get_log_id_description(err_log_id_str)
-                if desc_str:
-                    lines_list.append(f"  * {err_log_id_str} ({desc_str}): {err_cnt_int:,} 건")
-                else:
-                    lines_list.append(f"  * {err_log_id_str}: {err_cnt_int:,} 건")
-        elif eff_failure_count_int > 0:
-            lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {eff_failure_count_int:,}건):")
-            lines_list.append(f"  * 기타 미분류 실패: {eff_failure_count_int:,} 건")
-
-        # 제외 통계 조회: 인자로 전달된 excluded_counts_dict 우선, 없으면 로거의 get_excluded_counts() 사용
-        excluded_map: dict[str, int] = excluded_counts_dict if excluded_counts_dict is not None else self.get_excluded_counts()
-
-        if excluded_map:
-            total_excluded_items_int: int = sum(excluded_map.values())
-            lines_list.append(f"- 처리 제외 세부 내역 (총 {total_excluded_items_int:,}건):")
-            for excl_log_id_str, excl_cnt_int in sorted(excluded_map.items(), key=lambda x: (-x[1], x[0])):
-                desc_str: str = self.get_log_id_description(excl_log_id_str)
-                if desc_str:
-                    lines_list.append(f"  * {excl_log_id_str} ({desc_str}): {excl_cnt_int:,} 건")
-                else:
-                    lines_list.append(f"  * {excl_log_id_str}: {excl_cnt_int:,} 건")
-        elif eff_excluded_count_int > 0:
-            lines_list.append(f"- 처리 제외 세부 내역 (총 {eff_excluded_count_int:,}건):")
-            lines_list.append(f"  * 기타 미분류 제외: {eff_excluded_count_int:,} 건")
-
         if total_bytes_int > 0:
-            mb_val_float: float = total_bytes_int / (1024 * 1024)
-            mb_rate_float: float = mb_val_float / max(0.001, elapsed_float)
-            lines_list.append(f"- 총 전송 데이터 용량   : {mb_val_float:.2f} MB (평균 {mb_rate_float:.2f} MB/s)")
-
-        total_processed_int: int = eff_success_count_int + eff_failure_count_int + eff_excluded_count_int
-        rate_float: float = total_processed_int / max(0.001, elapsed_float)
-        lines_list.append(f"- 평균 처리 속도        : {rate_float:.2f} items/sec")
+            megabytes_value_float: float = total_bytes_int / (1024 * 1024)
+            megabytes_rate_float: float = megabytes_value_float / max(0.001, elapsed_float)
+            table_lines_list.append(f"| | 총 전송 데이터량 | {megabytes_value_float:.2f} MB | 평균 {megabytes_rate_float:.2f} MB/s |")
 
         if extra_lines_list:
-            lines_list.append("-" * 80)
-            for line_str in extra_lines_list:
-                lines_list.append(f"- {line_str}" if not line_str.startswith("-") else line_str)
+            for extra_line_str in extra_lines_list:
+                cleaned_line_str = extra_line_str.strip().lstrip("-").strip()
+                if ":" in cleaned_line_str:
+                    item_key_str, item_value_str = cleaned_line_str.split(":", 1)
+                    item_key_str = item_key_str.strip()
+                    item_value_str = item_value_str.strip()
+                    table_lines_list.append(f"| 상세 정보 | {item_key_str} | {item_value_str} | |")
+                else:
+                    table_lines_list.append(f"| 상세 정보 | {cleaned_line_str} | | |")
 
-        lines_list.append("=" * 80)
+        table_lines_list.append("=" * 80)
 
-        summary_block_str: str = "\n" + "\n".join(lines_list)
+        # 실패 또는 제외 건수가 존재할 경우, 표 하단에 원인 분석용 세부 내역 목록 보존 (표 내부는 깔끔하게 유지)
+        effective_errors_dict: dict[str, int] = error_counts_dict if error_counts_dict is not None else self.error_counts_dict
+        effective_excluded_dict: dict[str, int] = excluded_counts_dict if excluded_counts_dict is not None else self.excluded_counts_dict
+
+        detail_lines_list: list[str] = []
+        if effective_errors_dict:
+            total_errors_int: int = sum(effective_errors_dict.values())
+            detail_lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {total_errors_int:,}건):")
+            for error_log_id_str, error_count_int in sorted(effective_errors_dict.items(), key=lambda x: (-x[1], x[0])):
+                description_str: str = self.get_log_id_description(error_log_id_str)
+                if description_str:
+                    detail_lines_list.append(f"  * {error_log_id_str} ({description_str}): {error_count_int:,} 건")
+                else:
+                    detail_lines_list.append(f"  * {error_log_id_str}: {error_count_int:,} 건")
+        elif effective_failure_count_int > 0:
+            detail_lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {effective_failure_count_int:,}건):")
+            detail_lines_list.append(f"  * 기타 미분류 실패: {effective_failure_count_int:,} 건")
+
+        if effective_excluded_dict:
+            total_excluded_items_int: int = sum(effective_excluded_dict.values())
+            detail_lines_list.append(f"- 처리 제외 세부 내역 (총 {total_excluded_items_int:,}건):")
+            for excluded_log_id_str, excluded_count_int in sorted(effective_excluded_dict.items(), key=lambda x: (-x[1], x[0])):
+                description_str = self.get_log_id_description(excluded_log_id_str)
+                if description_str:
+                    detail_lines_list.append(f"  * {excluded_log_id_str} ({description_str}): {excluded_count_int:,} 건")
+                else:
+                    detail_lines_list.append(f"  * {excluded_log_id_str}: {excluded_count_int:,} 건")
+        elif effective_excluded_count_int > 0:
+            detail_lines_list.append(f"- 처리 제외 세부 내역 (총 {effective_excluded_count_int:,}건):")
+            detail_lines_list.append(f"  * 기타 미분류 제외: {effective_excluded_count_int:,} 건")
+
+        if detail_lines_list:
+            table_lines_list.extend(detail_lines_list)
+            table_lines_list.append("=" * 80)
+
+        summary_block_str: str = "\n" + "\n".join(table_lines_list)
         self.warning("execution_summary_report", summary=summary_block_str)
 
     @staticmethod

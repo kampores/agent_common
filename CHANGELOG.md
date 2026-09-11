@@ -2,6 +2,34 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.61 (2026-09-11)
+- **파일 확장자별 2단계 매트릭스 요약 리포트 로그 ID(`extension_matrix_summary_report`) 등록 (규칙 1.1.1, 3.1 준수)**:
+  - `logging_messages_ko.yml` & `logging_messages_en.yml`:
+    - `WARNING.lifecycle` 섹션에 `extension_matrix_summary_report: "{summary}"` 템플릿 추가.
+    - 확장자별 2단계 통계 매트릭스 표 출력 시 로그 ID 누락으로 인해 메시지가 치환되지 않고 로그 ID 문자열만 단독 출력되던 현상 원천 해결.
+
+### v0.4.60 (2026-09-10)
+- **`log_summary` 요약 표 하단에 에러/제외 상세 내역(원인 코드 및 설명) 목록 보존 복원 (규칙 1.4.1, 3.1 준수)**:
+  - `logger.py`:
+    - 표 내부에는 긴 설명문 목록을 우겨넣지 않고 깔끔하게 유지하되, 실패(`failure_count_int > 0`) 또는 제외(`excluded_count_int > 0`) 건수가 발생한 경우에 한하여 **표 하단(표 밖)**에 원인 분석용 세부 내역 목록(`* 코드 (설명): N건`)을 덧붙여 출력하도록 보완.
+    - 미사용 상태로 남겨질 뻔했던 `error_counts_dict`, `excluded_counts_dict` 파라미터 및 `get_log_id_description()` 기능의 완벽한 활용성 복원.
+
+### v0.4.59 (2026-09-10)
+- **`ProjectLogger` 내 성공/실패/제외 카운트 상태를 `self` 인스턴스 변수로 단일화 (규칙 1.4.1, 1.4.2, 1.4.5 준수)**:
+  - `logger.py`:
+    - 클래스 레벨 전역 변수(`_success_count_int`, `_failure_count_int`, `_excluded_count_int`)를 전면 삭제.
+    - 인스턴스 변수(`self.success_count_int`, `self.failure_count_int`, `self.excluded_count_int`)로 단일화하여 객체지향 책임(SRP) 및 상태 캡슐화 완성.
+    - `log_summary()`에서 불필요한 `get_result_counts()` 딕셔너리 우회 조회를 제거하고 `self` 변수를 직접 참조하도록 간소화.
+    - `update()`, `reset_result_counts()`, `get_result_counts()`에서 클래스 전역 변수 동기화 및 복잡한 조건 분기 제거.
+
+### v0.4.58 (2026-09-10)
+- **`ProjectLogger.log_summary` 마크다운 표(Table) 포맷 개편 및 '전체 = 성공 + 실패 + 제외' 정합성 보장 (규칙 1.4.1, 1.4.5, 3.1 준수)**:
+  - `logger.py`:
+    - 최종 작업 요약 리포트(`log_summary`)를 기존 텍스트 목록 방식에서 시인성 높은 **마크다운 표(Markdown Table)** 포맷으로 개편.
+    - `전체 대상 건수 (Total) = 처리 성공 + 처리 실패 + 처리 제외(Skip)` 공식이 항상 100% 일치하도록 합산 및 비율(%) 자동 산출.
+    - 가독성을 저해하던 긴 예외/오류 상세 목록 및 처리 제외 사유 나열을 표 내부에서 배제하고 수치 및 성능 지표 위주로 압축.
+    - `extra_lines_list`로 전달된 커스텀 상세 정보(`키 : 값`)를 표의 상세 정보 행으로 자동 매핑 지원.
+
 ### v0.4.57 (2026-09-10)
 - **`clients.py` 내 레거시 클래스 별칭 `EcsClient = S3Client` 삭제 및 클라이언트 명칭 일원화 (규칙 1.4.5, 1.4.6, 1.6.3 준수)**:
   - `clients.py`:

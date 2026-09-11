@@ -136,6 +136,9 @@ logging_messages:
       # 예시: logger.warning("execution_summary_report", summary="\n================...")
       execution_summary_report: "{summary}"
 
+      # 예시: logger.warning("extension_matrix_summary_report", summary="\n================...")
+      extension_matrix_summary_report: "{summary}"
+
     # --- [설정 파일 관리 경고] ---
     config:
       # 예시: logger.warning("config_auto_create_failed", file_path="config/config.yml", error="Permission denied")

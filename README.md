@@ -33,7 +33,7 @@
 - **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 실행 로그 레벨별 디렉터리 자동 분기(`{log_level}` 기반 `log_file` 단일화) 및 서드파티 노이즈 억제
 - **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog.md)**: `config.yml`의 `logging.language` (`KO` 또는 `EN`) 설정에 따라 한국어/영문 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환
 - **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계
-- **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md)**: 소요 시간, 처리 속도, 전송량 및 에러/제외 사유별 상세 내역(`get_log_id_description`)이 포함된 표준 요약 블록 자동 출력
+- **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md)**: '전체 = 성공 + 실패 + 제외' 정합성 보장, 소요 시간, 처리 속도, 전송량이 포함된 표준 마크다운 표(Table) 자동 출력 (v0.4.58)
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
 - `S3Client`: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득

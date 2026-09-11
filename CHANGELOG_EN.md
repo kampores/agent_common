@@ -2,6 +2,12 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.61 (2026-09-11)
+- **Registered Log ID `extension_matrix_summary_report` for File Extension 2-Stage Matrix Summary Report (Rules 1.1.1, 3.1)**:
+  - `logging_messages_ko.yml` & `logging_messages_en.yml`:
+    - Added `extension_matrix_summary_report: "{summary}"` template under `WARNING.lifecycle` section.
+    - Resolved the issue where the summary matrix table was not formatted and only the log ID string itself was printed due to missing log ID definition.
+
 ### v0.4.57 (2026-09-10)
 - **Eliminated Legacy `EcsClient = S3Client` Class Alias and Unified Client Naming (Rules 1.4.5, 1.4.6, 1.6.3)**:
   - `clients.py`:
