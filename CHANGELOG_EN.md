@@ -2,6 +2,31 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.67 (2026-09-14)
+- **Timezone-Aware Datetime & Automatic KST (UTC+9) Conversion in `DateTimeUtils` (Rules 1.2.1, 1.4.1)**:
+  - `DateTimeUtils` (`agent_common/tool/date/date_time_utils.py`):
+    - Declared `DEFAULT_TIMEZONE_OBJ` (KST, UTC+9) based on standard library `datetime.timezone` and `datetime.timedelta`, eliminating OS local timezone dependency (`time.strftime`).
+    - Added `get_now_datetime(tz_obj)` returning a timezone-aware `datetime` object.
+    - Updated `get_today_yyyymmdd(tz_obj)`, `get_now_formatted(fmt_str, tz_obj)`, and `get_now_compact(tz_obj)` to compute accurate Korean time/date regardless of host environment (e.g., UTC in Airflow pods).
+    - Dynamically generates ISO 8601 timezone offsets (`+09:00`) in `get_now_formatted()`.
+
+### v0.4.63 (2026-09-11)
+- **Introduced `TableFormatter` for Automatic Monospace Console & Markdown Table Column Width Alignment and Integrated with `log_summary` (Rules 1.2.1, 1.4.1, 1.4.4)**:
+  - `TableFormatter` (`utils.py`):
+    - Accurately calculates East Asian display width (2 columns for CJK fullwidth, 1 column for halfwidth alphanumeric & box drawing symbols `├`, `─`, `│`, `└`) using standard library `unicodedata.east_asian_width`.
+    - Automatically measures maximum column widths and performs dynamic padding according to column alignments (`:---`, `:---:`, `---:`), ensuring vertical lines (`|`) are perfectly aligned in Airflow web log viewers and console terminals.
+  - `ProjectLogger.log_summary` (`logger.py`):
+    - Converted from manual string joining to `TableFormatter.format_markdown_table()` to eliminate misaligned vertical pipe lines in summary reports.
+
+### v0.4.62 (2026-09-11)
+- **Standardized GCP Authentication and Project ID Environment Variables to Official Google Standards and Purpose-Specific Naming (`GOOGLE_APPLICATION_CREDENTIALS_JSON`, `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLOUD_PROJECT`) (Rules 1.1.3, 1.4.1, 1.5.1, 1.5.3)**:
+  - `_resolve_gcp_credentials`:
+    - Completely replaced non-standard private variable `GCP_KEYFILE_JSON`.
+    - For in-memory JSON keyfile strings: supports **`GOOGLE_APPLICATION_CREDENTIALS_JSON`** (1st priority, `from_service_account_info`).
+    - For local keyfile paths: supports Google official standard **`GOOGLE_APPLICATION_CREDENTIALS`** (2nd priority, `from_service_account_file`).
+  - `BigQueryClient._connect`:
+    - Completely replaced non-standard private variable `GCP_PROJECT_ID` with official Google standard **`GOOGLE_CLOUD_PROJECT`**.
+
 ### v0.4.61 (2026-09-11)
 - **Registered Log ID `extension_matrix_summary_report` for File Extension 2-Stage Matrix Summary Report (Rules 1.1.1, 3.1)**:
   - `logging_messages_ko.yml` & `logging_messages_en.yml`:

@@ -747,24 +747,22 @@ class ProjectLogger:
 
         rate_float: float = effective_total_items_int / max(0.001, elapsed_float)
 
-        table_lines_list: list[str] = [
-            "=" * 80,
-            f"                    [{task_name_str} 작업 결과 요약 표]",
-            "=" * 80,
-            "| 구분 | 세부 항목 | 내용 / 수치 | 비고 |",
-            "| :--- | :--- | :--- | :--- |",
-            f"| 실행 시간 | 작업 일시 | {effective_start_datetime_str} ~ {end_datetime_str} | {time_display_str} |",
-            f"| **처리 건수** | **전체 건수 (Total)** | **{effective_total_items_int:,} 건** | **전체 = 성공 + 실패 + 제외** |",
-            f"| | ├─ 처리 성공 | {effective_success_count_int:,} 건 | {success_ratio_float:.1f}% |",
-            f"| | ├─ 처리 실패 | {effective_failure_count_int:,} 건 | {failure_ratio_float:.1f}% |",
-            f"| | └─ 처리 제외 | {effective_excluded_count_int:,} 건 | {excluded_ratio_float:.1f}% |",
-            f"| 처리 성능 | 평균 처리 속도 | {rate_float:.2f} items/sec | |",
+        from agent_common.utils import TableFormatter
+
+        table_headers_list: list[str] = ["구분", "세부 항목", "내용 / 수치", "비고"]
+        table_data_rows_list: list[list[str]] = [
+            ["실행 시간", "작업 일시", f"{effective_start_datetime_str} ~ {end_datetime_str}", time_display_str],
+            ["처리 건수", "전체 건수 (Total)", f"{effective_total_items_int:,} 건", "전체 = 성공 + 실패 + 제외"],
+            ["", "├─ 처리 성공", f"{effective_success_count_int:,} 건", f"{success_ratio_float:.1f}%"],
+            ["", "├─ 처리 실패", f"{effective_failure_count_int:,} 건", f"{failure_ratio_float:.1f}%"],
+            ["", "└─ 처리 제외", f"{effective_excluded_count_int:,} 건", f"{excluded_ratio_float:.1f}%"],
+            ["처리 성능", "평균 처리 속도", f"{rate_float:.2f} items/sec", ""],
         ]
 
         if total_bytes_int > 0:
             megabytes_value_float: float = total_bytes_int / (1024 * 1024)
             megabytes_rate_float: float = megabytes_value_float / max(0.001, elapsed_float)
-            table_lines_list.append(f"| | 총 전송 데이터량 | {megabytes_value_float:.2f} MB | 평균 {megabytes_rate_float:.2f} MB/s |")
+            table_data_rows_list.append(["", "총 전송 데이터량", f"{megabytes_value_float:.2f} MB", f"평균 {megabytes_rate_float:.2f} MB/s"])
 
         if extra_lines_list:
             for extra_line_str in extra_lines_list:
@@ -773,10 +771,22 @@ class ProjectLogger:
                     item_key_str, item_value_str = cleaned_line_str.split(":", 1)
                     item_key_str = item_key_str.strip()
                     item_value_str = item_value_str.strip()
-                    table_lines_list.append(f"| 상세 정보 | {item_key_str} | {item_value_str} | |")
+                    table_data_rows_list.append(["상세 정보", item_key_str, item_value_str, ""])
                 else:
-                    table_lines_list.append(f"| 상세 정보 | {cleaned_line_str} | | |")
+                    table_data_rows_list.append(["상세 정보", cleaned_line_str, "", ""])
 
+        formatted_table_rows_list: list[str] = TableFormatter.format_markdown_table(
+            headers_list=table_headers_list,
+            rows_list=table_data_rows_list,
+            alignments_list=[":---", ":---", ":---", ":---"],
+        )
+
+        table_lines_list: list[str] = [
+            "=" * 80,
+            f"                    [{task_name_str} 작업 결과 요약 표]",
+            "=" * 80,
+        ]
+        table_lines_list.extend(formatted_table_rows_list)
         table_lines_list.append("=" * 80)
 
         # 실패 또는 제외 건수가 존재할 경우, 표 하단에 원인 분석용 세부 내역 목록 보존 (표 내부는 깔끔하게 유지)

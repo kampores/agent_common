@@ -326,34 +326,45 @@ def _resolve_gcp_credentials(
     service_account_module: Any,
 ) -> Any:
     """
-    GCP 서비스 계정 인증 자격 증명을 3단계 우선순위에 따라 해결하여 반환합니다.
-    1순위: GCP_KEYFILE_JSON 또는 GOOGLE_KEYFILE_JSON 환경변수 (인메모리 JSON)
-    2순위: credentials_path_str 파일 경로 (.json 키 파일)
-    3순위: None (Google ADC 기본 인증 활용)
+    GCP 서비스 계정 인증 자격 증명을 환경변수 및 로컬 파일 경로 설정에 따라 해결하여 반환합니다.
+    1순위: GOOGLE_APPLICATION_CREDENTIALS_JSON 환경변수 (인메모리 JSON 문자열)
+    2순위: GOOGLE_APPLICATION_CREDENTIALS 환경변수 (Google 공식 표준 파일 경로)
+    3순위: credentials_path_str 파일 경로 (.json 키 파일, config.yml 설정값)
+    4순위: None (Google ADC 기본 인증 활용)
 
     :param credentials_path_str: 로컬 키 파일 경로 문자열 (미지정 시 "")
     :param config_loader_obj: 프로젝트 루트 경로 계산용 ConfigLoader 인스턴스
     :param service_account_module: google.oauth2.service_account 모듈
     :return: google.auth.credentials.Credentials 인스턴스 또는 None
-    :raises FileNotFoundError: 2순위 파일 경로가 지정되었으나 존재하지 않는 경우 발생
-    :raises ValueError: 1순위 환경변수 JSON 파싱 실패 시 발생
+    :raises FileNotFoundError: 파일 경로가 지정되었으나 존재하지 않는 경우 발생
+    :raises ValueError: 인메모리 JSON 환경변수 파싱 실패 시 발생
     """
-    # 1순위: 환경변수(GCP_KEYFILE_JSON, GOOGLE_KEYFILE_JSON) 인메모리 JSON 검사
-    env_keyfile_json_str: Optional[str] = (
-        os.environ.get("GCP_KEYFILE_JSON") or os.environ.get("GOOGLE_KEYFILE_JSON")
-    )
-    if env_keyfile_json_str and env_keyfile_json_str.strip():
+    # 1순위: 인메모리 JSON 환경변수(GOOGLE_APPLICATION_CREDENTIALS_JSON) 검사
+    env_credentials_json_str: Optional[str] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    if env_credentials_json_str and env_credentials_json_str.strip():
+        val_str: str = env_credentials_json_str.strip()
         try:
-            key_info_dict: dict[str, Any] = json.loads(env_keyfile_json_str.strip())
-        except Exception as json_err:
-            raise ValueError(f"GCP_KEYFILE_JSON 환경변수의 JSON 파싱에 실패했습니다: {json_err}") from json_err
-
-        try:
+            key_info_dict: dict[str, Any] = json.loads(val_str)
             return service_account_module.Credentials.from_service_account_info(key_info_dict)
         except Exception as cred_err:
-            raise ValueError(f"GCP 서비스 계정 키 인증 객체 생성에 실패했습니다: {cred_err}") from cred_err
+            raise ValueError(
+                f"GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다: {cred_err}"
+            ) from cred_err
 
-    # 2순위: credentials_path_str 지정 파일 경로 검사
+    # 2순위: Google 공식 표준 환경변수(GOOGLE_APPLICATION_CREDENTIALS) 파일 경로 검사
+    env_credentials_str: Optional[str] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if env_credentials_str and env_credentials_str.strip():
+        val_str: str = env_credentials_str.strip()
+        cred_path: Path = Path(val_str)
+        if not cred_path.is_absolute():
+            cred_path = config_loader_obj.project_path(cred_path)
+        if not cred_path.exists():
+            raise FileNotFoundError(
+                f"인증키 파일을 찾을 수 없습니다: {cred_path} (GOOGLE_APPLICATION_CREDENTIALS: '{val_str}')"
+            )
+        return service_account_module.Credentials.from_service_account_file(str(cred_path))
+
+    # 3순위: credentials_path_str 지정 파일 경로 검사
     if credentials_path_str and credentials_path_str.strip():
         cred_path: Path = Path(credentials_path_str)
         if not cred_path.is_absolute():
@@ -364,7 +375,7 @@ def _resolve_gcp_credentials(
             )
         return service_account_module.Credentials.from_service_account_file(str(cred_path))
 
-    # 3순위: None 반환 -> storage.Client() / bigquery.Client()가 ADC(기본 인증) 사용
+    # 4순위: None 반환 -> storage.Client() / bigquery.Client()가 ADC(기본 인증) 사용
     return None
 
 
@@ -546,9 +557,7 @@ class BigQueryClient:
         bigquery_module, service_account_module = _get_bigquery()
         try:
             effective_project_id_str: str = (
-                os.environ.get("GCP_PROJECT_ID")
-                or os.environ.get("GOOGLE_CLOUD_PROJECT")
-                or self.project_id_str
+                os.environ.get("GOOGLE_CLOUD_PROJECT") or self.project_id_str
             )
             credentials = _resolve_gcp_credentials(
                 credentials_path_str=self.credentials_path_str,

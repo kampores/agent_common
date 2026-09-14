@@ -2,6 +2,60 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.67 (2026-09-14)
+- **`DateTimeUtils` 타임존(Timezone-Aware) 인식 및 기본 한국 표준시(KST, UTC+9) 자동 변환 도입 (규칙 1.2.1, 1.4.1 준수)**:
+  - `DateTimeUtils` (`agent_common/tool/date/date_time_utils.py`):
+    - 파이썬 표준 라이브러리 `datetime.timezone`, `datetime.timedelta` 기반 `DEFAULT_TIMEZONE_OBJ` (KST, UTC+9)를 선언하고, `time.strftime` 기반 OS 시스템 로컬 시간 의존성을 전면 탈피.
+    - `get_now_datetime(tz_obj)` 메서드를 신설하여 timezone-aware `datetime` 객체를 반환하도록 지원.
+    - `get_today_yyyymmdd(tz_obj)`, `get_now_formatted(fmt_str, tz_obj)`, `get_now_compact(tz_obj)` 메서드에 타임존 변환을 적용하여, Airflow 파드 등 UTC(+00:00) 환경에서 실행되더라도 항상 정확한 한국 시각 및 한국 기준 일자(새벽 배치 날짜 역전 방지)를 산출하도록 보장.
+    - `get_now_formatted()`에서 `%z` 기반의 표준 ISO 8601 타임존 오프셋(`+09:00`)을 동적으로 결합하여 반환하도록 개선.
+
+### v0.4.66 (2026-09-14)
+- **`__init__.py` 내 `DateTimeUtils` 원본 모듈 직접 임포트 경로 명확화 (규칙 1.4.6 준수)**:
+  - `agent_common/__init__.py`:
+    - 기존에 `utils.py`를 거쳐 2단계로 간접 참조하던 `DateTimeUtils` 임포트를 본래 정의 위치인 `agent_common.tool.date.date_time_utils`에서 직접 임포트하여 re-export하도록 구조 단순화.
+    - IDE의 심볼 자동완성, 정의로 이동(Go to Definition) 및 정적 분석기에서의 심볼 인식 투명성 강화.
+    - `utils.py`의 `from agent_common.tool.date.date_time_utils import DateTimeUtils` 하위 호환성 임포트는 그대로 유지하여 기존 코드 호환성 100% 보장.
+
+### v0.4.65 (2026-09-13)
+- **`ProgressTracker` 및 `TableFormatter` 설정값 직참조(Direct Immutable Config Access) 구조 개선 및 불필요 인자/정적 바인딩 제거 (규칙 1.4.2, 1.4.6 준수)**:
+  - `ProgressTracker` (`utils.py`):
+    - `__init__`에서 `interval_percent_int` 인자 및 인스턴스 복제 상태를 제거하고, 불필요한 `getattr`/`APP_DEFAULT_CONFIG_OBJ` 방어적 fallback 체인을 완전히 배제한 뒤 `update()` 메서드에서 `config.progress_tracker.interval_percent_int`를 전역 직접 참조하도록 일원화.
+    - 불필요한 단순 전달 껍데기 프로퍼티(`interval_percent_int`)를 전면 제거하여 규칙 1.4.6 준수.
+    - `task_name_str` 기본값의 `"작업"` 하드코딩 리터럴을 제거하고 `config.progress_tracker.default_task_name_str` 및 `APP_DEFAULT_SCHEMA_DICT`를 통한 선언적 스키마 기본값 바인딩으로 전환.
+    - 미사용 정적 설정 객체(`APP_DEFAULT_CONFIG_OBJ`)를 제거하고 모듈 설정 스키마 정의(`APP_DEFAULT_SCHEMA_DICT`)로 정돈.
+  - `TableFormatter` (`utils.py`):
+    - 클래스 본문의 불필요한 정적 바인딩 변수(`MIN_CENTER_WIDTH_INT` 등 4개)를 제거하고 `format_markdown_table` 메서드 내부에서 `config.table_formatter.*`를 직접 참조하도록 리팩터링.
+  - `default_agent_common.yml`:
+    - `transfer` 섹션에 `newfile_archive_extensions_list` 기본값(`egg`, `zip`)을 명시하여 패키지 스키마 일원화.
+    - `progress_tracker` 섹션에 `default_task_name_str: "작업"` 기본 스키마 추가.
+
+### v0.4.64 (2026-09-13)
+- **`utils.py` 모듈 기본 설정 스키마(`APP_DEFAULT_SCHEMA_DICT`) 신설 및 `TableFormatter`/`ProgressTracker` 매직 넘버 상수화 (규칙 1.1.1, 1.7.5 준수)**:
+  - `utils.py`:
+    - 파일 최상단에 `APP_DEFAULT_SCHEMA_DICT`를 선언하여 `TableFormatter` 및 `ProgressTracker`의 모든 하드코딩 설정(마크다운 구분선 최소 너비 5/4, 양쪽 콜론 패딩 2/1, 진행률 마일스톤 간격 10%)을 스키마화.
+    - `TableFormatter` 클래스 상단에 `MIN_CENTER_WIDTH_INT`, `MIN_DEFAULT_WIDTH_INT`, `CENTER_COLON_PADDING_INT`, `DEFAULT_COLON_PADDING_INT`를 바인딩하여 함수 내부 인라인 매직 넘버(5, 4, 2, 1)를 전면 제거.
+    - `ProgressTracker.__init__`의 기본 파라미터 `interval_percent_int`를 스키마 기본값으로 연결.
+  - `default_agent_common.yml`:
+    - 패키지 기본 YAML 설정 파일에 `table_formatter` 및 `progress_tracker` 섹션 기본값 추가.
+
+### v0.4.63 (2026-09-11)
+- **모노스페이스 콘솔 및 마크다운 표 세로줄(|) 자동 맞춤 포매터 `TableFormatter` 신설 및 `log_summary` 연동 (규칙 1.2.1, 1.4.1, 1.4.4 준수)**:
+  - `TableFormatter` (`utils.py`):
+    - 표준 라이브러리 `unicodedata.east_asian_width`를 활용하여 한글(전각) 2칸, 영문/숫자/반각/트리기호(`├`, `─`, `│`, `└`) 1칸의 실제 표시 너비(Display Width)를 정밀 계산.
+    - 각 열의 최대 너비 자동 측정 및 정렬 방향(`:---`, `:---:`, `---:`)에 따른 동적 공백 패딩을 수행하여 Airflow 웹 로그 뷰어 및 콘솔 터미널에서 표 세로줄(`|`)이 일직선으로 완벽 정렬되도록 보장.
+  - `ProjectLogger.log_summary` (`logger.py`):
+    - 기존 수동 문자열 결합 방식에서 `TableFormatter.format_markdown_table()` 호출 방식으로 전환하여 요약 결과 표의 세로줄 어긋남 현상 원천 해결.
+
+### v0.4.62 (2026-09-11)
+- **GCP 인증 및 프로젝트 ID 환경변수를 Google Cloud 표준 규격 및 명확한 목적별 네이밍(`GOOGLE_APPLICATION_CREDENTIALS_JSON`, `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLOUD_PROJECT`)으로 전면 표준화 (규칙 1.1.3, 1.4.1, 1.5.1, 1.5.3 준수)**:
+  - `_resolve_gcp_credentials`:
+    - 비표준 사설 변수명(`GCP_KEYFILE_JSON`)을 전면 폐기.
+    - 인메모리 JSON 문자열 주입 시: **`GOOGLE_APPLICATION_CREDENTIALS_JSON`** (1순위, `from_service_account_info`) 지원.
+    - 로컬 키 파일 경로 지정 시: Google 공식 표준인 **`GOOGLE_APPLICATION_CREDENTIALS`** (2순위, `from_service_account_file`) 지원.
+  - `BigQueryClient._connect`:
+    - 비표준 사설 변수명(`GCP_PROJECT_ID`)을 전면 폐기하고, Google 공식 표준 환경변수인 **`GOOGLE_CLOUD_PROJECT`**로 단일화.
+
 ### v0.4.61 (2026-09-11)
 - **파일 확장자별 2단계 매트릭스 요약 리포트 로그 ID(`extension_matrix_summary_report`) 등록 (규칙 1.1.1, 3.1 준수)**:
   - `logging_messages_ko.yml` & `logging_messages_en.yml`:

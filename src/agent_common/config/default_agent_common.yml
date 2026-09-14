@@ -12,9 +12,22 @@ logging:
 
 transfer:
   timeout_seconds_int: 120
+  newfile_archive_extensions_list:
+    - egg
+    - zip
 
 bigquery:
   ignore_unknown_values_bool: true
+
+table_formatter:
+  min_center_width_int: 5
+  min_default_width_int: 4
+  center_colon_padding_int: 2
+  default_colon_padding_int: 1
+
+progress_tracker:
+  interval_percent_int: 10
+  default_task_name_str: "작업"
 
 templates:
   config_notice_header_str: |

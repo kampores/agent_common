@@ -8,6 +8,8 @@
 
 1.1.2. Manage patterned datasets and heuristic rules (regex patterns, decision thresholds) in dedicated dictionary-structured configuration files (e.g., YAML).
 
+1.1.3. Determine names for environment variables, protocols, and configuration keys in tiered priority: 1st: Official platform/industry standards (e.g., `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLOUD_PROJECT`), 2nd: When extending formats (e.g., in-memory raw data), derive based on the standard name (e.g., `GOOGLE_APPLICATION_CREDENTIALS_JSON`), 3rd: Unambiguous custom names only when no standard exists.
+
 ### 1.2. Standard Library First & Vulnerability (CVE) Minimization
 
 1.2.1. Prioritize Python standard libraries (`urllib.request`, `json`, `csv`, `pathlib`) over third-party packages to prevent security vulnerability (CVE) detection, avoiding heavy HTTP client packages (e.g., `requests`).
