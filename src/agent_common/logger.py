@@ -602,31 +602,31 @@ class ProjectLogger:
         self.logger.log(lvl_num_int, msg_str, stacklevel=stacklevel_int, extra=extra_dict)
         return msg_str
 
-    def info(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
+    def info(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
         """INFO 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
         if isinstance(msg_or_code, str):
-            msg = self.get_log_msg("INFO", msg_or_code, default=default, **kwargs)
+            msg = self.get_log_msg("INFO", msg_or_code, default_str=default_str, **kwargs)
             self.logger.info(msg, *args, stacklevel=stacklevel, extra=extra_dict)
             return msg
         self.logger.info(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
         return str(msg_or_code)
 
-    def warning(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
+    def warning(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
         """WARNING 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
         if isinstance(msg_or_code, str):
-            msg = self.get_log_msg("WARNING", msg_or_code, default=default, **kwargs)
+            msg = self.get_log_msg("WARNING", msg_or_code, default_str=default_str, **kwargs)
             self.logger.warning(msg, *args, stacklevel=stacklevel, extra=extra_dict)
             return msg
         self.logger.warning(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
         return str(msg_or_code)
 
-    def error(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
+    def error(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
         """ERROR 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
         self.record_failure(1)
@@ -634,14 +634,14 @@ class ProjectLogger:
         extra_dict = kwargs.pop("extra", None)
         if isinstance(msg_or_code, str):
             self.record_error(msg_or_code)
-            msg = self.get_log_msg("ERROR", msg_or_code, default=default, **kwargs)
+            msg = self.get_log_msg("ERROR", msg_or_code, default_str=default_str, **kwargs)
             self.logger.error(msg, *args, stacklevel=stacklevel, extra=extra_dict)
             return msg
         self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
         self.logger.error(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
         return str(msg_or_code)
 
-    def critical(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
+    def critical(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
         """CRITICAL 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
         self.record_failure(1)
@@ -649,26 +649,26 @@ class ProjectLogger:
         extra_dict = kwargs.pop("extra", None)
         if isinstance(msg_or_code, str):
             self.record_error(msg_or_code)
-            msg = self.get_log_msg("CRITICAL", msg_or_code, default=default, **kwargs)
+            msg = self.get_log_msg("CRITICAL", msg_or_code, default_str=default_str, **kwargs)
             self.logger.critical(msg, *args, stacklevel=stacklevel, extra=extra_dict)
             return msg
         self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
         self.logger.critical(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
         return str(msg_or_code)
 
-    def debug(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
+    def debug(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
         """DEBUG 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
         if isinstance(msg_or_code, str):
-            msg = self.get_log_msg("DEBUG", msg_or_code, default=default, **kwargs)
+            msg = self.get_log_msg("DEBUG", msg_or_code, default_str=default_str, **kwargs)
             self.logger.debug(msg, *args, stacklevel=stacklevel, extra=extra_dict)
             return msg
         self.logger.debug(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
         return str(msg_or_code)
 
-    def exception(self, msg_or_code: Any, *args: Any, default: str = "", **kwargs: Any) -> str:
+    def exception(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
         """예외 Traceback 정보와 함께 ERROR 레벨로 로그를 기록하고, 포매팅된 메시지를 반환합니다."""
         stacklevel = kwargs.pop("stacklevel", 2)
         self.record_failure(1)
@@ -676,7 +676,7 @@ class ProjectLogger:
         extra_dict = kwargs.pop("extra", None)
         if isinstance(msg_or_code, str):
             self.record_error(msg_or_code)
-            msg = self.get_log_msg("ERROR", msg_or_code, default=default, **kwargs)
+            msg = self.get_log_msg("ERROR", msg_or_code, default_str=default_str, **kwargs)
             self.logger.exception(msg, *args, stacklevel=stacklevel, extra=extra_dict)
             return msg
         self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
@@ -729,9 +729,9 @@ class ProjectLogger:
         from agent_common.tool.date.date_time_utils import DateTimeUtils
 
         effective_start_time_float: float = start_time_float if start_time_float is not None else time.time()
-        effective_start_datetime_str: str = start_datetime_str or DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ_STR)
+        effective_start_datetime_str: str = start_datetime_str or DateTimeUtils.get_now_no_tz()
         elapsed_float: float = time.time() - effective_start_time_float
-        end_datetime_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ_STR)
+        end_datetime_str: str = DateTimeUtils.get_now_no_tz()
 
         minutes_int: int = int(elapsed_float // 60)
         seconds_float: float = elapsed_float % 60

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 from agent_common.config_loader import ConfigLoader, config
 from agent_common.logger import ProjectLogger
+from agent_common.utils import TimeUtils
 
 # ==============================================================================
 # 스토리지 및 데이터베이스 클라이언트 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
@@ -254,7 +255,7 @@ class S3Client:
         s3_key_str: str = "",
         gcs_blob_name_str: str = "",
         size_int: int = 0,
-    ) -> bool:
+    ) -> str:
         """
         단일 파일에 대해 GCS 존재 여부 및 용량을 사전 검사하여, 동일 용량 파일 존재 시 복사를 건너뛰고(Skip),
         신규 파일이거나 용량이 다른 경우 S3/ECS 스트림을 열고 GCS로 실시간 전송하며,
@@ -264,7 +265,7 @@ class S3Client:
         :param s3_key_str: 소스 S3/ECS 객체 키 경로
         :param gcs_blob_name_str: 목적지 GCS 블롭 경로명
         :param size_int: 파일 바이트 크기
-        :return: 전송 성공 또는 Skip 시 True, 실패 시 False
+        :return: 신규 전송 성공 시 "UPLOADED", GCS 동일 파일 존재로 스킵 시 "SKIPPED", 전송 실패 시 "FAILED"
         """
         total_start_float: float = time.time()
         context_info_str: str = f"[S3_Key={s3_key_str} GCS_Blob={gcs_blob_name_str} Size={size_int}]"
@@ -284,7 +285,7 @@ class S3Client:
                     details=f"[CheckTime={check_elapsed_float:.2f}s Status=Skipped]",
                     context_info=context_info_str,
                 )
-                return True
+                return "SKIPPED"
 
             # 2. S3/ECS StreamingBody 스트림 객체 생성 시간 측정
             stream_start_float: float = time.time()
@@ -307,7 +308,7 @@ class S3Client:
                 ),
                 context_info=context_info_str,
             )
-            return True
+            return "UPLOADED"
         except Exception as exc:
             total_elapsed_float = time.time() - total_start_float
             self.logger.exception("transfer_failed", file_name=s3_key_str, error=str(exc))
@@ -317,7 +318,7 @@ class S3Client:
                 details=f"[TotalElapsed={total_elapsed_float:.2f}s]",
                 context_info=context_info_str,
             )
-            return False
+            return "FAILED"
 
 
 def _resolve_gcp_credentials(
@@ -532,8 +533,16 @@ class BigQueryClient:
             else config.bigquery.ignore_unknown_values_bool
         )
 
-        # timezone_offset_str: BigQuery TIMESTAMP 컬럼 적재 시 기본 적용할 타임존 오프셋 (_str 접미사로 자동 str 보증)
-        self.timezone_offset_str: str = config.bigquery.timezone_offset_str
+        # timezone_offset_str: BigQuery TIMESTAMP 컬럼 적재 시 기본 적용할 타임존 오프셋
+        # 1. 설정값(config.bigquery.timezone_offset_str)에 명시적인 타임존 오프셋("+09:00" 등)이 지정되어 있으면 최우선 적용
+        # 2. 설정값이 비어있거나 "AUTO", "SYSTEM"인 경우에만 호스트 시스템 로컬 타임존 오프셋을 자동 적용
+        system_offset_str: str = TimeUtils.get_system_timezone_offset_str()
+        configured_timezone_offset_str: str = (getattr(config.bigquery, "timezone_offset_str", "") or "").strip()
+
+        if configured_timezone_offset_str and configured_timezone_offset_str.upper() not in ("AUTO", "SYSTEM"):
+            self.timezone_offset_str: str = configured_timezone_offset_str
+        else:
+            self.timezone_offset_str = system_offset_str
 
         # client: google-cloud-bigquery 클라이언트 인스턴스
         self.client: Any = None

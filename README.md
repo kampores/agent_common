@@ -31,14 +31,14 @@
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 호출 스택 기반 호출자/클래스명(`%(caller)s`, `%(className)s`) 자동 분리 추출 및 프로그램 로거 이름(`%(name)s`) 통일 지원 (v0.4.36)
 - **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 실행 로그 레벨별 디렉터리 자동 분기(`{log_level}` 기반 `log_file` 단일화) 및 서드파티 노이즈 억제
-- **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog.md)**: `config.yml`의 `logging.language` (`KO` 또는 `EN`) 설정에 따라 한국어/영문 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환
+- **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog.md)**: `config.yml`의 `logging.language` (`KO` 또는 `EN`) 설정에 따라 한국어/영문 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환, `default_str` 표준 매개변수 기반 기본 템플릿 치환 보증 (v0.4.73)
 - **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계
 - **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md)**: '전체 = 성공 + 실패 + 제외' 정합성 보장, `TableFormatter` 기반 세로줄 자동 맞춤, 소요 시간, 처리 속도, 전송량이 포함된 표준 마크다운 표(Table) 자동 출력 (v0.4.63)
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
-- `S3Client`: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득
+- `S3Client`: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득, GCS 실시간 파일 전송 및 상태 판별(`transfer_to_gcs` - `"UPLOADED"`, `"SKIPPED"`, `"FAILED"` 구분 지원 - v0.4.72)
 - `GcsClient`: Google Cloud Storage 연결, 파일 존재 검증 및 대용량 멀티스레드 스트리밍 업로드 (인메모리 JSON 키 `GCP_KEYFILE_JSON` 및 파일 경로 3단계 우선순위 인증 지원 - v0.4.56)
-- `BigQueryClient`: Google Cloud BigQuery 연결, JSON 데이터 스트리밍 입력(`insert_rows_json`), 배치 로드(`load_table_from_json_data`), 인라인 MERGE(`merge_table_from_json_data` - 한글/특수문자/예약어 컬럼 백틱 지원 및 413 방지 기본 청크 100건 분할), 범용 SQL 쿼리(`query`) (인메모리 JSON 키 `GCP_KEYFILE_JSON` 및 프로젝트 자동 오버라이드 지원 - v0.4.56)
+- `BigQueryClient`: Google Cloud BigQuery 연결, JSON 데이터 스트리밍 입력(`insert_rows_json`), 배치 로드(`load_table_from_json_data`), 인라인 MERGE(`merge_table_from_json_data` - 한글/특수문자/예약어 컬럼 백틱 지원 및 413 방지 기본 청크 100건 분할), 범용 SQL 쿼리(`query`) (인메모리 JSON 키 `GCP_KEYFILE_JSON` 및 프로젝트 자동 오버라이드 지원 - v0.4.56, 명시적 타임존 오프셋 우선순위 지원 - v0.4.71)
 
 #### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
 - **이원화된 Tool 디렉터리 계층 탐색**:
@@ -51,17 +51,16 @@
 - **안전한 네임스페이스 탐색 (`_SafeNamespace`)**:
   - 대소문자 무관 탐색 및 누락된 필드에 대해 KeyError 없이 안전하게 빈 문자열(`""`) 반환
 - **내장 공통 도구 (`agent_common.tool.date.DateTimeUtils`)**:
-  - 시스템 OS 시간대(UTC/KST)와 무관하게 한국 표준시(KST, UTC+9) 일관 산출 보증 (v0.4.67)
-  - `get_now_datetime(tz_obj)`: Timezone-aware 현재 datetime 객체 반환
-  - `get_today_yyyymmdd(tz_obj)`: `YYYYMMDD` 형식 8자리 일자 반환 (새벽 배치 날짜 역전 방지, 예: `20260824`)
+  - 테이블 규칙 및 템플릿 평가 전용 날짜/시간 도구 (v0.4.69 / v0.4.74)
+  - `parse_datetime(dt_input_any, default_tz_obj)`: 다양한 형식(datetime, ISO 문자열)의 일시를 timezone-aware datetime으로 정규화 변환 (v0.4.74)
+  - `get_now_timestamp(tz_obj)`: ISO 8601 표준 타임스탬프(`YYYY-MM-DD HH:MM:SS+09:00` 또는 `+00:00`) 반환 (BigQuery 적재 및 규칙 파일 표준)
+  - `get_now_no_tz(tz_obj)`: 타임존 없는 일시 문자열(`YYYY-MM-DD HH:MM:SS`) 반환 (로그 및 요약표 전용)
   - `get_now_compact(tz_obj)`: `YYYYMMDDHHMMSS` 형식 14자리 압축 일시 반환 (예: `20260824110500`)
-  - `get_now_formatted(fmt, tz_obj)`: `YYYY-MM-DD HH:MM:SS+09:00` 표준 KST 포맷 일시 반환 (동적 타임존 오프셋 결합)
-- **시스템 컨텍스트 스키마 (`agent_common.schemas.sys.json`)**:
-  - `{sys.today}`, `{sys.now_compact}`, `{sys.timestamp_compact}`, `{sys.env}` 등 기본 자동 제공
+  - `get_today_yyyymmdd(tz_obj)`: `YYYYMMDD` 형식 8자리 일자 반환 (새벽 배치 날짜 역전 방지, 예: `20260824`)
 
 #### 5. 진행률 트래커 및 공용 유틸리티 (`agent_common.utils`)
-- `ProgressTracker`: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도 및 남은 시간 예측, 마일스톤 경고 승격 로깅, 최종 요약 리포트(Summary Report) 생성
-- `DateTimeUtils`: 전역 일시 헬퍼 함수군
+- `TimeUtils`: 호스트 시스템(배치 KST vs 파드 UTC) 타임존 동적 자동 감지, 전 세계 주요 표준 타임존(UTC, KST, JST, EST, CET 등) 해석, ISO 8601 오프셋 계산, 일시 객체/문자열을 timezone-aware datetime으로 정규화하는 `parse_datetime` 지원 코어 시간 인프라 유틸리티 (v0.4.69 / v0.4.74)
+- `ProgressTracker`: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도 및 남은 시간 예측, 마일스톤 경고 승격 로깅
 - `TableFormatter`: 유니코드 동아시아 문자 폭(Display Width) 정밀 계산 기반 모노스페이스 콘솔 및 마크다운 테이블 세로줄 자동 맞춤 포매터 (v0.4.63)
 
 #### 6. 공용 에러 및 예외 핸들러 (`agent_common.error_handler`)
@@ -286,15 +285,15 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **Safe Namespace Lookup (`_SafeNamespace`)**:
   - Case-insensitive lookups returning empty strings (`""`) without raising `KeyError` on missing keys.
 - **Built-in Common Utilities (`agent_common.tool.date.DateTimeUtils`)**:
-  - `get_today_yyyymmdd()`: Returns 8-digit date string (e.g., `20260824`).
-  - `get_now_compact()`: Returns 14-digit timestamp string (e.g., `20260824110500`).
-  - `get_now_formatted(fmt)`: Returns standard KST formatted datetime string (`YYYY-MM-DD HH:MM:SS+09:00`).
-- **Standard System Context Schema (`agent_common.schemas.sys.json`)**:
-  - Automatically provides `{sys.today}`, `{sys.now_compact}`, `{sys.timestamp_compact}`, `{sys.env}`, etc.
+  - `get_now_timestamp(tz_obj)`: Returns standard ISO 8601 timestamp string (`YYYY-MM-DD HH:MM:SS+09:00` or `+00:00`).
+  - `get_now_no_tz(tz_obj)`: Returns datetime string without timezone (`YYYY-MM-DD HH:MM:SS`).
+  - `get_now_compact(tz_obj)`: Returns 14-digit timestamp string (e.g., `20260824110500`).
+  - `get_today_yyyymmdd(tz_obj)`: Returns 8-digit date string (e.g., `20260824`).
 
 #### 5. Progress Tracker & Common Utilities (`agent_common.utils`)
-- `ProgressTracker`: Real-time multithreaded progress tracking (`[N/Total] (P%)`), throughput/ETA calculation, milestone log level elevation, and summary report generation.
-- `DateTimeUtils`: Global date/time helper functions.
+- `TimeUtils`: Dynamic host OS system timezone detection, world timezone parsing, and ISO 8601 offset calculation core utility (v0.4.69).
+- `ProgressTracker`: Real-time multithreaded progress tracking (`[N/Total] (P%)`), throughput/ETA calculation, and milestone log level elevation.
+- `TableFormatter`: Precision terminal and markdown table column width alignment utility (v0.4.63).
 
 #### 6. Common Error & Exception Handler (`agent_common.error_handler`)
 - Consistent exception logging and handling for network failures, configuration errors, and runtime exceptions.

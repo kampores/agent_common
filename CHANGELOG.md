@@ -2,6 +2,77 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.74 (2026-09-15)
+- **`TimeUtils.parse_datetime` 및 `DateTimeUtils.parse_datetime` 공용 일시 정규화 유틸리티 추가 (규칙 1.5.1, 1.4.6 준수)**:
+  - `agent_common/utils.py` (`TimeUtils`):
+    - `parse_datetime(dt_input_any: Any, default_tz_obj: Optional[timezone] = None) -> Optional[datetime]` 클래스 메서드 신설.
+    - 다양한 형태(datetime 객체, ISO 8601 일시 문자열, naive/aware 등)의 일시 값을 표준 비교 및 연산이 가능한 `timezone-aware datetime` 객체로 정규화 변환.
+    - 문자열 'Z'의 '+00:00'(UTC) 안전 변환 및 naive datetime 대상 시스템 기본 타임존 자동 보정 지원.
+  - `agent_common/tool/date/date_time_utils.py` (`DateTimeUtils`):
+    - 룰 파서 및 외부 공용 편의성을 위해 `parse_datetime` 인터페이스 노출 및 `TimeUtils.parse_datetime` 위임 연결.
+  - `app/ecs_to_gcsbigquery_merge.py`:
+    - 개별 애플리케이션 내부에 중복 정의되어 있던 `_parse_timestamp_to_datetime` 메서드를 전면 제거하고 `TimeUtils.parse_datetime` 공용 유틸리티 직접 호출로 통합.
+
+### v0.4.73 (2026-09-15)
+- **`ProjectLogger` 로깅 메서드 `default_str` 표준 타입 접미사 파라미터화 및 전달 정합성 확립 (규칙 1.5.3, 1.6.1 준수)**:
+  - `agent_common/logger.py`:
+    - `info`, `warning`, `error`, `critical`, `debug`, `exception`의 기본 템플릿 매개변수 명칭을 `default: str`에서 `default_str: str = ""`로 표준화.
+    - 내부 `get_log_msg()` 호출 시 `default_str=default_str`로 정확히 바인딩하여, YAML 템플릿 미등록 시 지정된 기본 템플릿(예: `default_str="{summary}"`)이 유실되고 메시지 코드 식별자만 출력되던 결함 원천 해결.
+    - 방어 코드(`kwargs.pop("default")` 등)를 일체 배제하고 명시적인 `default_str` 단일 표준으로 정합성 확립.
+
+### v0.4.72 (2026-09-15)
+- **`S3Client.transfer_to_gcs` 반환값 타입 확장 및 GCS 기존재 스킵 상태(`SKIPPED`) 명확화 (규칙 1.5.3, 1.6.1 준수)**:
+  - `agent_common/clients.py`:
+    - `S3Client.transfer_to_gcs()`의 반환값 타입을 `bool`에서 `str`(`"UPLOADED"`, `"SKIPPED"`, `"FAILED"`)로 확장.
+    - 기존 GCS 버킷에 동일 파일(크기 일치) 존재 시 단순 성공(`True`) 대신 `"SKIPPED"`를 명시 반환하여, 호출자(파이프라인 매니저 및 요약 리포터)에서 신규 전송 건과 기전송 제외(스킵) 건을 명확히 구분 집계할 수 있도록 개선.
+    - 신규 스트리밍 전송 성공 시 `"UPLOADED"`, 예외 발생 시 `"FAILED"` 반환.
+
+### v0.4.71 (2026-09-15)
+- **`BigQueryClient` 타임존 오프셋 우선순위 정상화 및 기본값 `+09:00` 설정 (규칙 1.1.1, 1.3, 1.4.2 준수)**:
+  - `agent_common/clients.py`:
+    - `BigQueryClient.__init__`: 호스트 시스템이 UTC(`+00:00`) 환경이더라도 `config.bigquery.timezone_offset_str`에 명시적인 타임존 오프셋(`+09:00` 등)이 지정되어 있으면 이를 최우선 적용하도록 분기 로직 정상화.
+    - `APP_DEFAULT_SCHEMA_DICT`: `bigquery.timezone_offset_str` 기본값을 국내 업무 원천 데이터 표준에 맞추어 `+09:00`으로 명시.
+    - Airflow 파드(UTC) 환경에서 한국 시간(KST) 원천 데이터 적재 시 9시간 시차 왜곡이 발생하던 현상을 원천 차단.
+
+### v0.4.70 (2026-09-15)
+- **`utils.py` 내 `DateTimeUtils` 하위 호환성 재노출(Re-export) 전면 제거 및 순환 참조(Circular Import) 원천 소멸 (규칙 1.4.6, 1.5.3 준수)**:
+  - `agent_common/utils.py`:
+    - 모듈 하단에 존재하던 `from agent_common.tool.date.date_time_utils import DateTimeUtils` 지연 임포트 및 `__all__` 내 `"DateTimeUtils"` 노출을 완전히 제거.
+    - `agent_common/__init__.py` -> `date_time_utils.py` -> `utils.py` -> `date_time_utils.py`로 이어지던 부분 초기화 순환 참조(Circular Dependency)를 원천 차단하고 `date_time_utils` -> `utils` 단방향 DAG 구조 확립.
+    - 하위 호환성 껍데기 코드를 전면 배제하고, `DateTimeUtils` 사용처는 최상위 `agent_common` 단일 표준 진입점으로 일원화.
+
+### v0.4.69 (2026-09-14)
+- **`TimeUtils` 코어 인프라 분리, `DateTimeUtils` 실체화 및 껍데기 함수(Pass-through Wrapper) 전면 제거 (규칙 1.1.1, 1.2.1, 1.4.1, 1.4.6 준수)**:
+  - `TimeUtils` (`agent_common/utils.py`):
+    - 호스트 시스템(OS/컨테이너) 로컬 타임존 동적 감지(`get_system_timezone`), ISO 8601 오프셋 변환(`get_system_timezone_offset_str`, `format_timezone_offset`), 전 세계 표준시 사전(`WORLD_TIMEZONE_OFFSETS_DICT`), 유연한 타임존 해석기(`resolve_timezone`)를 전담하는 코어 시간 인프라 클래스 신설.
+    - 단순 1줄 위임 호출을 수행하던 껍데기 함수(`resolve_default_timezone`)를 완전히 제거하고 `resolve_timezone()`이 기본 인자(`None`)를 직접 해석하도록 일원화(규칙 1.4.6 준수).
+  - `DateTimeUtils` (`agent_common/tool/date/date_time_utils.py`):
+    - 룰(`table_rules.yml`), `ToolParser`, 데이터 파이프라인에서 실제 호출되는 필수 메서드만 남기고 코드 경량화(276줄 -> 85줄).
+    - 실제 사용 메서드: `get_now_datetime(tz_obj)`, `get_today_yyyymmdd(tz_obj)`, `get_now_timestamp(tz_obj)`, `get_now_no_tz(tz_obj)`, `get_now_compact(tz_obj)`.
+    - 실제 프로젝트 어디에서도 사용되지 않던 미사용·추측성 메서드(`get_yesterday_yyyymmdd`, `get_now_formatted`, `parse_date_to_yyyymmdd`, `format_timestamp`, `add_days`, `date_diff_days`, `is_expired`, `format_timezone_offset`) 및 미참조 포맷 상수(`FORMAT_DATETIME_STD_STR`, `FORMAT_DATETIME_ISO_STR`) 전면 제거 (규칙 1.4.5, 1.5.2 추측성 코딩 금지 및 KISS/YAGNI 준수).
+    - 모듈 하단에 존재하던 단순 포워딩 편의 함수 7개(`get_today()`, `get_now_compact()` 등)를 전면 제거하고 `ToolParser`의 클래스 메서드 자동 탐색 엔진을 활용하도록 단순화(규칙 1.4.6 준수).
+  - `ToolParser` (`agent_common/tool_parser.py`):
+    - KISS 및 YAGNI 원칙에 따라 중복되고 불필요한 시스템 컨텍스트 조립 메서드 `build_sys_context()` 및 `schemas/sys.json`을 완전히 제거.
+    - `eval()` 내 매번 발생하던 불필요한 기본 컨텍스트 병합 오버헤드를 제거하여 템플릿 평가 성능 최적화.
+    - 날짜/시간 도구는 `{DateTimeUtils.get_now_timestamp()}`, `{DateTimeUtils.get_today_yyyymmdd()}`로 직통 호출하도록 일원화.
+  - `ProgressTracker` (`agent_common/utils.py`):
+    - 호출부가 전무하고 `ProjectLogger.log_summary()` 및 도메인 전용 리포터와 역할이 중복되던 미사용 레거시 메서드 `summary()`를 완전히 제거 (KISS, YAGNI, 규칙 1.4.5 준수).
+    - `__init__` 내 불필요한 별칭 인스턴스 변수(`self.logger`)를 제거하고 `self.logger_obj`로 단일화 (규칙 1.5.3 준수).
+  - `TableFormatter` (`agent_common/utils.py`):
+    - `format_markdown_table` 메서드를 복원 및 `format_row`, `format_separator`와 연동하여 마크다운 테이블 자동 맞춤 서식화 보장.
+  - `BigQueryClient` (`agent_common/clients.py`):
+    - 호스트 시스템 시간이 UTC인 환경(Airflow 파드)에서는 타임존 왜곡 방지를 위해 `timezone_offset_str` 기본값을 `+00:00`으로 자동 적용하고, `config.yml`의 `timezone_offset_str`가 "AUTO" 또는 비어있을 때 시스템 로컬 타임존 오프셋을 동적으로 반영하도록 개선.
+
+### v0.4.68 (2026-09-14)
+- **`DateTimeUtils` 타임존 오프셋 하드코딩 전면 제거, 동적 포매터 `format_timezone_offset` 신설 및 `sys.now` 타임존 표준화 (규칙 1.1.1, 1.4.1 준수)**:
+  - `DateTimeUtils` (`agent_common/tool/date/date_time_utils.py`):
+    - `FORMAT_DATETIME_STD_STR` 상수 내 `+09:00` 하드코딩을 제거하고 `%Y-%m-%d %H:%M:%S%z`로 전환하여 규칙 1.1.1(하드코딩 금지) 엄격 준수.
+    - `format_timezone_offset(dt_obj)` 클래스 메서드를 신설하여 `datetime` 객체로부터 실제 적용된 타임존 오프셋(`+09:00`, `+00:00`, `-05:00` 등)을 ISO 8601 콜론 규격으로 동적 추출 및 결합.
+    - `resolve_default_timezone()` 클래스 메서드를 신설하여 환경변수(`TIMEZONE_OFFSET`, `TZ_OFFSET`) 기반의 동적 타임존 해석 지원.
+  - `ToolParser` (`agent_common/tool_parser.py`):
+    - `build_sys_context()`의 `sys.now`를 `FORMAT_DATETIME_NO_TZ_STR` 호출에서 `get_now_formatted()` 호출로 일원화하여, `schemas/sys.json` 명세와 동일하게 타임존 오프셋이 포함된 완전한 ISO 8601 일시(`YYYY-MM-DD HH:MM:SS+09:00`)를 기본 제공하도록 개선.
+    - 타임존 없는 표시용 보조 변수로 `sys.now_no_tz`를 추가 제공.
+
 ### v0.4.67 (2026-09-14)
 - **`DateTimeUtils` 타임존(Timezone-Aware) 인식 및 기본 한국 표준시(KST, UTC+9) 자동 변환 도입 (규칙 1.2.1, 1.4.1 준수)**:
   - `DateTimeUtils` (`agent_common/tool/date/date_time_utils.py`):

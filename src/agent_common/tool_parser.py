@@ -17,7 +17,6 @@ import importlib
 
 from agent_common.logger import ProjectLogger
 from agent_common.config_loader import ConfigLoader, config
-from agent_common.utils import DateTimeUtils
 
 # ==============================================================================
 # 도구 파서 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
@@ -94,26 +93,6 @@ class ToolParser:
         self.config_loader: ConfigLoader = config_loader_obj or ConfigLoader(config_dir=config_dir_path)
         self._tool_cache: Dict[str, Callable] = {}
 
-    def build_sys_context(self) -> Dict[str, Any]:
-        """
-        표준 시스템 런타임 변수 네임스페이스(sys.*)를 조립하여 반환합니다.
-        (sys.now, sys.now_compact, sys.today, sys.timestamp_compact 등 포함)
-
-        :return: 시스템 컨텍스트 딕셔너리
-        """
-        now_compact_str: str = DateTimeUtils.get_now_compact()
-        today_str: str = DateTimeUtils.get_today_yyyymmdd()
-        now_dt_str: str = DateTimeUtils.get_now_formatted(DateTimeUtils.FORMAT_DATETIME_NO_TZ_STR)
-
-        return {
-            "sys": {
-                "now": now_dt_str,
-                "now_compact": now_compact_str,
-                "timestamp_compact": now_compact_str,
-                "today": today_str,
-                "date_compact": today_str,
-            }
-        }
 
     def load_tool_function(self, func_name_str: str) -> Optional[Callable]:
         """
@@ -243,18 +222,10 @@ class ToolParser:
         if not tmpl_val_str:
             return ""
 
-        # 기본 sys 컨텍스트 병합
-        merged_ctx: Dict[str, Any] = self.build_sys_context()
-        if isinstance(context_dict, dict):
-            # context_dict 가 sys 를 포함하면 우선 병합
-            for k, v in context_dict.items():
-                if k == "sys" and isinstance(v, dict):
-                    merged_ctx["sys"].update(v)
-                else:
-                    merged_ctx[k] = v
+        merged_ctx: Dict[str, Any] = dict(context_dict) if isinstance(context_dict, dict) else {}
 
-        # 1. 단일 {func_name(...)} 형식인 경우 직통 실행
-        tool_call_match = re.match(r"^\{([a-zA-Z0-9_]+)\((.*)\)\}$", tmpl_val_str)
+        # 1. 단일 {func_name(...)} 또는 {Class.method(...)} 형식인 경우 직통 실행
+        tool_call_match = re.match(r"^\{([a-zA-Z0-9_.]+)\((.*)\)\}$", tmpl_val_str)
         if tool_call_match:
             func_name_str = tool_call_match.group(1)
             raw_args_str = tool_call_match.group(2).strip()
@@ -301,7 +272,7 @@ class ToolParser:
                 return sub_clean_str[1:-1]
 
             # 함수 호출 토큰인 경우
-            func_m = re.match(r"^([a-zA-Z0-9_]+)\((.*)\)$", sub_clean_str)
+            func_m = re.match(r"^([a-zA-Z0-9_.]+)\((.*)\)$", sub_clean_str)
             if func_m:
                 f_name_str: str = func_m.group(1)
                 if self.load_tool_function(f_name_str):

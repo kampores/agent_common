@@ -16,7 +16,6 @@ from typing import Any, Optional
 
 import yaml
 from agent_common.error_handler import ErrorHandler
-from agent_common.tool.date.date_time_utils import DateTimeUtils
 
 
 # ==============================================================================
@@ -431,7 +430,7 @@ class ConfigLoader:
         if not target_path.exists():
             # 1. 파일이 아예 없으면 기본 스키마로 파일 신규 생성
             initial_data = merged_defaults if merged_defaults else {"app": {"name": "app"}}
-            now_dt_str = DateTimeUtils.get_now_formatted()
+            now_dt_str = DateTimeUtils.get_now_timestamp()
             header_tmpl = self.setting("templates.config_notice_header_str")
             if header_tmpl:
                 header_comment = header_tmpl.format(config_file_name=config_file_name, now_dt_str=now_dt_str)
@@ -464,7 +463,7 @@ class ConfigLoader:
                                     repaired_keys.append(f"{k}.{sub_k}")
 
                     if repaired_keys:
-                        now_dt_str = DateTimeUtils.get_now_formatted()
+                        now_dt_str = DateTimeUtils.get_now_timestamp()
                         repair_tmpl = self.setting("templates.config_repair_inline_comment_str")
                         inline_comment = repair_tmpl.format(now_dt_str=now_dt_str)
 

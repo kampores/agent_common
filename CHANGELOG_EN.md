@@ -2,6 +2,45 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.70 (2026-09-15)
+- **Completely Purged `DateTimeUtils` Backward-Compatibility Re-export in `utils.py` and Eliminated Circular Import (Rules 1.4.6, 1.5.3)**:
+  - `agent_common/utils.py`:
+    - Removed bottom-level `from agent_common.tool.date.date_time_utils import DateTimeUtils` re-export and `"DateTimeUtils"` from `__all__`.
+    - Fundamentally eliminated the partial-initialization circular import (`agent_common/__init__.py` -> `date_time_utils.py` -> `utils.py` -> `date_time_utils.py`), establishing a strict one-way DAG dependency from `date_time_utils` to `utils`.
+    - Replaced all legacy caller imports with standard canonical `from agent_common import DateTimeUtils`.
+
+### v0.4.69 (2026-09-14)
+- **Separated Core `TimeUtils` Infrastructure, Substantive `DateTimeUtils` Tool, and Eliminated Shell Pass-Through Wrappers (Rules 1.1.1, 1.2.1, 1.4.1, 1.4.6)**:
+  - `TimeUtils` (`agent_common/utils.py`):
+    - Added core `TimeUtils` class managing dynamic host OS system timezone detection (`get_system_timezone`), ISO 8601 offset strings (`get_system_timezone_offset_str`, `format_timezone_offset`), world timezone mapping dictionary (`WORLD_TIMEZONE_OFFSETS_DICT`), and universal timezone resolution (`resolve_timezone`).
+    - Removed trivial forwarding wrapper `resolve_default_timezone` to strictly follow Rule 1.4.6.
+  - `DateTimeUtils` (`agent_common/tool/date/date_time_utils.py`):
+    - Streamlined codebase (from 276 lines down to 85 lines) preserving strictly the essential methods called by pipelines and rules.
+    - Canonical methods: `get_now_datetime(tz_obj)`, `get_today_yyyymmdd(tz_obj)`, `get_now_timestamp(tz_obj)`, `get_now_no_tz(tz_obj)`, `get_now_compact(tz_obj)`.
+    - Completely purged unused speculative methods (`get_yesterday_yyyymmdd`, `get_now_formatted`, `parse_date_to_yyyymmdd`, `format_timestamp`, `add_days`, `date_diff_days`, `is_expired`, `format_timezone_offset`) and unreferenced format constants (`FORMAT_DATETIME_STD_STR`, `FORMAT_DATETIME_ISO_STR`) per Rule 1.4.5, Rule 1.5.2 (No Speculative Coding), and KISS/YAGNI.
+    - Removed 7 redundant module-level forwarding functions (`get_today()`, `get_now_compact()`, etc.) to eliminate superficial wrappers (Rule 1.4.6).
+  - `ToolParser` (`agent_common/tool_parser.py`):
+    - Completely removed redundant `build_sys_context()` method and `schemas/sys.json` per KISS and YAGNI principles.
+    - Optimized `eval()` by eliminating default context merging overhead.
+    - Unified date/time evaluations to direct tool invocations (`{DateTimeUtils.get_now_timestamp()}`, `{DateTimeUtils.get_today_yyyymmdd()}`).
+  - `ProgressTracker` (`agent_common/utils.py`):
+    - Removed unused legacy method `summary()` which had no callers and duplicated the role of `ProjectLogger.log_summary()` and domain reporters (KISS, YAGNI, Rule 1.4.5).
+    - Removed redundant alias instance variable `self.logger` in favor of single canonical `self.logger_obj` (Rule 1.5.3).
+  - `TableFormatter` (`agent_common/utils.py`):
+    - Restored `format_markdown_table` method integrating with `format_row` and `format_separator`.
+  - `BigQueryClient` (`agent_common/clients.py`):
+    - Automatically defaults to `+00:00` in UTC environments (Airflow pods) and dynamically applies host system timezone when configured as `AUTO`.
+
+### v0.4.68 (2026-09-14)
+- **Eliminated Hardcoded Timezone Offset, Added Dynamic `format_timezone_offset`, and Standardized `sys.now` to Timezone-Aware Datetime (Rules 1.1.1, 1.4.1)**:
+  - `DateTimeUtils` (`agent_common/tool/date/date_time_utils.py`):
+    - Removed hardcoded `+09:00` from `FORMAT_DATETIME_STD_STR` and converted it to `%Y-%m-%d %H:%M:%S%z`.
+    - Added `format_timezone_offset(dt_obj)` dynamically formatting the ISO 8601 offset (`+09:00`, `+00:00`, `-05:00`).
+    - Added `resolve_default_timezone()` dynamically parsing `TIMEZONE_OFFSET` / `TZ_OFFSET` environment variables.
+  - `ToolParser` (`agent_common/tool_parser.py`):
+    - Unified `sys.now` in `build_sys_context()` to use `get_now_formatted()`, aligning with `schemas/sys.json` and providing full ISO 8601 strings (`YYYY-MM-DD HH:MM:SS+09:00`).
+    - Added `sys.now_no_tz` as an auxiliary variable for display-only contexts.
+
 ### v0.4.67 (2026-09-14)
 - **Timezone-Aware Datetime & Automatic KST (UTC+9) Conversion in `DateTimeUtils` (Rules 1.2.1, 1.4.1)**:
   - `DateTimeUtils` (`agent_common/tool/date/date_time_utils.py`):
