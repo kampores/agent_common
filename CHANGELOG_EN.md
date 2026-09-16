@@ -2,6 +2,20 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.76 (2026-09-16)
+- **Comprehensive Technical Manuals for Storage & Database Clients (`clients.py`) and Full README.md Modernization (Rules 2.1, 4.2)**:
+  - Added 10 user manual documents under `manual/kr/clients/` and `manual/en/clients/`:
+    - `01_s3_ecs_storage_client.md`: 3.1. AWS S3 & Dell ECS integration, early `head_bucket` fail-fast validation, paginated object streaming (`list_objects`), direct GCS streaming with smart duplicate skipping (`transfer_to_gcs`).
+    - `02_gcs_cloud_storage_client.md`: 3.2. Google Cloud Storage streaming upload & 4-tier credential resolution hierarchy (`GOOGLE_APPLICATION_CREDENTIALS_JSON` in-memory JSON -> `GOOGLE_APPLICATION_CREDENTIALS` file -> `credentials_path_str` -> Google ADC), zero-disk streaming uploads (`upload_stream`).
+    - `03_bigquery_batch_and_streaming_load.md`: 3.3. Google Cloud BigQuery batch loading (`load_table_from_json_data`) vs real-time streaming ingestion (`insert_rows_json_data`), unpacked nested error diagnostics (`errors`, `location`, `reason`), key deduplication set lookup (`get_existing_keys`), SQL queries (`query`).
+    - `04_bigquery_inline_merge_upsert.md`: 3.4. BigQuery high-performance inline MERGE (Upsert) engine, direct `UNNEST(JSON_QUERY_ARRAY(@json_payload))` parameter binding without staging tables, schema type inference and casting (`column_types_dict`), preserved columns (`preserve_columns_list`), reserved keyword and Unicode column backtick escaping, 100-row chunking.
+    - `05_bigquery_timestamp_and_tz_sync.md`: 3.5. BigQuery timestamp conversion and table timezone mode synchronization (`convert_to_bigquery_timestamp`, `validate_and_sync_table_timestamp_mode`), Standard-UTC vs KST-as-UTC modes with fail-fast blocking.
+  - `README.md`:
+    - Integrated manual links and comprehensive descriptions in Korean & English Section 3.
+    - Added practical code snippets for storage and BigQuery clients in both language sections.
+    - Updated user manual index tables with entries 3.1 through 3.5.
+    - Updated release versions and package commands to `0.4.76`.
+
 ### v0.4.70 (2026-09-15)
 - **Completely Purged `DateTimeUtils` Backward-Compatibility Re-export in `utils.py` and Eliminated Circular Import (Rules 1.4.6, 1.5.3)**:
   - `agent_common/utils.py`:

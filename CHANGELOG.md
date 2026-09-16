@@ -2,6 +2,20 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.76 (2026-09-16)
+- **클라우드 스토리지 및 데이터베이스 클라이언트(`clients.py`) 상세 기술 매뉴얼(한국어/영어 10종) 신설 및 README.md 전면 갱신 (규칙 2.1, 4.2 준수)**:
+  - `manual/kr/clients/` 및 `manual/en/clients/` 신설:
+    - `01_s3_ecs_storage_client.md`: 3.1. AWS S3 및 Dell ECS 오브젝트 스토리지 연동, `head_bucket` Fail-Fast 검증, 대용량 페이징 순회, GCS 실시간 스트리밍 전송 및 동일 크기 파일 스마트 스킵(`transfer_to_gcs`).
+    - `02_gcs_cloud_storage_client.md`: 3.2. Google Cloud Storage 스트리밍 업로드 및 4단계 인증 우선순위(`GOOGLE_APPLICATION_CREDENTIALS_JSON` 인메모리 JSON -> `GOOGLE_APPLICATION_CREDENTIALS` 파일 -> `credentials_path_str` -> Google ADC), 메모리 절약형 스트림 업로드(`upload_stream`).
+    - `03_bigquery_batch_and_streaming_load.md`: 3.3. Google Cloud BigQuery 배치 적재(`load_table_from_json_data`) vs 실시간 스트리밍 인서트(`insert_rows_json_data`), 중첩 에러(`errors`, `location`, `reason`) 분해 진단, 중복 전송 방지 키 조회(`get_existing_keys`), SQL 쿼리(`query`).
+    - `04_bigquery_inline_merge_upsert.md`: 3.4. BigQuery 고성능 인라인 MERGE (Upsert) 엔진, 스테이징 테이블 없는 `UNNEST(JSON_QUERY_ARRAY(@json_payload))` 파라미터 바인딩, 자동 타입 추론 및 캐스팅(`column_types_dict`), 최초값 보존(`preserve_columns_list`), 백틱(`` ` ``) 컬럼명 보호, 100건 청크 분할.
+    - `05_bigquery_timestamp_and_tz_sync.md`: 3.5. BigQuery 타임스탬프 변환 및 테이블 타임존 모드 정합성 검증·동기화 (`convert_to_bigquery_timestamp`, `validate_and_sync_table_timestamp_mode`), Standard-UTC vs KST-as-UTC 모드.
+  - `README.md`:
+    - 국문/영문 주요 기능 섹션 3번에 3.1 ~ 3.5 매뉴얼 링크 및 세부 기능 상세 설명 추가.
+    - 국문/영문 실전 사용 예시 섹션에 스토리지 및 BigQuery 클라이언트 코드 블록 추가.
+    - 국문/영문 상세 기능 매뉴얼 표(Table)에 3.1 ~ 3.5 행 추가.
+    - 패키지 빌드 및 배포 버전 `0.4.76` 최신화.
+
 ### v0.4.75 (2026-09-16)
 - **BigQueryClient KST 표시용 타임스탬프(KST-as-UTC) 모드 및 테이블 타임존 정합성 검증(Fail-Fast) 신설 (규칙 1.1, 1.3, 1.6.1 준수)**:
   - `agent_common/clients.py` (`BigQueryClient`):

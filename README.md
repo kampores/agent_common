@@ -36,9 +36,11 @@
 - **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md)**: '전체 = 성공 + 실패 + 제외' 정합성 보장, `TableFormatter` 기반 세로줄 자동 맞춤, 소요 시간, 처리 속도, 전송량이 포함된 표준 마크다운 표(Table) 자동 출력 (v0.4.63)
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
-- `S3Client`: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 목록 조회, 메타데이터 해석 및 파일 메모리 스트리밍 획득, GCS 실시간 파일 전송 및 상태 판별(`transfer_to_gcs` - `"UPLOADED"`, `"SKIPPED"`, `"FAILED"` 구분 지원 - v0.4.72)
-- `GcsClient`: Google Cloud Storage 연결, 파일 존재 검증 및 대용량 멀티스레드 스트리밍 업로드 (인메모리 JSON 키 `GCP_KEYFILE_JSON` 및 파일 경로 3단계 우선순위 인증 지원 - v0.4.56)
-- `BigQueryClient`: Google Cloud BigQuery 연결, JSON 데이터 스트리밍 입력(`insert_rows_json`), 배치 로드(`load_table_from_json_data`), 인라인 MERGE(`merge_table_from_json_data` - 한글/특수문자/예약어 컬럼 백틱 지원 및 413 방지 기본 청크 100건 분할), 범용 SQL 쿼리(`query`) (인메모리 JSON 키 `GCP_KEYFILE_JSON` 및 프로젝트 자동 오버라이드 지원 - v0.4.56, 명시적 타임존 오프셋 우선순위 지원 - v0.4.71)
+- **3.1. [AWS S3 및 Dell ECS 오브젝트 스토리지 클라이언트 (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/01_s3_ecs_storage_client.md)**: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 초기화 즉시 `head_bucket` Fail-Fast 검증, 대용량 페이징 제너레이터(`list_objects`), 메타데이터 빠른 조회(`get_object_size`), 메모리 스트리밍 획득(`get_object_stream`), GCS 실시간 파일 전송 및 동일 파일 스마트 스킵(`transfer_to_gcs` - `"UPLOADED"`, `"SKIPPED"`, `"FAILED"` 반환 및 구간별 정밀 레이턴시 로깅 지원 - v0.4.72)
+- **3.2. [Google Cloud Storage 스트리밍 클라이언트 및 멀티 계층 인증 (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/02_gcs_cloud_storage_client.md)**: 4단계 GCP 인증 우선순위(`GOOGLE_APPLICATION_CREDENTIALS_JSON` 인메모리 JSON -> `GOOGLE_APPLICATION_CREDENTIALS` 파일 -> `credentials_path_str` -> Google ADC) 지원, 연결 및 버킷 권한 조기 검증, 블롭 메타데이터 및 크기 조회(`get_blob_size`), 메모리 낭비 없는 청크 단위 스트림 직접 업로드(`upload_stream` - v0.4.56)
+- **3.3. [BigQuery 배치 및 스트리밍 적재 클라이언트 (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/03_bigquery_batch_and_streaming_load.md)**: 연결 및 테이블 스키마 사전 캐싱(`get_table`), JSON 배치 로드 Job(`load_table_from_json_data`) 및 중첩 에러(`errors`, `location`, `reason`) 상세 분해, 실시간 스트리밍 인서트(`insert_rows_json_data`), 범용 동기 SQL 쿼리(`query`), 중복 전송 방지용 기존 키 집합 추출(`get_existing_keys`)
+- **3.4. [BigQuery 고성능 인라인 MERGE (Upsert) 쿼리 엔진 (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/04_bigquery_inline_merge_upsert.md)**: 스테이징 임시 테이블 생성 없이 직접 `UNNEST(JSON_QUERY_ARRAY(@json_payload))` 기반 인라인 MERGE INTO 수행, 기본키(PK) 기준 자동 UPDATE/INSERT 분기, 생성일시 등 최초 값 보존(`preserve_columns_list`), 컬럼 데이터 타입 자동 추론 및 명시적 캐스팅(`column_types_dict`), 한글/특수문자/예약어 백틱(`` ` ``) 완벽 보호, HTTP 413 페이로드 초과 방지 기본 100건 청크 자동 분할, 후속 연쇄 쿼리(`post_queries_list`) 지원
+- **3.5. [BigQuery 타임존 오프셋 변환 및 테이블 타임존 모드 검증·동기화 (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync.md)**: ISO 8601, 공백 구분, 14자리/8자리 숫자 등 다양한 원천 날짜 문자열의 BigQuery 표준 타임스탬프 정규화, 타임존 오프셋 우선순위(`timezone_offset_str` - v0.4.71), 한국 시각 숫자 보존 모드(`kst_as_utc_timestamp_bool`), 테이블 메타데이터(라벨 `timestamp_mode`, 테이블 및 컬럼 Description) 자동 동기화 및 기존 데이터 존재 시 불일치 차단(Fail-Fast)
 
 #### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
 - **이원화된 Tool 디렉터리 계층 탐색**:
@@ -154,6 +156,67 @@ response_str = llm_client.generate(
 print(f"생성된 결과 ({llm_client.last_generated_by_str}):\n{response_str}")
 ```
 
+#### 5. 스토리지 및 BigQuery 클라이언트 활용
+
+##### S3/ECS 파일 순회 및 GCS 실시간 파이프라인 전송 (동일 파일 스마트 스킵)
+```python
+from agent_common.clients import S3Client, GcsClient
+
+# S3/ECS 및 GCS 클라이언트 초기화 (버킷 접근 권한 Fail-Fast 자동 검증)
+s3_client = S3Client(
+    endpoint_url_str="https://ecs.mycorp.internal:9021",
+    access_key_str="MY_ACCESS_KEY",
+    secret_key_str="MY_SECRET_KEY",
+    bucket_name_str="source-lake",
+)
+gcs_client = GcsClient(bucket_name_str="target-lake")
+
+# 대용량 객체 제너레이터 순회 및 실시간 스트리밍 전송
+for obj_dict in s3_client.list_objects(prefix_str="raw/events/20260824/"):
+    s3_key_str: str = obj_dict["Key"]
+    size_int: int = obj_dict["Size"]
+    gcs_blob_str: str = f"lake/{s3_key_str.lstrip('/')}"
+    
+    # 동일 파일 존재 시 스킵("SKIPPED"), 신규 전송 시 "UPLOADED"
+    status_str = s3_client.transfer_to_gcs(
+        gcs_client_obj=gcs_client,
+        s3_key_str=s3_key_str,
+        gcs_blob_name_str=gcs_blob_str,
+        size_int=size_int,
+    )
+    print(f"[{status_str}] {s3_key_str} -> {gcs_blob_str} ({size_int:,} bytes)")
+```
+
+##### BigQuery 고성능 인라인 MERGE (Upsert) 실행
+```python
+from agent_common.clients import BigQueryClient
+
+bq_client = BigQueryClient(
+    project_id_str="my-gcp-project",
+    dataset_id_str="analytics_dw",
+    table_id_str="tb_member_profile",
+)
+
+members_list = [
+    {
+        "member_id": "M001",
+        "name": "홍길동",
+        "login_count": 42,
+        "is_vip": True,
+        "created_at": "2026-01-01 00:00:00+09:00",
+        "last_login_at": "2026-08-24 15:30:00+09:00",
+    }
+]
+
+# 임시 테이블 없이 단일 SQL 쿼리로 직접 MERGE 수행 (created_at 최초값 보존)
+bq_client.merge_table_from_json_data(
+    json_data_any=members_list,
+    pk_key_str="member_id",
+    preserve_columns_list=["created_at"],
+    chunk_size_int=100,
+)
+```
+
 ---
 
 ### 🚀 설치 및 빌드 방법
@@ -192,7 +255,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.39-py3-none-any.whl
+pip install dist/agent_common-0.4.76-py3-none-any.whl
 ```
 
 #### 🌐 PyPI 공식 배포 (관리자 전용)
@@ -208,7 +271,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.39*
+python -m twine upload dist/agent_common-0.4.76*
 ```
 
 ---
@@ -230,6 +293,11 @@ python -m twine upload dist/agent_common-0.4.39*
 | **2.3** | **다국어 메시지 사전 & 코드 기반 로깅** | [03_multilingual_message_catalog.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog.md) | `logging_messages_ko.yml`/`en.yml`, 런타임 언어 전환, `safe_kwargs` 템플릿 치환 |
 | **2.4** | **작업 통계 & 에러/제외 실시간 집계** | [04_execution_result_and_error_tracking.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking.md) | 성공/실패/제외(Skip) 3단계 상태 분류, 인스턴스 및 클래스 전역 멀티스레드 집계 |
 | **2.5** | **작업 결과 요약 리포트 자동 생성** | [05_summary_report_generation.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation.md) | `ProjectLogger.log_summary()`, 80열 표준 요약 블록, 처리 속도/전송률, 에러 상세 해석 |
+| **3.1** | **AWS S3 & Dell ECS 스토리지 연동** | [01_s3_ecs_storage_client.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/01_s3_ecs_storage_client.md) | S3/ECS 연결, Fail-Fast 검증, 페이징 목록 조회, GCS 스트리밍 전송 및 동일 파일 스킵 |
+| **3.2** | **GCS 스트리밍 업로드 & 4단계 인증** | [02_gcs_cloud_storage_client.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/02_gcs_cloud_storage_client.md) | 4단계 서비스 계정 인증 우선순위, 연결 검증, 메타데이터 조회, 메모리 파이프라인 업로드 |
+| **3.3** | **BigQuery 배치 적재 & 스트리밍 인서트** | [03_bigquery_batch_and_streaming_load.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/03_bigquery_batch_and_streaming_load.md) | JSON 배치 로드 Job vs 스트리밍 API, 중첩 에러 상세 분해, 중복 방지 키 집합 조회 |
+| **3.4** | **BigQuery 인라인 MERGE (Upsert) 엔진** | [04_bigquery_inline_merge_upsert.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/04_bigquery_inline_merge_upsert.md) | 임시 테이블 없는 인라인 MERGE, UNNEST 파라미터 바인딩, 동적 타입 캐스팅, 100건 청크 분할 |
+| **3.5** | **BigQuery 타임존 변환 & 모드 검증·동기화** | [05_bigquery_timestamp_and_tz_sync.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync.md) | ISO/압축 일시 정규화, Standard-UTC vs KST-as-UTC 모드, 테이블 메타데이터 동기화 및 Fail-Fast |
 
 ---
 
@@ -270,9 +338,11 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **2.5. [Automatic Summary Report Generation (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation.md)**: Emits structured 80-column execution summary reports with duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
 
 #### 3. Storage and Database Infrastructure Clients (`agent_common.clients`)
-- `S3Client`: AWS S3 and Dell ECS (S3-compatible) storage connection, object listing, metadata extraction, and in-memory streaming retrieval.
-- `GcsClient`: Google Cloud Storage connection, blob existence verification, and high-throughput multithreaded streaming uploads.
-- `BigQueryClient`: Google Cloud BigQuery client supporting streaming ingestion (`insert_rows_json`), batch loading (`load_table_from_json_data`), inline MERGE (`merge_table_from_json_data` with backtick escaping and 100-record chunking to prevent HTTP 413), and general SQL execution (`query`).
+- **3.1. [AWS S3 & Dell ECS Object Storage Client (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/01_s3_ecs_storage_client.md)**: Connects to AWS S3 and Dell ECS (S3-compatible) storage, early `head_bucket` Fail-Fast verification, high-throughput paginated iterator (`list_objects`), fast header metadata lookup (`get_object_size`), in-memory streaming body extraction (`get_object_stream`), real-time streaming pipeline upload to GCS with smart duplicate skipping (`transfer_to_gcs` - returning `"UPLOADED"`, `"SKIPPED"`, or `"FAILED"` with sub-stage latency telemetry - v0.4.72).
+- **3.2. [Google Cloud Storage Streaming Client & Multi-Tier Auth (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/02_gcs_cloud_storage_client.md)**: Four-tier GCP credential resolution hierarchy (`GOOGLE_APPLICATION_CREDENTIALS_JSON` in-memory JSON -> `GOOGLE_APPLICATION_CREDENTIALS` file -> `credentials_path_str` -> Google ADC), instant bucket reachability validation, blob metadata lookup (`get_blob_size`), zero-disk chunked streaming uploads (`upload_stream` - v0.4.56).
+- **3.3. [BigQuery Batch Loading & Streaming Ingestion (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/03_bigquery_batch_and_streaming_load.md)**: Fail-fast schema caching (`get_table`), JSON batch load jobs (`load_table_from_json_data`) with unpacked nested error diagnostics (`errors`, `location`, `reason`), real-time streaming ingestion (`insert_rows_json_data`), general SQL query execution (`query`), unique key deduplication set lookup (`get_existing_keys`).
+- **3.4. [BigQuery High-Performance Inline MERGE (Upsert) Engine (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/04_bigquery_inline_merge_upsert.md)**: Executes direct inline MERGE INTO via `UNNEST(JSON_QUERY_ARRAY(@json_payload))` without temporary staging tables, automatic primary key routing, original column preservation (`preserve_columns_list`), schema type inference and casting (`column_types_dict`), reserved keyword and Unicode column backtick escaping, HTTP 413 payload limit protection via default 100-row chunking, post-processing query execution (`post_queries_list`).
+- **3.5. [BigQuery Timestamp Conversion & Timezone Mode Synchronization (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_tz_sync.md)**: Normalizes ISO 8601, whitespace, and 14-digit/8-digit timestamps to standard BigQuery formats, timezone offset precedence (`timezone_offset_str` - v0.4.71), display convenience mode (`kst_as_utc_timestamp_bool`), automated table metadata synchronization (labels, table/column descriptions) with fail-fast mismatch blocking.
 
 #### 4. Dynamic Tool Loader & Template Evaluator (`agent_common.tool_parser`) & Built-in Tools (`agent_common.tool`)
 - **Dual Tool Hierarchy Discovery**:
@@ -383,6 +453,67 @@ response_str = llm_client.generate(
 print(f"Generated result ({llm_client.last_generated_by_str}):\n{response_str}")
 ```
 
+#### 5. Storage and BigQuery Client Usage
+
+##### S3/ECS Object Traversal & Direct GCS Streaming (Smart Skipping)
+```python
+from agent_common.clients import S3Client, GcsClient
+
+# Initialize S3/ECS and GCS clients (fail-fast bucket validation)
+s3_client = S3Client(
+    endpoint_url_str="https://ecs.mycorp.internal:9021",
+    access_key_str="MY_ACCESS_KEY",
+    secret_key_str="MY_SECRET_KEY",
+    bucket_name_str="source-lake",
+)
+gcs_client = GcsClient(bucket_name_str="target-lake")
+
+# Iterate over large object prefixes and stream into GCS directly
+for obj_dict in s3_client.list_objects(prefix_str="raw/events/20260824/"):
+    s3_key_str: str = obj_dict["Key"]
+    size_int: int = obj_dict["Size"]
+    gcs_blob_str: str = f"lake/{s3_key_str.lstrip('/')}"
+    
+    # "SKIPPED" if identical file exists, "UPLOADED" on successful stream
+    status_str = s3_client.transfer_to_gcs(
+        gcs_client_obj=gcs_client,
+        s3_key_str=s3_key_str,
+        gcs_blob_name_str=gcs_blob_str,
+        size_int=size_int,
+    )
+    print(f"[{status_str}] {s3_key_str} -> {gcs_blob_str} ({size_int:,} bytes)")
+```
+
+##### BigQuery High-Performance Inline MERGE (Upsert)
+```python
+from agent_common.clients import BigQueryClient
+
+bq_client = BigQueryClient(
+    project_id_str="my-gcp-project",
+    dataset_id_str="analytics_dw",
+    table_id_str="tb_member_profile",
+)
+
+members_list = [
+    {
+        "member_id": "M001",
+        "name": "Alex",
+        "login_count": 42,
+        "is_vip": True,
+        "created_at": "2026-01-01 00:00:00+09:00",
+        "last_login_at": "2026-08-24 15:30:00+09:00",
+    }
+]
+
+# Direct parameterized MERGE without staging tables (preserves created_at)
+bq_client.merge_table_from_json_data(
+    json_data_any=members_list,
+    pk_key_str="member_id",
+    preserve_columns_list=["created_at"],
+    chunk_size_int=100,
+)
+```
+
 ---
 
 ### 🚀 Installation and Build Guide
@@ -418,7 +549,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.39-py3-none-any.whl
+pip install dist/agent_common-0.4.76-py3-none-any.whl
 ```
 
 #### 🌐 Official PyPI Distribution (Maintainers Only)
@@ -434,7 +565,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.39*
+python -m twine upload dist/agent_common-0.4.76*
 ```
 
 ---
@@ -456,6 +587,11 @@ For comprehensive architecture details and practical code examples for each modu
 | **2.3** | **Multilingual Catalog & Code-Based Logging** | [03_multilingual_message_catalog.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog.md) | `logging_messages_ko.yml`/`en.yml`, runtime language switching, safe template variable formatting |
 | **2.4** | **Result Telemetry & Error Classification** | [04_execution_result_and_error_tracking.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/04_execution_result_and_error_tracking.md) | Success/Failure/Exclusion 3-tier classification, instance & class-global multithreaded counters |
 | **2.5** | **Automatic Summary Report Generation** | [05_summary_report_generation.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation.md) | `ProjectLogger.log_summary()`, 80-column summary block, throughput/bandwidth, decoded error explanations |
+| **3.1** | **AWS S3 & Dell ECS Storage Integration** | [01_s3_ecs_storage_client.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/01_s3_ecs_storage_client.md) | S3/ECS connection, Fail-Fast verification, paginated listing, direct GCS streaming and duplicate skip |
+| **3.2** | **GCS Streaming Upload & 4-Tier Auth** | [02_gcs_cloud_storage_client.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/02_gcs_cloud_storage_client.md) | 4-tier GCP credential precedence, connection validation, metadata retrieval, in-memory stream upload |
+| **3.3** | **BigQuery Batch Loading & Streaming Ingestion** | [03_bigquery_batch_and_streaming_load.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/03_bigquery_batch_and_streaming_load.md) | JSON batch load jobs vs streaming API, nested error diagnostics unpacking, deduplication key lookup |
+| **3.4** | **BigQuery Inline MERGE (Upsert) Engine** | [04_bigquery_inline_merge_upsert.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/04_bigquery_inline_merge_upsert.md) | Pure inline MERGE without staging tables, UNNEST parameter binding, dynamic type casting, 100-row chunks |
+| **3.5** | **BigQuery Timestamp Conversion & TZ Sync** | [05_bigquery_timestamp_and_tz_sync.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_tz_sync.md) | ISO/compact timestamp normalization, Standard-UTC vs KST-as-UTC modes, table metadata auto-sync & Fail-Fast |
 
 ---
 
