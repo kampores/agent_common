@@ -2,6 +2,15 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.75 (2026-09-16)
+- **BigQueryClient KST 표시용 타임스탬프(KST-as-UTC) 모드 및 테이블 타임존 정합성 검증(Fail-Fast) 신설 (규칙 1.1, 1.3, 1.6.1 준수)**:
+  - `agent_common/clients.py` (`BigQueryClient`):
+    - `kst_as_utc_timestamp_bool` 설정 옵션 연동: 고객사 화면 표시 요구에 따라 KST 시각 숫자를 그대로 유지하며 `+00:00`(UTC)으로 적재하여 BigQuery 콘솔에서 한국 시각 수치(`... UTC`)로 표시되도록 지원.
+    - `convert_to_bigquery_timestamp`: KST-as-UTC 모드 활성화 시 명시적 타임존 및 naive 일시를 KST 기준으로 정규화한 뒤 `+00:00` 오프셋 부여.
+    - `validate_and_sync_table_timestamp_mode(write_disposition_str)`:
+      - 테이블이 비어있거나(`num_rows == 0`) `WRITE_TRUNCATE` 실행 시: 테이블 라벨(`timestamp_mode: "kst_as_utc"` 또는 `"standard_utc"`), 테이블 설명 및 TIMESTAMP 타입 컬럼 설명을 신규 모드에 맞추어 자동 갱신.
+      - 기존 데이터가 존재하는 테이블의 경우: 기등록된 `timestamp_mode` 라벨과 현재 설정 불일치 시 즉시 **Fail-Fast**(`ValueError`)를 발생시켜 9시간 시차 혼재에 의한 데이터 오염 원천 차단.
+
 ### v0.4.74 (2026-09-15)
 - **`TimeUtils.parse_datetime` 및 `DateTimeUtils.parse_datetime` 공용 일시 정규화 유틸리티 추가 (규칙 1.5.1, 1.4.6 준수)**:
   - `agent_common/utils.py` (`TimeUtils`):

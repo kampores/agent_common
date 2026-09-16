@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent_common"
-version = "0.4.74"
+version = "0.4.75"
 description = "자율 에이전트 및 데이터 파이프라인을 위한 경량 설정·로깅·도구 프레임워크 (Lightweight configuration, logging, and tooling framework for autonomous agents and data pipelines)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,9 +21,6 @@ clients = [
 s3 = [
     "boto3>=1.26.0"
 ]
-ecs = [
-    "boto3>=1.26.0"
-]
 gcp = [
     "google-cloud-storage>=2.10.0",
     "google-cloud-bigquery>=3.10.0"
@@ -35,7 +32,7 @@ all = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/kampores/agent_common"
+"Homepage" = "https://pypi.org/project/agent-common"
 "Repository" = "https://github.com/kampores/agent_common"
 "Changelog" = "https://github.com/kampores/agent_common/blob/main/CHANGELOG.md"
 "Changelog (English)" = "https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md"

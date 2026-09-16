@@ -94,7 +94,7 @@
 
 ```python
 # 작성일: YYYY-MM-DD
-# 설계자: 김유상 수석
+# 설계자: 김유상
 # 설계자 이메일: bakkus@daum.net
 
 """

@@ -1,5 +1,5 @@
 # 작성일: 2026-07-20
-# 설계자: 김유상 수석
+# 설계자: 김유상
 # 설계자 이메일: bakkus@daum.net
 
 """
@@ -13,6 +13,7 @@ import os
 import re
 import time
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, TYPE_CHECKING, Tuple
 
@@ -37,6 +38,7 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
     "bigquery": {
         "ignore_unknown_values_bool": True,
         "timezone_offset_str": "+09:00",
+        "kst_as_utc_timestamp_bool": False,
         "max_retries_int": 3,
     },
 }
@@ -544,6 +546,11 @@ class BigQueryClient:
         else:
             self.timezone_offset_str = system_offset_str
 
+        # kst_as_utc_timestamp_bool: BigQuery TIMESTAMP 컬럼 적재 시 한국 시각(KST) 숫자를 UTC(+00:00)로 저장하여 콘솔에 KST 시각이 그대로 표시되도록 하는 옵션
+        self.kst_as_utc_timestamp_bool: bool = bool(
+            getattr(config.bigquery, "kst_as_utc_timestamp_bool", False)
+        )
+
         # client: google-cloud-bigquery 클라이언트 인스턴스
         self.client: Any = None
         self._connect()
@@ -583,6 +590,163 @@ class BigQueryClient:
             self.table_obj = self.client.get_table(table_ref_str)
         except Exception as e:
             raise ConnectionError(self.logger.exception("connection_failed", service_name="BigQuery", error=str(e))) from e
+
+    def validate_and_sync_table_timestamp_mode(self, write_disposition_str: str = "WRITE_APPEND") -> None:
+        """
+        BigQuery 대상 테이블의 현재 행 수 및 타임존 모드 라벨(timestamp_mode)을 조회하여 정합성을 검증합니다.
+        테이블이 비어있거나 WRITE_TRUNCATE 모드인 경우 현재 설정(kst_as_utc_timestamp_bool)에 맞춰
+        테이블 라벨(timestamp_mode), 테이블 설명(description) 및 TIMESTAMP 타입 컬럼 설명을 영구 갱신합니다.
+        기존 데이터가 존재하는 상태에서 설정과 테이블 모드가 불일치할 경우 데이터 혼용 방지를 위해 즉시 예외를 발생시킵니다 (Fail-Fast).
+
+        :param write_disposition_str: 이번 실행 시 적용되는 BigQuery 쓰기 옵션 ('WRITE_APPEND', 'WRITE_TRUNCATE', 'WRITE_EMPTY' 등)
+        :raises ValueError: 기존 적재된 테이블의 타임존 모드와 현재 설정이 불일치하는 경우
+        :raises RuntimeError: BigQuery 테이블 메타데이터 갱신 실패 시
+        """
+        table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
+        bigquery_module, _ = _get_bigquery()
+
+        # 최신 Table 객체 상태 갱신
+        if self.client is not None and hasattr(self.client, "get_table"):
+            try:
+                self.table_obj = self.client.get_table(table_ref_str)
+            except Exception as get_exc:
+                self.logger.exception("table_get_failed", table_name=self.table_id_str, error=str(get_exc))
+                raise RuntimeError(f"BigQuery 테이블({self.table_id_str}) 조회 실패: {str(get_exc)}") from get_exc
+
+        if not hasattr(self, "table_obj") or self.table_obj is None:
+            return
+
+        target_mode_str: str = "kst_as_utc" if self.kst_as_utc_timestamp_bool else "standard_utc"
+        num_rows_int: int = int(getattr(self.table_obj, "num_rows", 0) or 0)
+        is_truncate_mode_bool: bool = str(write_disposition_str).upper() == "WRITE_TRUNCATE"
+
+        existing_labels_dict: dict[str, str] = dict(getattr(self.table_obj, "labels", None) or {})
+        recorded_mode_str: Optional[str] = existing_labels_dict.get("timestamp_mode")
+
+        # 1. 테이블이 비어있거나(num_rows == 0) WRITE_TRUNCATE 실행인 경우 -> 신규 모드로 최초 확정 및 갱신
+        if num_rows_int == 0 or is_truncate_mode_bool:
+            fields_to_update_list: list[str] = []
+
+            # (1) 테이블 라벨 갱신
+            if recorded_mode_str != target_mode_str:
+                existing_labels_dict["timestamp_mode"] = target_mode_str
+                self.table_obj.labels = existing_labels_dict
+                fields_to_update_list.append("labels")
+
+            # (2) 테이블 설명(Description) 갱신
+            clean_table_desc_str: str = re.sub(
+                r"^\[TIMESTAMP 모드: [^\]]+\]\s*",
+                "",
+                str(getattr(self.table_obj, "description", "") or ""),
+            ).strip()
+            mode_desc_prefix_str: str = (
+                "[TIMESTAMP 모드: KST-as-UTC] 고객사 화면 표시용 한국 시각(KST)이 UTC(+00:00)로 기록되는 테이블입니다."
+                if self.kst_as_utc_timestamp_bool
+                else "[TIMESTAMP 모드: Standard-UTC] 표준 UTC 시각으로 기록되는 테이블입니다."
+            )
+            new_table_desc_str: str = (
+                f"{mode_desc_prefix_str} {clean_table_desc_str}".strip()
+                if clean_table_desc_str
+                else mode_desc_prefix_str
+            )
+            if getattr(self.table_obj, "description", None) != new_table_desc_str:
+                self.table_obj.description = new_table_desc_str
+                fields_to_update_list.append("description")
+
+            # (3) TIMESTAMP 타입 컬럼 설명(SchemaField Description) 갱신
+            col_prefix_str: str = "[KST-as-UTC] " if self.kst_as_utc_timestamp_bool else "[Standard-UTC] "
+            schema_changed_bool: bool = False
+            updated_schema_list: list[Any] = []
+            for field_obj in (getattr(self.table_obj, "schema", None) or []):
+                if str(getattr(field_obj, "field_type", "")).upper() == "TIMESTAMP":
+                    raw_field_desc_str: str = str(getattr(field_obj, "description", "") or "")
+                    clean_field_desc_str: str = re.sub(
+                        r"^\[(KST-as-UTC|Standard-UTC)\]\s*", "", raw_field_desc_str
+                    ).strip()
+                    new_field_desc_str: str = f"{col_prefix_str}{clean_field_desc_str}".strip()
+                    if raw_field_desc_str != new_field_desc_str:
+                        schema_changed_bool = True
+                    if bigquery_module is not None and hasattr(bigquery_module, "SchemaField"):
+                        updated_schema_list.append(
+                            bigquery_module.SchemaField(
+                                name=field_obj.name,
+                                field_type=field_obj.field_type,
+                                mode=field_obj.mode,
+                                description=new_field_desc_str,
+                                fields=getattr(field_obj, "fields", ()),
+                            )
+                        )
+                    else:
+                        field_obj.description = new_field_desc_str
+                        updated_schema_list.append(field_obj)
+                else:
+                    updated_schema_list.append(field_obj)
+
+            if schema_changed_bool:
+                self.table_obj.schema = updated_schema_list
+                fields_to_update_list.append("schema")
+
+            if fields_to_update_list:
+                if self.client is not None and hasattr(self.client, "update_table"):
+                    try:
+                        self.table_obj = self.client.update_table(self.table_obj, fields_to_update_list)
+                        self.logger.info(
+                            "table_timestamp_mode_initialized",
+                            table_name=self.table_id_str,
+                            mode_str=target_mode_str,
+                            num_rows=num_rows_int,
+                        )
+                    except Exception as update_exc:
+                        self.logger.exception(
+                            "table_metadata_update_failed",
+                            table_name=self.table_id_str,
+                            error=str(update_exc),
+                        )
+                        raise RuntimeError(
+                            f"BigQuery 테이블({self.table_id_str}) 메타데이터 갱신 실패: {str(update_exc)}"
+                        ) from update_exc
+                else:
+                    self.logger.info(
+                        "table_timestamp_mode_initialized",
+                        table_name=self.table_id_str,
+                        mode_str=target_mode_str,
+                        num_rows=num_rows_int,
+                    )
+            else:
+                self.logger.info(
+                    "table_timestamp_mode_verified",
+                    table_name=self.table_id_str,
+                    mode_str=target_mode_str,
+                )
+            return
+
+        # 2. 테이블에 기존 데이터가 존재하는 경우 (num_rows > 0 및 WRITE_TRUNCATE 아님)
+        if recorded_mode_str:
+            if recorded_mode_str != target_mode_str:
+                self.logger.error(
+                    "table_timestamp_mode_mismatch",
+                    table_name=self.table_id_str,
+                    recorded_mode_str=recorded_mode_str,
+                    configured_mode_str=target_mode_str,
+                )
+                raise ValueError(
+                    f"데이터 혼란 방지(Fail-Fast): BigQuery 대상 테이블 '{self.table_id_str}'은(는) "
+                    f"'{recorded_mode_str}' 모드로 기록되어 있으나 현재 설정은 '{target_mode_str}'입니다. "
+                    f"데이터 오염을 방지하기 위해 작업을 중단합니다. 테이블을 TRUNCATE하거나 설정을 일치시키십시오."
+                )
+            self.logger.info(
+                "table_timestamp_mode_verified",
+                table_name=self.table_id_str,
+                mode_str=target_mode_str,
+            )
+        else:
+            # 라벨이 없는 레거시 테이블인 경우 경고 출력
+            self.logger.warning(
+                "table_timestamp_mode_legacy_warning",
+                table_name=self.table_id_str,
+                mode_str=target_mode_str,
+                num_rows=num_rows_int,
+            )
 
     def load_table_from_json_data(
         self,
@@ -953,6 +1117,7 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
         """
         다양한 원천 날짜/시간 문자열(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 타임스탬프(YYYY-MM-DD HH:MM:SS{tz}) 포맷으로 변환합니다.
         원천 데이터에 타임존 오프셋이 명시되어 있지 않은 경우 config.yml의 bigquery.timezone_offset(기본값: '+09:00')을 적용합니다.
+        kst_as_utc_timestamp_bool이 활성화된 경우 한국 시각(KST) 숫자를 보존하여 '+00:00'(UTC)으로 변환함으로써 BigQuery 콘솔에서 KST 시각으로 표시되도록 지원합니다.
 
         :param val_any: 변환 대상 날짜/시간 데이터 (str, datetime, int 등)
         :param default_tz_offset_str: 타임존 오프셋이 없을 시 적용할 기본 오프셋 (미지정 시 config.yml 설정값 사용)
@@ -970,45 +1135,69 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
         tz_pattern_str: str = r"(?P<tz>Z|[+-]\d{2}:?\d{2})$"
         tz_match_obj: Any = re.search(tz_pattern_str, val_str)
         tz_suffix_str: str = applied_tz_offset_str
+        has_explicit_tz_bool: bool = False
+        raw_tz_val_str: str = ""
         if tz_match_obj:
+            has_explicit_tz_bool = True
             raw_tz_str: str = tz_match_obj.group("tz")
             if raw_tz_str == "Z":
                 tz_suffix_str = "Z"
+                raw_tz_val_str = "+00:00"
             elif len(raw_tz_str) == 5 and raw_tz_str[0] in "+-":
                 tz_suffix_str = f"{raw_tz_str[:3]}:{raw_tz_str[3:]}"
+                raw_tz_val_str = tz_suffix_str
             else:
                 tz_suffix_str = raw_tz_str
+                raw_tz_val_str = tz_suffix_str
             val_str = val_str[:tz_match_obj.start()].strip()
 
+        datetime_part_str: Optional[str] = None
         # 1. YYYY-MM-DD HH:MM:SS (또는 T 구분자)
         match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2})", val_str)
         if match_obj:
-            datetime_part_str: str = match_obj.group(1).replace("T", " ").replace("/", "-")
-            return f"{datetime_part_str}{tz_suffix_str}"
-
-        # 2. YYYY-MM-DD HH:MM
-        match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2})", val_str)
-        if match_obj:
             datetime_part_str = match_obj.group(1).replace("T", " ").replace("/", "-")
-            return f"{datetime_part_str}:00{tz_suffix_str}"
+        else:
+            # 2. YYYY-MM-DD HH:MM
+            match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2})", val_str)
+            if match_obj:
+                datetime_part_str = f"{match_obj.group(1).replace('T', ' ').replace('/', '-')}:00"
+            else:
+                # 3. YYYY-MM-DD
+                match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2})", val_str)
+                if match_obj:
+                    datetime_part_str = f"{match_obj.group(1).replace('/', '-')} 00:00:00"
+                else:
+                    # 4. YYYYMMDDHHMMSS (14자리 숫자)
+                    match_obj = re.search(r"(\d{14})", val_str)
+                    if match_obj:
+                        num_str: str = match_obj.group(1)
+                        datetime_part_str = f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} {num_str[8:10]}:{num_str[10:12]}:{num_str[12:14]}"
+                    else:
+                        # 5. YYYYMMDD (8자리 숫자)
+                        match_obj = re.search(r"(\d{8})", val_str)
+                        if match_obj:
+                            num_str = match_obj.group(1)
+                            datetime_part_str = f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} 00:00:00"
 
-        # 3. YYYY-MM-DD
-        match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2})", val_str)
-        if match_obj:
-            datetime_part_str = match_obj.group(1).replace("/", "-")
-            return f"{datetime_part_str} 00:00:00{tz_suffix_str}"
+        if not datetime_part_str:
+            return None
 
-        # 4. YYYYMMDDHHMMSS (14자리 숫자)
-        match_obj = re.search(r"(\d{14})", val_str)
-        if match_obj:
-            num_str: str = match_obj.group(1)
-            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} {num_str[8:10]}:{num_str[10:12]}:{num_str[12:14]}{tz_suffix_str}"
+        if self.kst_as_utc_timestamp_bool:
+            # KST-as-UTC 모드: BigQuery 콘솔에서 KST 시간 숫자가 그대로 보이도록 UTC(+00:00)로 저장
+            if has_explicit_tz_bool and raw_tz_val_str:
+                try:
+                    dt_with_tz_obj: datetime = datetime.fromisoformat(f"{datetime_part_str}{raw_tz_val_str}")
+                    kst_tz_obj: timezone = TimeUtils.resolve_timezone("KST")
+                    kst_dt_obj: datetime = dt_with_tz_obj.astimezone(kst_tz_obj)
+                    kst_time_str: str = kst_dt_obj.strftime("%Y-%m-%d %H:%M:%S")
+                    return f"{kst_time_str}+00:00"
+                except (ValueError, TypeError):
+                    return f"{datetime_part_str}+00:00"
+            else:
+                # 원천 naive 일시는 한국 현지 시각(KST)이므로 수치 그대로 +00:00(UTC) 부여
+                return f"{datetime_part_str}+00:00"
 
-        # 5. YYYYMMDD (8자리 숫자)
-        match_obj = re.search(r"(\d{8})", val_str)
-        if match_obj:
-            num_str = match_obj.group(1)
-            return f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} 00:00:00{tz_suffix_str}"
+        return f"{datetime_part_str}{tz_suffix_str}"
 
         return None
 
