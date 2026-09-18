@@ -2,6 +2,23 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.77 (2026-09-18)
+- **동적 도구 로더 및 템플릿 평가기(`tool_parser.py`) & 내장 도구(`tool/date/date_time_utils.py`), 공용 유틸리티(`utils.py`) 상세 기술 매뉴얼(한국어/영어 14종) 신설 및 README.md 전면 갱신 (규칙 2.1, 4.2 준수)**:
+  - `manual/kr/tool_parser/` 및 `manual/en/tool_parser/` 신설:
+    - `01_dual_tool_hierarchy_discovery.md`: 4.1. 이원화된 Tool 디렉터리 계층 탐색(1순위: 내장 `agent_common/tool/` vs 2순위: 프로젝트 로컬 `config.transfer.tool_dir_str`), 3단계 함수 탐색 알고리즘, `_tool_cache` 인메모리 캐싱, 기동 초기 `scan_rules_for_tool_functions` 사전 Fail-Fast 검증.
+    - `02_declarative_template_eval.md`: 4.2. 선언적 템플릿 치환 및 표현식 평가(`ToolParser.eval`), 단일 함수 직통 호출, 점(`.`) 네임스페이스 바인딩, 파이프(`|`) 다중 폴백 우선순위, `inspect.signature` 기반 파라미터 매핑 및 `ctx` 컨텍스트 자동 주입.
+    - `03_safe_namespace_navigation.md`: 4.3. 안전한 네임스페이스 탐색(`_SafeNamespace`), 점(`.`) 및 인덱스(`[]`) 접근 통합, 대소문자 무관(Case-insensitive) 탐색, 결측 키에 대한 빈 문자열(`""`) 안전 반환, 중첩 컬렉션 재귀 래핑.
+    - `04_builtin_datetime_utils.md`: 4.4. 내장 공통 일시 도구(`DateTimeUtils`), 비즈니스 테이블 룰(`table_rules.yml`) 및 템플릿 치환식 지원, `TimeUtils` 코어 인프라 위임 및 역할 분담, `YYYYMMDD`, ISO 타임스탬프, 압축 일시(`YYYYMMDDHHMMSS`), 표시용 일시 생성.
+  - `manual/kr/utils/` 및 `manual/en/utils/` 신설:
+    - `01_time_utils_and_timezone_resolution.md`: 5.1. 호스트 시스템 타임존 감지 및 전 세계 표준시 해석(`TimeUtils`), 호스트 OS/컨테이너 타임존 동적 감지(`get_system_timezone`, `get_system_timezone_offset_str`), 30여 개 주요 글로벌 타임존 약어(`WORLD_TIMEZONE_OFFSETS_DICT`) 및 오프셋 해석(`resolve_timezone`), timezone-aware datetime 정규화(`parse_datetime`).
+    - `02_progress_tracker_and_milestones.md`: 5.2. 멀티스레드 실시간 진행률 추적 및 마일스톤 경고(`ProgressTracker`), 배치 대용량 파일/데이터 처리 실시간 추적, 처리 속도(건/s, MB/s) 및 남은 시간(ETA) 동적 계산, 일반 진행 `INFO` vs 10% 배수 마일스톤 및 완료 시 `WARNING` 승격 로깅.
+    - `03_unicode_table_formatter.md`: 5.3. 유니코드 전각 문자 폭 계산 및 마크다운/콘솔 테이블 칼맞춤 포매터(`TableFormatter`), `unicodedata.east_asian_width` 기반 동아시아 전각(2칸) vs 반각(1칸) 정밀 계산, 마크다운 표 헤더/구분선/데이터 행 세로줄 오차 없는 정렬.
+  - `README.md`:
+    - 국문/영문 주요 기능 섹션 4번 및 5번에 4.1 ~ 4.4, 5.1 ~ 5.3 매뉴얼 링크 및 세부 기능 상세 설명 추가.
+    - 국문/영문 상세 기능 매뉴얼 표(User Manuals Table)에 4.1 ~ 4.4, 5.1 ~ 5.3 행 신규 추가.
+    - 패키지 빌드 및 배포 버전 `0.4.77` 최신화.
+  - `agent_common/__init__.py` 및 `pyproject.toml` 버전 `0.4.77` 갱신.
+
 ### v0.4.76 (2026-09-16)
 - **클라우드 스토리지 및 데이터베이스 클라이언트(`clients.py`) 상세 기술 매뉴얼(한국어/영어 10종) 신설 및 README.md 전면 갱신 (규칙 2.1, 4.2 준수)**:
   - `manual/kr/clients/` 및 `manual/en/clients/` 신설:

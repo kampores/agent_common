@@ -18,7 +18,7 @@
 - **1.3. [타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion - v0.4.14 / 범용화 v0.4.32)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/03_type_coercion_and_guarantee.md)**:
   - `_int`: `int` 정수형 자동 형 변환 및 보증
   - `_float`: `float` 실수형 자동 형 변환 및 보증
-  - `_bool`: `bool` 불리언형 자동 변환 (`"true"`, `"false"`, `1`, `0` 등 완벽 대응)
+  - `_bool`: `bool` 불리언형 자동 변환 및 타입 보증 (파이썬 `bool` 또는 대소문자 무관 `"true"`, `"false"` 지원, `0`, `1` 등 비지원 값 유입 시 Fail-Fast 차단)
   - `_str`: `str` 문자열 변환 및 `.strip()` 공백 자동 정제
   - `_list` / `_dict`: 리스트 / 불변 딕셔너리(`ReadOnlyConfig`) 래핑 보증
   - 범용 함수 `coerce_type_by_key_suffix` 및 중첩 딕셔너리 일괄 변환 `coerce_dict_by_key_suffix` 제공으로 임의의 외부 설정 파일(`rule.yml`, `mapping.yml` 등) 및 데이터 파이프라인 완벽 지원
@@ -43,17 +43,20 @@
 - **3.5. [BigQuery 타임존 오프셋 변환 및 테이블 타임존 모드 검증·동기화 (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync.md)**: ISO 8601, 공백 구분, 14자리/8자리 숫자 등 다양한 원천 날짜 문자열의 BigQuery 표준 타임스탬프 정규화, 타임존 오프셋 우선순위(`timezone_offset_str` - v0.4.71), 한국 시각 숫자 보존 모드(`kst_as_utc_timestamp_bool`), 테이블 메타데이터(라벨 `timestamp_mode`, 테이블 및 컬럼 Description) 자동 동기화 및 기존 데이터 존재 시 불일치 차단(Fail-Fast)
 
 #### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
-- **이원화된 Tool 디렉터리 계층 탐색**:
+- **4.1. [이원화된 Tool 디렉터리 계층 탐색 및 동적 로딩 (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/01_dual_tool_hierarchy_discovery.md)**:
   - **1순위 (내장 도구)**: `agent_common/tool/` 하위 모듈 (전사 표준 내장 도구)
   - **2순위 (프로젝트 도구)**: `config.yml`의 `transfer.tool_dir_str`에 지정된 로컬 경로 (예: `medallion/tool/`)
-- **선언적 템플릿 치환 및 표현식 평가 (`ToolParser.eval`)**:
+  - 모듈 함수, `클래스.메서드`, 클래스 내부 메서드 3단계 탐색, `_tool_cache` 인메모리 캐싱 및 `scan_rules_for_tool_functions` 사전 검증 지원
+- **4.2. [선언적 템플릿 치환 및 표현식 평가 (`ToolParser.eval`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/02_declarative_template_eval.md)**:
   - 변수 네임스페이스 바인딩: `{ecs.key}`, `{sys.today}`, `{json.title}`
   - 동적 도구 함수 호출: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`
-  - 문자열 슬라이싱/메서드: `"{raw_key.lstrip('/')}"`, `"{raw_size|0}"`
-- **안전한 네임스페이스 탐색 (`_SafeNamespace`)**:
-  - 대소문자 무관 탐색 및 누락된 필드에 대해 KeyError 없이 안전하게 빈 문자열(`""`) 반환
-- **내장 공통 도구 (`agent_common.tool.date.DateTimeUtils`)**:
-  - 테이블 규칙 및 템플릿 평가 전용 날짜/시간 도구 (v0.4.69 / v0.4.74)
+  - 파이프(`|`) 우선순위 폴백 및 기본값: `"{meta.title|json.title|'기본제목'}"`
+  - `inspect.signature` 기반 유연한 파라미터 매핑 및 `ctx` 컨텍스트 자동 주입
+- **4.3. [안전한 네임스페이스 탐색 (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/03_safe_namespace_navigation.md)**:
+  - 점(`.`) 및 인덱스(`[]`) 접근 통합, 대소문자 무관(Case-insensitive) 유연한 탐색
+  - 누락된 필드에 대해 KeyError 없이 안전하게 빈 문자열(`""`) 반환 및 중첩 딕셔너리/리스트 재귀적 래핑
+- **4.4. [내장 공통 일시 도구 (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/04_builtin_datetime_utils.md)**:
+  - 테이블 규칙 및 템플릿 평가 전용 날짜/시간 도구, 코어 타임존 해석은 `TimeUtils`에 위임하여 역할 분담 (v0.4.69 / v0.4.74)
   - `parse_datetime(dt_input_any, default_tz_obj)`: 다양한 형식(datetime, ISO 문자열)의 일시를 timezone-aware datetime으로 정규화 변환 (v0.4.74)
   - `get_now_timestamp(tz_obj)`: ISO 8601 표준 타임스탬프(`YYYY-MM-DD HH:MM:SS+09:00` 또는 `+00:00`) 반환 (BigQuery 적재 및 규칙 파일 표준)
   - `get_now_no_tz(tz_obj)`: 타임존 없는 일시 문자열(`YYYY-MM-DD HH:MM:SS`) 반환 (로그 및 요약표 전용)
@@ -61,9 +64,9 @@
   - `get_today_yyyymmdd(tz_obj)`: `YYYYMMDD` 형식 8자리 일자 반환 (새벽 배치 날짜 역전 방지, 예: `20260824`)
 
 #### 5. 진행률 트래커 및 공용 유틸리티 (`agent_common.utils`)
-- `TimeUtils`: 호스트 시스템(배치 KST vs 파드 UTC) 타임존 동적 자동 감지, 전 세계 주요 표준 타임존(UTC, KST, JST, EST, CET 등) 해석, ISO 8601 오프셋 계산, 일시 객체/문자열을 timezone-aware datetime으로 정규화하는 `parse_datetime` 지원 코어 시간 인프라 유틸리티 (v0.4.69 / v0.4.74)
-- `ProgressTracker`: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도 및 남은 시간 예측, 마일스톤 경고 승격 로깅
-- `TableFormatter`: 유니코드 동아시아 문자 폭(Display Width) 정밀 계산 기반 모노스페이스 콘솔 및 마크다운 테이블 세로줄 자동 맞춤 포매터 (v0.4.63)
+- **5.1. [호스트 시스템 타임존 감지, 전 세계 표준시 해석 및 일시 정규화 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/01_time_utils_and_timezone_resolution.md)**: 호스트 시스템(배치 KST vs 파드 UTC) 타임존 동적 자동 감지, 전 세계 30여 개 주요 표준 타임존(UTC, KST, JST, EST, CET 등) 해석, ISO 8601 오프셋 계산, 일시 객체/문자열을 timezone-aware datetime으로 정규화하는 `parse_datetime` 지원 코어 시간 인프라 유틸리티 (v0.4.69 / v0.4.74)
+- **5.2. [멀티스레드 실시간 진행률 추적 및 마일스톤 경고 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/02_progress_tracker_and_milestones.md)**: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도(건/s, MB/s) 및 남은 시간(ETA) 예측, 일반 진행 `INFO` vs 10% 단위 마일스톤 `WARNING` 승격 로깅
+- **5.3. [유니코드 전각 문자 폭 계산 및 마크다운/콘솔 테이블 칼맞춤 포매터 (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/03_unicode_table_formatter.md)**: 유니코드 동아시아 문자 폭(`unicodedata.east_asian_width`) 정밀 계산 기반 한글/한자(2칸) vs 영문(1칸) 모노스페이스 콘솔 및 마크다운 테이블 세로줄 자동 맞춤 포매터 (v0.4.63)
 
 #### 6. 공용 에러 및 예외 핸들러 (`agent_common.error_handler`)
 - 네트워크 장애, 설정 오류, 런타임 예외에 대한 일관된 로깅 및 핸들링 제공
@@ -255,7 +258,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.76-py3-none-any.whl
+pip install dist/agent_common-0.4.77-py3-none-any.whl
 ```
 
 #### 🌐 PyPI 공식 배포 (관리자 전용)
@@ -271,7 +274,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.76*
+python -m twine upload dist/agent_common-0.4.77*
 ```
 
 ---
@@ -298,6 +301,13 @@ python -m twine upload dist/agent_common-0.4.76*
 | **3.3** | **BigQuery 배치 적재 & 스트리밍 인서트** | [03_bigquery_batch_and_streaming_load.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/03_bigquery_batch_and_streaming_load.md) | JSON 배치 로드 Job vs 스트리밍 API, 중첩 에러 상세 분해, 중복 방지 키 집합 조회 |
 | **3.4** | **BigQuery 인라인 MERGE (Upsert) 엔진** | [04_bigquery_inline_merge_upsert.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/04_bigquery_inline_merge_upsert.md) | 임시 테이블 없는 인라인 MERGE, UNNEST 파라미터 바인딩, 동적 타입 캐스팅, 100건 청크 분할 |
 | **3.5** | **BigQuery 타임존 변환 & 모드 검증·동기화** | [05_bigquery_timestamp_and_tz_sync.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync.md) | ISO/압축 일시 정규화, Standard-UTC vs KST-as-UTC 모드, 테이블 메타데이터 동기화 및 Fail-Fast |
+| **4.1** | **이원화된 Tool 디렉터리 계층 탐색 & 동적 로딩** | [01_dual_tool_hierarchy_discovery.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/01_dual_tool_hierarchy_discovery.md) | 내장(1순위) vs 로컬(2순위) 탐색 계층, 3단계 함수 탐색, `_tool_cache`, `scan_rules_for_tool_functions` 사전 검증 |
+| **4.2** | **선언적 템플릿 치환 & 표현식 평가** | [02_declarative_template_eval.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/02_declarative_template_eval.md) | `ToolParser.eval()`, 도구 함수 직통 호출, 점(.) 네임스페이스 바인딩, 파이프(`\|`) 폴백, 자동 `ctx` 컨텍스트 주입 |
+| **4.3** | **안전한 네임스페이스 탐색 (`_SafeNamespace`)** | [03_safe_namespace_navigation.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/03_safe_namespace_navigation.md) | 점(.)/인덱스 통합 접근, 대소문자 무관 탐색, 누락 필드 `""` 반환, 중첩 딕셔너리/리스트 안전 재귀 래핑 |
+| **4.4** | **내장 공통 일시 도구 (`DateTimeUtils`)** | [04_builtin_datetime_utils.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/04_builtin_datetime_utils.md) | 테이블 룰/템플릿 전용 날짜 도구, `TimeUtils` 코어 위임 역할 분담, `YYYYMMDD`, ISO 타임스탬프, 압축 일시 생성 |
+| **5.1** | **호스트 타임존 감지 & 세계 표준시 해석** | [01_time_utils_and_timezone_resolution.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/01_time_utils_and_timezone_resolution.md) | `TimeUtils`, OS/컨테이너 타임존 감지, 전 세계 30여 개 표준시 해석, timezone-aware 일시 정규화 |
+| **5.2** | **멀티스레드 실시간 진행률 추적 & 마일스톤** | [02_progress_tracker_and_milestones.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/02_progress_tracker_and_milestones.md) | `ProgressTracker`, 실시간 진행률(`%`), 처리 속도, ETA 계산, 일반 `INFO` vs 10% 단위 마일스톤 `WARNING` 승격 로깅 |
+| **5.3** | **유니코드 전각 폭 계산 & 마크다운 표 칼맞춤** | [03_unicode_table_formatter.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/03_unicode_table_formatter.md) | `TableFormatter`, 동아시아 문자 폭(`east_asian_width`) 정밀 계산, 한글(2칸) vs 영문(1칸) 마크다운 표 세로선 칼정렬 |
 
 ---
 
@@ -321,7 +331,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **1.3. [Type Guarantee & Automatic Coercion via Type Suffixes (v0.4.14 / Generalized v0.4.32)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/03_type_coercion_and_guarantee.md)**:
   - `_int`: Automatic integer conversion and type guarantee.
   - `_float`: Automatic floating-point conversion and type guarantee.
-  - `_bool`: Automatic boolean conversion (`"true"`, `"false"`, `1`, `0`, etc.).
+  - `_bool`: Strict boolean conversion and type guarantee (Python `bool` or case-insensitive `"true"`, `"false"`; unsupported values like `0`, `1` fail fast).
   - `_str`: Automatic string conversion and `.strip()` whitespace trimming.
   - `_list` / `_dict`: Guaranteed list / immutable dictionary (`ReadOnlyConfig`) wrapping.
   - Standalone functions `coerce_type_by_key_suffix` and recursive batch coercion `coerce_dict_by_key_suffix` for arbitrary external configuration files (`rule.yml`, `mapping.yml`) and data mappings.
@@ -345,25 +355,30 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **3.5. [BigQuery Timestamp Conversion & Timezone Mode Synchronization (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_tz_sync.md)**: Normalizes ISO 8601, whitespace, and 14-digit/8-digit timestamps to standard BigQuery formats, timezone offset precedence (`timezone_offset_str` - v0.4.71), display convenience mode (`kst_as_utc_timestamp_bool`), automated table metadata synchronization (labels, table/column descriptions) with fail-fast mismatch blocking.
 
 #### 4. Dynamic Tool Loader & Template Evaluator (`agent_common.tool_parser`) & Built-in Tools (`agent_common.tool`)
-- **Dual Tool Hierarchy Discovery**:
+- **4.1. [Dual Tool Hierarchy Discovery & Dynamic Loading (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/01_dual_tool_hierarchy_discovery.md)**:
   - **Priority 1 (Built-in Tools)**: Modules under `agent_common/tool/` (standard enterprise tools).
   - **Priority 2 (Project Tools)**: Local path configured in `config.yml` under `transfer.tool_dir_str` (e.g., `medallion/tool/`).
-- **Declarative Template Replacement & Expression Evaluation (`ToolParser.eval`)**:
-  - Variable namespace binding: `{ecs.key}`, `{sys.today}`, `{json.title}`
-  - Dynamic tool function invocation: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`
-  - String slicing & fallback methods: `"{raw_key.lstrip('/')}"`, `"{raw_size|0}"`
-- **Safe Namespace Lookup (`_SafeNamespace`)**:
-  - Case-insensitive lookups returning empty strings (`""`) without raising `KeyError` on missing keys.
-- **Built-in Common Utilities (`agent_common.tool.date.DateTimeUtils`)**:
+  - 3-step function introspection, `_tool_cache` in-memory caching, and `scan_rules_for_tool_functions` pre-flight validation.
+- **4.2. [Declarative Template Evaluation & Expression Resolution (`ToolParser.eval`)](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/02_declarative_template_eval.md)**:
+  - Variable namespace binding: `{ecs.key}`, `{sys.today}`, `{json.title}`.
+  - Dynamic tool function invocation: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`.
+  - Pipe (`|`) fallback chains and default values: `"{meta.title|json.title|'Default Title'}"`.
+  - `inspect.signature`-based parameter mapping and automatic `ctx` context injection.
+- **4.3. [Safe Namespace Lookup & Case-Insensitive Access (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/03_safe_namespace_navigation.md)**:
+  - Unified dot-notation and bracket indexing, resilient case-insensitive key resolution.
+  - Returns empty string (`""`) on missing keys without raising `KeyError`; recursive wrapping of nested dictionaries and lists.
+- **4.4. [Built-in DateTime Tool (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/04_builtin_datetime_utils.md)**:
+  - Business rule and template formatting tool delegating core timezone calculations to `TimeUtils` (v0.4.69 / v0.4.74).
+  - `parse_datetime(dt_input_any, default_tz_obj)`: Normalizes various datetime formats and ISO strings into timezone-aware datetimes (v0.4.74).
   - `get_now_timestamp(tz_obj)`: Returns standard ISO 8601 timestamp string (`YYYY-MM-DD HH:MM:SS+09:00` or `+00:00`).
-  - `get_now_no_tz(tz_obj)`: Returns datetime string without timezone (`YYYY-MM-DD HH:MM:SS`).
-  - `get_now_compact(tz_obj)`: Returns 14-digit timestamp string (e.g., `20260824110500`).
-  - `get_today_yyyymmdd(tz_obj)`: Returns 8-digit date string (e.g., `20260824`).
+  - `get_now_no_tz(tz_obj)`: Returns clean datetime string without timezone (`YYYY-MM-DD HH:MM:SS`).
+  - `get_now_compact(tz_obj)`: Returns 14-digit compact timestamp string (`YYYYMMDDHHMMSS`).
+  - `get_today_yyyymmdd(tz_obj)`: Returns 8-digit date string (`YYYYMMDD`), preventing overnight batch date rollback.
 
 #### 5. Progress Tracker & Common Utilities (`agent_common.utils`)
-- `TimeUtils`: Dynamic host OS system timezone detection, world timezone parsing, and ISO 8601 offset calculation core utility (v0.4.69).
-- `ProgressTracker`: Real-time multithreaded progress tracking (`[N/Total] (P%)`), throughput/ETA calculation, and milestone log level elevation.
-- `TableFormatter`: Precision terminal and markdown table column width alignment utility (v0.4.63).
+- **5.1. [System Timezone Detection, Global Timezone Resolution & Datetime Normalization (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/01_time_utils_and_timezone_resolution.md)**: Dynamic host OS system timezone detection, 30+ world timezone parsing, ISO 8601 offset calculation, and `parse_datetime` normalization core utility (v0.4.69 / v0.4.74).
+- **5.2. [Multithreaded Progress Tracking & Milestone Telemetry (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/02_progress_tracker_and_milestones.md)**: Real-time multithreaded progress tracking (`[N/Total] (P%)`), throughput/ETA calculation, and tiered logging (standard `INFO` vs 10% milestone `WARNING` level elevation).
+- **5.3. [Unicode East Asian Width Alignment & Table Formatter (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/03_unicode_table_formatter.md)**: Precision terminal and Markdown table column width alignment utility calculating Unicode East Asian character display widths (`unicodedata.east_asian_width`) (v0.4.63).
 
 #### 6. Common Error & Exception Handler (`agent_common.error_handler`)
 - Consistent exception logging and handling for network failures, configuration errors, and runtime exceptions.
@@ -549,7 +564,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.76-py3-none-any.whl
+pip install dist/agent_common-0.4.77-py3-none-any.whl
 ```
 
 #### 🌐 Official PyPI Distribution (Maintainers Only)
@@ -565,7 +580,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.76*
+python -m twine upload dist/agent_common-0.4.77*
 ```
 
 ---
@@ -592,6 +607,13 @@ For comprehensive architecture details and practical code examples for each modu
 | **3.3** | **BigQuery Batch Loading & Streaming Ingestion** | [03_bigquery_batch_and_streaming_load.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/03_bigquery_batch_and_streaming_load.md) | JSON batch load jobs vs streaming API, nested error diagnostics unpacking, deduplication key lookup |
 | **3.4** | **BigQuery Inline MERGE (Upsert) Engine** | [04_bigquery_inline_merge_upsert.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/04_bigquery_inline_merge_upsert.md) | Pure inline MERGE without staging tables, UNNEST parameter binding, dynamic type casting, 100-row chunks |
 | **3.5** | **BigQuery Timestamp Conversion & TZ Sync** | [05_bigquery_timestamp_and_tz_sync.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_tz_sync.md) | ISO/compact timestamp normalization, Standard-UTC vs KST-as-UTC modes, table metadata auto-sync & Fail-Fast |
+| **4.1** | **Dual Tool Hierarchy Discovery & Dynamic Loading** | [01_dual_tool_hierarchy_discovery.md](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/01_dual_tool_hierarchy_discovery.md) | Built-in (Priority 1) vs Local (Priority 2) discovery, 3-step function introspection, `_tool_cache`, `scan_rules_for_tool_functions` pre-flight validation |
+| **4.2** | **Declarative Template Evaluation & Expression Resolution** | [02_declarative_template_eval.md](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/02_declarative_template_eval.md) | `ToolParser.eval()`, direct tool calls, dot-notation namespaces, pipe (`\|`) fallbacks, signature-aware parameter binding, and automatic context injection |
+| **4.3** | **Safe Namespace Lookup & Case-Insensitive Access** | [03_safe_namespace_navigation.md](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/03_safe_namespace_navigation.md) | `_SafeNamespace`, case-insensitive lookups, silent empty-string (`""`) fallback on missing keys, recursive nested collection wrapping |
+| **4.4** | **Built-in DateTime Tool (`DateTimeUtils`)** | [04_builtin_datetime_utils.md](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/04_builtin_datetime_utils.md) | Business template formatting tool, `TimeUtils` delegation architecture, `YYYYMMDD`, BigQuery ISO timestamps, and compact datetime strings |
+| **5.1** | **System Timezone Detection & Global Timezone Resolution** | [01_time_utils_and_timezone_resolution.md](https://github.com/kampores/agent_common/blob/main/manual/en/utils/01_time_utils_and_timezone_resolution.md) | `TimeUtils`, dynamic host OS/container timezone detection, 30+ global timezone abbreviation parser, timezone-aware datetime normalization |
+| **5.2** | **Multithreaded Progress Tracking & Milestone Telemetry** | [02_progress_tracker_and_milestones.md](https://github.com/kampores/agent_common/blob/main/manual/en/utils/02_progress_tracker_and_milestones.md) | `ProgressTracker`, real-time percentage (`%`), throughput, ETA, standard `INFO` vs 10% milestone `WARNING` level elevation |
+| **5.3** | **Unicode East Asian Width Alignment & Table Formatter** | [03_unicode_table_formatter.md](https://github.com/kampores/agent_common/blob/main/manual/en/utils/03_unicode_table_formatter.md) | `TableFormatter`, precise East Asian character display width calculation, monospace and Markdown table vertical border alignment |
 
 ---
 

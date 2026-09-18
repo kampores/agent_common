@@ -27,7 +27,7 @@ Starting from `v0.4.32`, these capabilities are promoted to **first-class public
 | :--- | :---: | :--- | :--- | :--- |
 | `_int` | `int` | Automatically converted via `int(val)` | **Raises `ValueError` (Fail-Fast)**<br/>Diagnostic integer guidance | `"100"` ➔ `100`<br/>`"abc"` ➔ `ValueError` |
 | `_float` | `float` | Automatically converted via `float(val)` | **Raises `ValueError` (Fail-Fast)**<br/>Diagnostic float guidance | `"3.14"` ➔ `3.14`<br/>`"xyz"` ➔ `ValueError` |
-| `_bool` | `bool` | Explicit boolean conversion<br/>(`"true"`, `"1"`, `"yes"`, `"y"`, `"on"` ➔ `True`<br/>`"false"`, `"0"`, `"no"`, `"n"`, `"off"` ➔ `False`) | **Raises `ValueError` (Fail-Fast)**<br/>Diagnostic boolean guidance | `"True"` ➔ `True`<br/>`"false"` ➔ `False`<br/>`"hello"` ➔ `ValueError` |
+| `_bool` | `bool` | Explicit boolean conversion<br/>(Python `bool` or case-insensitive `"true"` ➔ `True`, `"false"` ➔ `False`<br/>* `0`, `1`, and arbitrary strings are not supported) | **Raises `ValueError` / `TypeError` (Fail-Fast)**<br/>Diagnostic boolean (`True`/`False`) guidance | `"True"` ➔ `True`<br/>`"false"` ➔ `False`<br/>`1`, `"0"`, `"hello"` ➔ Error (Fail-Fast) |
 | `_str` | `str` | Automatically converted to `str(val)` with whitespace stripped (`.strip()`) | - | `"  prod  "` ➔ `"prod"`<br/>`1234` ➔ `"1234"` |
 | `_list` | `list` | Ensures tuples, sets, or single items are returned as a `list` | - | `("a", "b")` ➔ `["a", "b"]`<br/>`"single"` ➔ `["single"]` |
 | `_dict` | `dict` / `ReadOnlyConfig` | Guarantees dictionary mapping structure and wraps in `ReadOnlyConfig` | **Raises `TypeError` (Fail-Fast)**<br/>Diagnostic dictionary guidance | `{}` ➔ `ReadOnlyConfig({})`<br/>`123` ➔ `TypeError` |
@@ -229,5 +229,5 @@ print(f"Timeout: {timeout_sec}")
 from agent_common import coerce_type_by_key_suffix
 
 port = coerce_type_by_key_suffix("server_port_int", "8080")  # 8080 (int)
-debug = coerce_type_by_key_suffix("is_debug_bool", "yes")     # True (bool)
+debug = coerce_type_by_key_suffix("is_debug_bool", "true")   # True (bool)
 ```

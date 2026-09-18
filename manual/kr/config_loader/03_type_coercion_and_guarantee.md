@@ -28,7 +28,7 @@ YAML 파일 작성 시 따옴표 누락(`timeout: 30` vs `timeout: "30"`)이나 
 | :--- | :---: | :--- | :--- | :--- |
 | `_int` | `int` | `int(val)` 자동 변환 | **`ValueError` 발생 (Fast-Fail)**<br/>올바른 정수형 입력 안내 | `"100"` ➔ `100`<br/>`"abc"` ➔ `ValueError` |
 | `_float` | `float` | `float(val)` 자동 변환 | **`ValueError` 발생 (Fast-Fail)**<br/>올바른 숫자형 입력 안내 | `"3.14"` ➔ `3.14`<br/>`"xyz"` ➔ `ValueError` |
-| `_bool` | `bool` | 명시적 진위형 판정<br/>(`"true"`, `"1"`, `"yes"`, `"y"`, `"on"` ➔ `True`<br/>`"false"`, `"0"`, `"no"`, `"n"`, `"off"` ➔ `False`) | **`ValueError` 발생 (Fast-Fail)**<br/>불리언 규격 입력 안내 | `"True"` ➔ `True`<br/>`"false"` ➔ `False`<br/>`"hello"` ➔ `ValueError` |
+| `_bool` | `bool` | 명시적 불리언형 판정<br/>(파이썬 `bool` 또는 대소문자 무관 `"true"` ➔ `True`, `"false"` ➔ `False`<br/>※ 숫자 `0`, `1` 및 임의 문자열은 미지원) | **`ValueError` / `TypeError` 발생 (Fail-Fast)**<br/>True 또는 False 규격 입력 안내 | `"True"` ➔ `True`<br/>`"false"` ➔ `False`<br/>`1`, `"0"`, `"hello"` ➔ 에러 발생 (Fail-Fast) |
 | `_str` | `str` | `str(val).strip()`으로 양끝 공백 자동 제거 | - | `"  prod  "` ➔ `"prod"`<br/>`1234` ➔ `"1234"` |
 | `_list` | `list` | 튜플, 세트, 단일 원소를 `list`로 보증 | - | `("a", "b")` ➔ `["a", "b"]`<br/>`"only_one"` ➔ `["only_one"]` |
 | `_dict` | `dict` / `ReadOnlyConfig` | 딕셔너리 구조 보증 및 `ReadOnlyConfig` 래핑 | **`TypeError` 발생 (Fast-Fail)**<br/>딕셔너리 매핑 입력 안내 | `{}` ➔ `ReadOnlyConfig({})`<br/>`123` ➔ `TypeError` |
@@ -232,7 +232,7 @@ from agent_common import coerce_type_by_key_suffix
 
 # 환경 변수나 CLI 인자, 외부 API 응답값 단건 변환
 port = coerce_type_by_key_suffix("server_port_int", "8080")  # 8080 (int)
-debug = coerce_type_by_key_suffix("is_debug_bool", "yes")     # True (bool)
+debug = coerce_type_by_key_suffix("is_debug_bool", "true")   # True (bool)
 ```
 
 이 규칙을 통해 개발자는 `int()`, `float()`, `.strip()`과 같은 불필요한 방어 코드를 비즈니스 로직에서 완전히 제거할 수 있습니다.

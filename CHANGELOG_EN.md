@@ -2,6 +2,23 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.77 (2026-09-18)
+- **Comprehensive Technical Manuals for Dynamic Tool Loader (`tool_parser.py`), Built-in Tools (`tool/date/date_time_utils.py`), and Core Utilities (`utils.py`) (14 Documents across Korean and English) and Full README.md Modernization (Rules 2.1, 4.2)**:
+  - Added user manuals under `manual/kr/tool_parser/` and `manual/en/tool_parser/`:
+    - `01_dual_tool_hierarchy_discovery.md`: 4.1. Dual tool hierarchy discovery (Priority 1: built-in `agent_common/tool/` vs Priority 2: project-local `config.transfer.tool_dir_str`), 3-step function introspection, `_tool_cache` in-memory caching, and pre-flight `scan_rules_for_tool_functions` fail-fast validation.
+    - `02_declarative_template_eval.md`: 4.2. Declarative template evaluation (`ToolParser.eval`), direct tool invocations, dot-notation namespace lookups, pipe (`|`) fallback chains, `inspect.signature` argument mapping, and automatic `ctx` context injection.
+    - `03_safe_namespace_navigation.md`: 4.3. Safe namespace traversal (`_SafeNamespace`), unified dot-notation and bracket indexing, case-insensitive key resolution, silent empty-string (`""`) fallback on missing keys, and recursive nested collection wrapping.
+    - `04_builtin_datetime_utils.md`: 4.4. Built-in datetime utility (`DateTimeUtils`), business rule (`table_rules.yml`) and template support, core infrastructure delegation to `TimeUtils`, `YYYYMMDD`, BigQuery ISO timestamps, and compact datetime strings.
+  - Added user manuals under `manual/kr/utils/` and `manual/en/utils/`:
+    - `01_time_utils_and_timezone_resolution.md`: 5.1. Dynamic host OS/container timezone detection (`get_system_timezone`, `get_system_timezone_offset_str`), 30+ global timezone abbreviation parser (`WORLD_TIMEZONE_OFFSETS_DICT`, `resolve_timezone`), and timezone-aware datetime normalization (`parse_datetime`).
+    - `02_progress_tracker_and_milestones.md`: 5.2. Multithreaded progress tracking (`ProgressTracker`), high-volume batch processing telemetry, real-time throughput and ETA calculation, tiered logging (standard `INFO` vs 10% milestone `WARNING` level elevation).
+    - `03_unicode_table_formatter.md`: 5.3. Unicode East Asian width alignment and Markdown table formatter (`TableFormatter`), calculating display widths via `unicodedata.east_asian_width` (Wide 2 columns vs Narrow 1 column) for perfectly aligned Markdown and console tables.
+  - `README.md`:
+    - Integrated manual links and comprehensive descriptions in Korean & English Sections 4 and 5.
+    - Updated user manual index tables with entries 4.1 through 4.4, and 5.1 through 5.3.
+    - Updated release versions and package commands to `0.4.77`.
+  - Bumped version in `agent_common/__init__.py` and `pyproject.toml` to `0.4.77`.
+
 ### v0.4.76 (2026-09-16)
 - **Comprehensive Technical Manuals for Storage & Database Clients (`clients.py`) and Full README.md Modernization (Rules 2.1, 4.2)**:
   - Added 10 user manual documents under `manual/kr/clients/` and `manual/en/clients/`:

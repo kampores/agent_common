@@ -40,7 +40,7 @@ bigquery:
 
 transfer:
   max_workers_int: 8
-  is_active_bool: "yes"  # 타입 보증에 의해 bool(True)로 자동 변환
+  is_active_bool: "true"  # 타입 보증에 의해 bool(True)로 자동 변환
   allowed_types_list:    # 리스트 구조 보증
     - "json"
     - "parquet"

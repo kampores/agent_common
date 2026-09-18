@@ -18,11 +18,11 @@
 
 ### 1.3. Fail-Fast & Program Stability
 
-1.3.1. Required configuration values must be defined in configuration files. If missing, do not fallback to code constants; report via logs and terminate immediately (Fail-Fast). (Optional settings may use default fallbacks: `""`, `[]`, `{}`, `None`, `0`, `Exception`.)
+1.3.1. Required configuration values must be defined in configuration files. If missing, do not fallback to code constants; report via logs and terminate immediately (Fail-Fast). (Optional settings may use default fallbacks: `""`, `[]`, `{}`, `set()`, `None`, `0`, `0.0`, `False`, `Exception`.)
 
 1.3.2. Program termination due to missing configuration must only occur during the early execution phase (startup/CLI launch). Once startup completes, handle exceptions during request/task processing to prevent abnormal termination and recover gracefully.
 
-### 1.4. Object-Oriented Design, Direct Immutable Config Access & DRY
+### 1.4. Object-Oriented Design, MSA Architecture, Direct Immutable Config Access & DRY
 
 1.4.1. Design cohesive classes adhering to the Single Responsibility Principle (SRP). Inner/nested functions inside methods or functions are strictly prohibited.
 
@@ -37,6 +37,11 @@
 1.4.5. **Code Conciseness & Structural Optimization**: Strive to reduce unnecessary verbosity and character count through clean structural improvements and proper modularization, without compromising semantic clarity, type safety, or architectural principles.
 
 1.4.6. **No Superficial Shell / Pass-through Functions (껍데기 함수 금지)**: Prohibit creating trivial wrapper or forwarding functions that merely delegate calls to another function without adding meaningful logic, validation, or structural abstraction. Consolidate logic directly into the substantive target function to eliminate unnecessary call layers and keep the architecture direct and uncluttered.
+
+1.4.7. **MSA (Microservices Architecture) Independent Service Decoupling**:
+- Develop all pipelines and programs (e.g., `ecs_to_gcs.py`, `ecs_to_bigquery.py`, `ecs_to_gcsbigquery_merge.py`) adhering to an **MSA (Microservices Architecture)** so that any individual pipeline can be decoupled, extracted, deployed, and executed independently at any time without monolithic parent-child inheritance coupling.
+- Integrate universal execution logic via **composition (dependency injection)** using standalone runners or domain helpers rather than deep inheritance trees, ensuring structural autonomy and zero friction when isolating any single service.
+
 
 ### 1.5. Common Module Architecture, No Speculative Coding & Strict Prohibition of Defensive Coding
 
