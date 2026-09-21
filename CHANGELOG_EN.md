@@ -2,6 +2,16 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.78 (2026-09-21)
+
+- **AI development request guide and unified LLM manuals**:
+  - Added README prompts combining requirements, PyPI/GitHub links, and feature numbers, with guidance to start small and extend incrementally.
+  - Added Korean and English LLM manuals covering profiles, external APIs, Fabrix, local GGUF, environment overrides, results, and exception behavior.
+  - Documented the Antigravity Stop hook and Groq supervisor example, including review scope, skipped reviews, and differences when using `LlmClient`.
+  - Linked the manuals from README section 7 and the manual tables; omitted the unfinished section 6 error-handler introduction.
+  - Corrected the fallback description: `auto` attempts local inference only after an external `None` result.
+  - Updated release versions and README commands to `0.4.78`. No runtime behavior changes.
+
 ### v0.4.77 (2026-09-18)
 - **Comprehensive Technical Manuals for Dynamic Tool Loader (`tool_parser.py`), Built-in Tools (`tool/date/date_time_utils.py`), and Core Utilities (`utils.py`) (14 Documents across Korean and English) and Full README.md Modernization (Rules 2.1, 4.2)**:
   - Added user manuals under `manual/kr/tool_parser/` and `manual/en/tool_parser/`:

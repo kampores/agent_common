@@ -1,5 +1,7 @@
 # agent_common
 
+**[📦 PyPI 패키지](https://pypi.org/project/agent-common/) · [💻 GitHub 소스 및 매뉴얼](https://github.com/kampores/agent_common)**
+
 > [ 🇰🇷 한국어 설명 ](#-agent_common-패키지-한국어) | [ 🇺🇸 English Description ](#-agent_common-package-english) | [ 📖 매뉴얼 (Manuals) ](#-상세-기능-매뉴얼-user-manuals)
 
 ---
@@ -68,23 +70,58 @@
 - **5.2. [멀티스레드 실시간 진행률 추적 및 마일스톤 경고 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/02_progress_tracker_and_milestones.md)**: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도(건/s, MB/s) 및 남은 시간(ETA) 예측, 일반 진행 `INFO` vs 10% 단위 마일스톤 `WARNING` 승격 로깅
 - **5.3. [유니코드 전각 문자 폭 계산 및 마크다운/콘솔 테이블 칼맞춤 포매터 (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/03_unicode_table_formatter.md)**: 유니코드 동아시아 문자 폭(`unicodedata.east_asian_width`) 정밀 계산 기반 한글/한자(2칸) vs 영문(1칸) 모노스페이스 콘솔 및 마크다운 테이블 세로줄 자동 맞춤 포매터 (v0.4.63)
 
-#### 6. 공용 에러 및 예외 핸들러 (`agent_common.error_handler`)
-- 네트워크 장애, 설정 오류, 런타임 예외에 대한 일관된 로깅 및 핸들링 제공
-
 #### 7. 통합 LLM 클라이언트 및 추론 엔진 (`agent_common.llm`)
-- **다중 프로바이더 통합 지원 (`LlmClient`)**:
-  - **외부 LLM API**: OpenAI 호환 표준 API (`/chat/completions`) 및 Fabrix 전용 API 형식 지원
-  - **로컬 GGUF 모델**: `llama-cpp-python` 기반 로컬 CPU/GPU 가속 추론 및 인메모리 모델 캐싱(`_LOCAL_LLMS`)
-- **설정 풀(Pool) 기반 모델 프로필 관리**:
-  - `llmpool.yml` 및 `config.yml`을 통해 모델명, 토큰 수(`max_tokens`), 온도(`temperature`), 타임아웃, 컨텍스트 크기(`n_ctx`), 스레드 수(`n_threads`), GPU 레이어(`n_gpu_layers`) 등 동적 구성
-- **자동 장애 복구 (Auto Failover)**:
-  - `provider: auto` 설정 시 외부 LLM API 호출 실패 시 로컬 GGUF 모델로 무중단 자동 전환
-- **추론 예외 통일 관리 (`LlmInferenceError`)**:
-  - API 키 누락, 타임아웃, 모델 로드 실패 등에 대한 통합 예외 처리
+
+- **7.1. [모델 프로필 관리 및 텍스트 생성](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/01_model_profiles_and_generation.md)**
+- **7.2. [외부 채팅 API 및 Fabrix 연동](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/02_external_api_and_fabrix.md)**
+- **7.3. [로컬 GGUF 추론 및 모델 캐싱](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/03_local_gguf_inference.md)**
+- **7.4. [실행 모드 및 조건부 로컬 전환](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/04_provider_and_local_fallback.md)**
+- **7.5. [추론 결과 및 예외 처리](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/05_inference_results_and_errors.md)**
+- **7.6. [Groq 감독관 AI 및 Antigravity Stop 훅](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/06_groq_supervisor_and_stop_hook.md)**
 
 ---
 
 ### 🛠️ 사용 예시 (Usage Examples)
+
+#### AI에게 프로그램 개발을 요청하는 방법
+
+AI에게 **만들려는 기능**, 아래 **PyPI 및 GitHub 링크**, 이 README의 **「주요 제공 기능」에서 참고할 기능 번호**를 함께 전달하면 됩니다. “README의 몇 번, 몇 번 기능과 연결된 상세 매뉴얼을 참고해서 `agent_common`을 활용한 프로그램을 만들어줘”라고 요청하세요.
+
+- PyPI: [agent-common 패키지](https://pypi.org/project/agent-common/)
+- GitHub: [agent_common 저장소 및 README](https://github.com/kampores/agent_common)
+
+예를 들어, **Dell ECS S3 스토리지에서 GCS로 파일을 복사하는 프로그램**을 만들려면 **3.1 (`S3Client`)**, **3.2 (`GcsClient`)** 기능을 지정해 다음과 같이 요청하면 됩니다.
+
+```text
+Dell ECS S3 스토리지에서 Google Cloud Storage(GCS)로 파일을 복사하는 Python 프로그램을 만들어줘.
+
+아래 agent-common 패키지와 GitHub 문서를 참고해줘.
+- https://pypi.org/project/agent-common/
+- https://github.com/kampores/agent_common
+
+주로 README의 「주요 제공 기능」 중 3.1(AWS S3 및 Dell ECS 오브젝트 스토리지 클라이언트)과
+3.2(Google Cloud Storage 스트리밍 클라이언트 및 멀티 계층 인증),
+그리고 각 항목에 연결된 상세 매뉴얼을 참고해서 agent_common을 활용해 구현해줘.
+
+구현 전에 해당 기능의 상세 매뉴얼과 실제 API 사용법을 확인하고,
+요구사항에서 빠진 정보는 임의로 가정하지 말고 질문해줘.
+처음부터 agent_common의 모든 기능을 적용하려고 하지 말고,
+먼저 파일 복사에 필요한 최소 기능을 구현하고 동작을 확인해줘.
+그다음 필요한 부가기능을 변수형 보증(1.3), config 점 표기법(1.2) 등으로
+나누어 하나씩 추가하고, 추가할 때마다 기존 파일 복사가 정상 동작하는지 확인해줘.
+```
+
+다른 프로그램도 같은 방식으로 만들려는 기능에 해당하는 번호를 골라 요청하면 됩니다. 복사 대상 버킷, 대상 파일 범위, 저장 경로 규칙 등 구체적인 요구사항을 함께 설명하면 원하는 동작을 더 명확하게 전달할 수 있습니다.
+
+##### 최소 기능부터 단계적으로 확장하기
+
+처음부터 `agent_common`의 모든 기능을 한꺼번에 적용하도록 요청하지 말고, **핵심 기능 구현 → 동작 확인 → 필요한 부가기능 추가** 순서로 진행하세요. 패키지가 이미 제공하는 기능은 재사용하고, 현재 목적에 필요한 기능부터 적용하면 됩니다.
+
+1. **최소 기능 구현**: ECS S3 → GCS 복사 프로그램이라면 접속·인증과 지정한 파일의 복사에 필요한 기능부터 구현합니다.
+2. **핵심 동작 확인**: 지정한 파일이 원하는 GCS 경로에 정상적으로 복사되는지 확인합니다.
+3. **부가기능 단계적 추가**: 필요에 따라 변수형 보증(1.3), `config` 점 표기법(1.2), 진행률 추적(5.2), 결과 요약(2.5) 등을 하나씩 적용하고 기존 동작을 확인합니다.
+
+후속 요청도 “현재 파일 복사 동작을 유지하면서 README 1.3의 변수형 보증을 적용해줘”처럼 범위를 좁혀 전달하면 됩니다.
 
 #### 1. 전역 `config` 점 표기법 및 타입 보증 활용
 ```python
@@ -149,7 +186,7 @@ from agent_common.llm import LlmClient
 # 1) 설정 풀에 정의된 모델명 또는 용도로 클라이언트 초기화
 llm_client = LlmClient(purpose_str="sql_generator")
 
-# 2) 프롬프트 기반 텍스트 생성 (외부 API -> 로컬 GGUF 자동 폴백)
+# 2) 선택한 프로필의 provider_str에 따라 텍스트 생성
 prompt_str = "사용자 요청: 2026년 8월 일일 가입자 수 통계 쿼리를 작성해줘."
 response_str = llm_client.generate(
     prompt_str=prompt_str,
@@ -258,7 +295,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.77-py3-none-any.whl
+pip install dist/agent_common-0.4.78-py3-none-any.whl
 ```
 
 #### 🌐 PyPI 공식 배포 (관리자 전용)
@@ -274,7 +311,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.77*
+python -m twine upload dist/agent_common-0.4.78*
 ```
 
 ---
@@ -308,10 +345,24 @@ python -m twine upload dist/agent_common-0.4.77*
 | **5.1** | **호스트 타임존 감지 & 세계 표준시 해석** | [01_time_utils_and_timezone_resolution.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/01_time_utils_and_timezone_resolution.md) | `TimeUtils`, OS/컨테이너 타임존 감지, 전 세계 30여 개 표준시 해석, timezone-aware 일시 정규화 |
 | **5.2** | **멀티스레드 실시간 진행률 추적 & 마일스톤** | [02_progress_tracker_and_milestones.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/02_progress_tracker_and_milestones.md) | `ProgressTracker`, 실시간 진행률(`%`), 처리 속도, ETA 계산, 일반 `INFO` vs 10% 단위 마일스톤 `WARNING` 승격 로깅 |
 | **5.3** | **유니코드 전각 폭 계산 & 마크다운 표 칼맞춤** | [03_unicode_table_formatter.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/03_unicode_table_formatter.md) | `TableFormatter`, 동아시아 문자 폭(`east_asian_width`) 정밀 계산, 한글(2칸) vs 영문(1칸) 마크다운 표 세로선 칼정렬 |
+| **7.1** | **모델 프로필 관리 및 텍스트 생성** | [01_model_profiles_and_generation.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/01_model_profiles_and_generation.md) | `agent_common.llm` |
+| **7.2** | **외부 채팅 API 및 Fabrix 연동** | [02_external_api_and_fabrix.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/02_external_api_and_fabrix.md) | `agent_common.llm` |
+| **7.3** | **로컬 GGUF 추론 및 모델 캐싱** | [03_local_gguf_inference.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/03_local_gguf_inference.md) | `agent_common.llm` |
+| **7.4** | **실행 모드 및 조건부 로컬 전환** | [04_provider_and_local_fallback.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/04_provider_and_local_fallback.md) | `agent_common.llm` |
+| **7.5** | **추론 결과 및 예외 처리** | [05_inference_results_and_errors.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/05_inference_results_and_errors.md) | `agent_common.llm` |
+| **7.6** | **Groq 감독관 AI 및 Antigravity Stop 훅** | [06_groq_supervisor_and_stop_hook.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/06_groq_supervisor_and_stop_hook.md) | `agent_common.llm` |
 
 ---
 
 ### 📋 버전 변경 이력 (Changelog)
+
+#### v0.4.78 (2026-09-21)
+
+- AI에게 요구사항·패키지 링크·기능 번호를 전달하는 방법과 최소 기능부터 단계적으로 확장하는 가이드를 추가했습니다.
+- 통합 LLM 클라이언트의 한국어·영어 매뉴얼을 추가하고, 모델 설정·외부 API·로컬 GGUF·환경변수·예외 처리를 설명했습니다.
+- Groq 감독관 AI와 Antigravity Stop 훅의 `AGENTS.md` 검사 사례 및 실제 검사 범위·생략 조건을 정리했습니다.
+- LLM `auto` 모드의 조건부 전환 설명을 실제 구현에 맞추고, 개발 중인 에러 핸들러 소개는 제외했습니다.
+- 패키지 버전을 `0.4.78`로 올렸습니다. 런타임 동작 변경은 없습니다.
 
 자세한 버전 변경 이력은 [GitHub CHANGELOG.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md) 파일을 참고하세요.
 
@@ -380,16 +431,14 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **5.2. [Multithreaded Progress Tracking & Milestone Telemetry (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/02_progress_tracker_and_milestones.md)**: Real-time multithreaded progress tracking (`[N/Total] (P%)`), throughput/ETA calculation, and tiered logging (standard `INFO` vs 10% milestone `WARNING` level elevation).
 - **5.3. [Unicode East Asian Width Alignment & Table Formatter (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/03_unicode_table_formatter.md)**: Precision terminal and Markdown table column width alignment utility calculating Unicode East Asian character display widths (`unicodedata.east_asian_width`) (v0.4.63).
 
-#### 6. Common Error & Exception Handler (`agent_common.error_handler`)
-- Consistent exception logging and handling for network failures, configuration errors, and runtime exceptions.
-
 #### 7. Unified LLM Client & Inference Engine (`agent_common.llm`)
-- **Multi-Provider Support (`LlmClient`)**:
-  - **External LLM APIs**: Standard OpenAI-compatible API (`/chat/completions`) and Fabrix API format.
-  - **Local GGUF Models**: Local CPU/GPU accelerated inference via `llama-cpp-python` with in-memory caching (`_LOCAL_LLMS`).
-- **Pool-based Model Profile Management**: Dynamic configuration via `llmpool.yml` and `config.yml`.
-- **Auto Failover**: Seamless automatic fallback to local GGUF models if external API calls fail (`provider: auto`).
-- **Unified Inference Error Handling (`LlmInferenceError`)**: Centralized exception handling for API key errors, timeouts, and model load failures.
+
+- **7.1. [Model Profiles and Text Generation](https://github.com/kampores/agent_common/blob/main/manual/en/llm/01_model_profiles_and_generation.md)**
+- **7.2. [External Chat APIs and Fabrix](https://github.com/kampores/agent_common/blob/main/manual/en/llm/02_external_api_and_fabrix.md)**
+- **7.3. [Local GGUF Inference and Model Caching](https://github.com/kampores/agent_common/blob/main/manual/en/llm/03_local_gguf_inference.md)**
+- **7.4. [Provider Selection and Conditional Local Fallback](https://github.com/kampores/agent_common/blob/main/manual/en/llm/04_provider_and_local_fallback.md)**
+- **7.5. [Inference Results and Error Handling](https://github.com/kampores/agent_common/blob/main/manual/en/llm/05_inference_results_and_errors.md)**
+- **7.6. [Groq Supervisor and Antigravity Stop Hook](https://github.com/kampores/agent_common/blob/main/manual/en/llm/06_groq_supervisor_and_stop_hook.md)**
 
 ---
 
@@ -458,7 +507,7 @@ from agent_common.llm import LlmClient
 # 1) Initialize client with configured purpose or model name
 llm_client = LlmClient(purpose_str="sql_generator")
 
-# 2) Prompt-based generation (External API with auto fallback to local GGUF)
+# 2) Generate text using the selected profile's provider_str
 prompt_str = "User request: Generate daily subscriber statistics SQL for August 2026."
 response_str = llm_client.generate(
     prompt_str=prompt_str,
@@ -564,7 +613,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.77-py3-none-any.whl
+pip install dist/agent_common-0.4.78-py3-none-any.whl
 ```
 
 #### 🌐 Official PyPI Distribution (Maintainers Only)
@@ -580,7 +629,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.77*
+python -m twine upload dist/agent_common-0.4.78*
 ```
 
 ---
@@ -614,9 +663,23 @@ For comprehensive architecture details and practical code examples for each modu
 | **5.1** | **System Timezone Detection & Global Timezone Resolution** | [01_time_utils_and_timezone_resolution.md](https://github.com/kampores/agent_common/blob/main/manual/en/utils/01_time_utils_and_timezone_resolution.md) | `TimeUtils`, dynamic host OS/container timezone detection, 30+ global timezone abbreviation parser, timezone-aware datetime normalization |
 | **5.2** | **Multithreaded Progress Tracking & Milestone Telemetry** | [02_progress_tracker_and_milestones.md](https://github.com/kampores/agent_common/blob/main/manual/en/utils/02_progress_tracker_and_milestones.md) | `ProgressTracker`, real-time percentage (`%`), throughput, ETA, standard `INFO` vs 10% milestone `WARNING` level elevation |
 | **5.3** | **Unicode East Asian Width Alignment & Table Formatter** | [03_unicode_table_formatter.md](https://github.com/kampores/agent_common/blob/main/manual/en/utils/03_unicode_table_formatter.md) | `TableFormatter`, precise East Asian character display width calculation, monospace and Markdown table vertical border alignment |
+| **7.1** | **Model Profiles and Text Generation** | [01_model_profiles_and_generation.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/01_model_profiles_and_generation.md) | `agent_common.llm` |
+| **7.2** | **External Chat APIs and Fabrix** | [02_external_api_and_fabrix.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/02_external_api_and_fabrix.md) | `agent_common.llm` |
+| **7.3** | **Local GGUF Inference and Model Caching** | [03_local_gguf_inference.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/03_local_gguf_inference.md) | `agent_common.llm` |
+| **7.4** | **Provider Selection and Conditional Local Fallback** | [04_provider_and_local_fallback.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/04_provider_and_local_fallback.md) | `agent_common.llm` |
+| **7.5** | **Inference Results and Error Handling** | [05_inference_results_and_errors.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/05_inference_results_and_errors.md) | `agent_common.llm` |
+| **7.6** | **Groq Supervisor and Antigravity Stop Hook** | [06_groq_supervisor_and_stop_hook.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/06_groq_supervisor_and_stop_hook.md) | `agent_common.llm` |
 
 ---
 
 ### 📋 Version History (Changelog)
+
+#### v0.4.78 (2026-09-21)
+
+- Added AI request examples using requirements, package links, and feature numbers, with incremental implementation guidance.
+- Added Korean/English LLM manuals covering configuration, external APIs, local GGUF, environment overrides, and failure handling.
+- Documented the Groq supervisor and Antigravity Stop hook example, including review scope and skipped-review conditions.
+- Corrected conditional fallback documentation and omitted the unfinished error-handler introduction.
+- Bumped the package version to `0.4.78` with no runtime behavior changes.
 
 For detailed version history, please refer to [GitHub CHANGELOG_EN.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md).

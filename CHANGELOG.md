@@ -2,6 +2,16 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.78 (2026-09-21)
+
+- **AI 개발 요청 가이드 및 통합 LLM 사용 설명서 추가**:
+  - README에 만들려는 기능, PyPI·GitHub 링크, 참고 기능 번호를 전달하는 요청 예시와 최소 기능부터 단계적으로 확장하는 방법을 추가했습니다.
+  - `manual/kr/llm/01_unified_llm_client.md`와 영문 매뉴얼을 추가했습니다. 모델 프로필, 외부 API·Fabrix·로컬 GGUF 설정, 환경변수, 반환값·예외 처리 범위를 설명합니다.
+  - Antigravity Stop 훅과 Groq 감독관 AI의 `AGENTS.md` 검사 사례, 검사 범위·생략 조건, `LlmClient` 적용 시 차이를 문서화했습니다.
+  - README의 7번 항목과 매뉴얼 표에 문서를 연결하고, 개발 중인 6번 에러 핸들러 소개를 제외했습니다.
+  - `auto` 모드는 외부 호출이 `None`을 반환할 때만 로컬로 전환한다는 실제 동작에 맞춰 설명을 수정했습니다.
+  - 배포 버전 및 README 명령 예시를 `0.4.78`로 갱신했습니다. 런타임 동작 변경은 없습니다.
+
 ### v0.4.77 (2026-09-18)
 - **동적 도구 로더 및 템플릿 평가기(`tool_parser.py`) & 내장 도구(`tool/date/date_time_utils.py`), 공용 유틸리티(`utils.py`) 상세 기술 매뉴얼(한국어/영어 14종) 신설 및 README.md 전면 갱신 (규칙 2.1, 4.2 준수)**:
   - `manual/kr/tool_parser/` 및 `manual/en/tool_parser/` 신설:
