@@ -2,6 +2,13 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.80 (2026-09-23)
+
+- **Added WHERE clause-based safe deletion (DELETE DML) method in BigQueryClient (`clients.py`) (Rules 1.1, 1.3, 1.6.1)**:
+  - `delete_rows(where_clause_str, timeout_int=None) -> int`: Executes a `DELETE FROM ... WHERE ...` DML on the target BigQuery table based on the provided condition and returns the number of affected rows (`affected_rows_int`).
+  - **Full-table deletion fail-safe**: Immediately raises `ValueError` if `where_clause_str` is empty or a tautology (`1=1`, `TRUE`, `''=''`).
+  - Added logging templates (`db_delete_started`, `db_delete_completed`, `db_delete_failed`) in `logging_messages_en.yml` and `logging_messages_ko.yml`.
+
 ### v0.4.78 (2026-09-21)
 
 - **AI development request guide and unified LLM manuals**:

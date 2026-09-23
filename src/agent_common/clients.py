@@ -486,6 +486,81 @@ class GcsClient:
         except Exception as e:
             raise RuntimeError(self.logger.exception("transfer_failed", file_name=destination_blob_name_str, error=str(e))) from e
 
+    def delete_blobs_by_prefix(
+        self,
+        prefix_str: str = "",
+        batch_size_int: int = 1000,
+    ) -> int:
+        """
+        지정된 접두사(prefix)로 시작하는 모든 GCS blob 객체를 일괄(배치) 삭제합니다.
+
+        :param prefix_str: 삭제 대상 GCS 객체 경로 접두사 (빈 문자열일 경우 안전을 위해 ValueError 발생)
+        :param batch_size_int: 1회 배치 삭제 단위 크기 (기본값: 1000)
+        :return: 실제 삭제된 총 blob 객체 수
+        :raises ValueError: prefix_str가 비어 있거나 유효하지 않은 경우 발생
+        :raises RuntimeError: GCS 삭제 통신 중 오류 발생 시
+        """
+        clean_prefix_str: str = prefix_str.strip().lstrip("/")
+        if not clean_prefix_str:
+            raise ValueError("GCS 전체 삭제 방지를 위해 유효한 prefix_str 지정은 필수입니다.")
+
+        total_deleted_count_int: int = 0
+        try:
+            blobs_to_delete_list: list[Any] = []
+            for blob_obj in self.bucket.list_blobs(prefix=clean_prefix_str):
+                blobs_to_delete_list.append(blob_obj)
+                if len(blobs_to_delete_list) >= batch_size_int:
+                    self.bucket.delete_blobs(blobs_to_delete_list)
+                    total_deleted_count_int += len(blobs_to_delete_list)
+                    blobs_to_delete_list = []
+
+            if blobs_to_delete_list:
+                self.bucket.delete_blobs(blobs_to_delete_list)
+                total_deleted_count_int += len(blobs_to_delete_list)
+                blobs_to_delete_list = []
+
+            self.logger.info(
+                "gcs_clean_prefix_completed",
+                prefix_str=clean_prefix_str,
+                deleted_count_int=total_deleted_count_int,
+            )
+            return total_deleted_count_int
+        except Exception as error_object:
+            raise RuntimeError(
+                self.logger.exception(
+                    "gcs_clean_failed",
+                    prefix_str=clean_prefix_str,
+                    error=str(error_object),
+                )
+            ) from error_object
+
+    def delete_blob(self, destination_blob_name_str: str = "") -> bool:
+        """
+        지정된 단일 GCS 목적지 blob 객체를 삭제합니다.
+
+        :param destination_blob_name_str: 삭제할 GCS 오브젝트 blob 경로명
+        :return: 삭제 성공 여부 (존재하지 않아 미삭제 시 False, 성공 시 True)
+        :raises ValueError: destination_blob_name_str가 비어있는 경우 발생
+        :raises RuntimeError: GCS 삭제 통신 중 오류 발생 시
+        """
+        clean_blob_name_str: str = destination_blob_name_str.strip().lstrip("/")
+        if not clean_blob_name_str:
+            raise ValueError("삭제할 GCS blob 경로명(destination_blob_name_str)은 필수 입력 항목입니다.")
+
+        try:
+            blob_obj: Any = self.bucket.get_blob(clean_blob_name_str, timeout=self.timeout_seconds_int)
+            if blob_obj is None:
+                return False
+            blob_obj.delete(timeout=self.timeout_seconds_int)
+            return True
+        except Exception as error_object:
+            raise RuntimeError(
+                self.logger.exception(
+                    "gcs_clean_failed",
+                    prefix_str=clean_blob_name_str,
+                    error=str(error_object),
+                )
+            ) from error_object
 
 
 class BigQueryClient:
@@ -931,6 +1006,75 @@ class BigQueryClient:
         except Exception as fetch_exc:
             self.logger.exception("existing_keys_fetch_failed", service_name="BigQuery", error=str(fetch_exc))
             return set()
+
+    def delete_rows(self, where_clause_str: str, timeout_int: int | None = None) -> int:
+        """
+        지정된 조건(WHERE 절)에 해당하는 행들을 BigQuery 대상 테이블에서 DELETE DML로 삭제하고,
+        삭제된 행의 총 개수를 반환합니다.
+
+        전체 테이블 삭제 방지(Fail-Safe)를 위해 where_clause_str가 비어 있거나 무조건 참인 조건일 경우
+        ValueError를 발생시킵니다.
+
+        :param where_clause_str: 삭제 조건식 문자열 (예: "jobBaseDd = '20260804' AND (recvPath LIKE '%/PAK/%')")
+        :param timeout_int: 쿼리 타임아웃 제한 시간(초)
+        :return: 삭제된 행의 수 (int)
+        :raises ValueError: where_clause_str가 비어 있거나 전체 삭제를 유발할 수 있는 조건일 경우 발생
+        :raises RuntimeError: DELETE DML 실행 실패 시 발생
+        """
+        if not where_clause_str or not where_clause_str.strip():
+            raise ValueError("BigQuery DELETE DML 조건식(where_clause_str)은 필수 입력 항목입니다 (전체 삭제 방지).")
+
+        normalized_where_str: str = where_clause_str.strip()
+        if normalized_where_str.upper().startswith("WHERE "):
+            normalized_where_str = normalized_where_str[6:].strip()
+
+        # 전체 테이블 삭제 방지 안전 검증 (1=1, TRUE 등)
+        lower_clause_str: str = normalized_where_str.lower().replace(" ", "")
+        if lower_clause_str in ("1=1", "true", "(1=1)", "(true)", "''=''"):
+            raise ValueError(f"전체 삭제를 유발할 수 있는 위험한 조건식입니다: {where_clause_str}")
+
+        delete_timeout_int: int = (
+            timeout_int
+            if timeout_int is not None
+            else self.timeout_seconds_int
+        )
+        target_table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
+        delete_sql_str: str = f"DELETE FROM `{target_table_ref_str}` WHERE {normalized_where_str}"
+
+        self.logger.info(
+            "db_delete_started",
+            service_name="BigQuery",
+            target_table=target_table_ref_str,
+            where_clause=normalized_where_str,
+        )
+
+        try:
+            query_job_obj: Any = self.client.query(delete_sql_str, timeout=delete_timeout_int)
+            query_job_obj.result(timeout=delete_timeout_int)
+            affected_rows_int: int = (
+                query_job_obj.num_dml_affected_rows
+                if query_job_obj.num_dml_affected_rows is not None
+                else 0
+            )
+
+            self.logger.info(
+                "db_delete_completed",
+                service_name="BigQuery",
+                target_table=target_table_ref_str,
+                deleted_rows=affected_rows_int,
+            )
+            return affected_rows_int
+        except Exception as delete_exc:
+            clean_error_str: str = str(delete_exc)
+            raise RuntimeError(
+                self.logger.exception(
+                    "db_delete_failed",
+                    service_name="BigQuery",
+                    target_name=self.table_id_str,
+                    where_clause=normalized_where_str,
+                    error=clean_error_str,
+                )
+            ) from delete_exc
 
     def merge_table_from_json_data(
         self,

@@ -2,6 +2,20 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.80 (2026-09-23)
+
+- **Google Cloud BigQuery WHERE 조건 기반 안전 삭제(DELETE DML) 메서드 추가 (`clients.py` - `BigQueryClient`) (규칙 1.1, 1.3, 1.6.1 준수)**:
+  - `delete_rows(where_clause_str, timeout_int=None) -> int`: 지정된 조건식(WHERE 절)에 해당하는 BigQuery 대상 테이블의 행(row)들을 `DELETE FROM ... WHERE ...` DML로 일괄 삭제하고, 실제 삭제된 행 개수(`affected_rows_int`)를 반환하는 메서드 신설.
+  - **전체 삭제 방지 조기 실패(Fail-Safe / Fail-Fast)**: `where_clause_str`가 비어있거나 무조건 참(`1=1`, `TRUE`, `''=''` 등)인 위험 조건 유입 시 `ValueError` 즉시 발생 및 실행 차단.
+  - `logging_messages_ko.yml` 및 `logging_messages_en.yml`: BigQuery 테이블 데이터 정리 및 삭제 관련 표준 로깅 템플릿(`db_delete_started`, `db_delete_completed`, `db_delete_failed`) 등록.
+
+### v0.4.79 (2026-09-22)
+
+- **Google Cloud Storage (GCS) 일괄/단일 삭제 메서드 추가 (`clients.py` - `GcsClient`)**:
+  - `delete_blobs_by_prefix(prefix_str, batch_size_int=1000)`: 지정된 접두사(prefix) 하위의 모든 blob을 GCS Batch API를 통해 고속 일괄 삭제하는 메서드 신설.
+  - `delete_blob(destination_blob_name_str)`: 단일 blob 객체 삭제 메서드 신설.
+  - `logging_messages_ko.yml`: GCS 데이터 정리 및 삭제 관련 표준 로깅 템플릿(`gcs_clean_started`, `gcs_clean_prefix_completed`, `gcs_clean_completed`, `gcs_clean_failed`) 등록.
+
 ### v0.4.78 (2026-09-21)
 
 - **AI 개발 요청 가이드 및 통합 LLM 사용 설명서 추가**:

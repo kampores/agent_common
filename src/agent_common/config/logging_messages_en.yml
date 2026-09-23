@@ -79,6 +79,12 @@ logging_messages:
       # Example: logger.info("db_bulk_streaming_fallback_success", service_name="BigQuery", total_rows=100)
       db_bulk_streaming_fallback_success: "{service_name} streaming fallback load succeeded after bulk load failure: {total_rows} total rows"
 
+      # Example: logger.info("db_delete_started", service_name="BigQuery", target_table="proj.ds.tbl", where_clause="jobBaseDd = '20260804'")
+      db_delete_started: "{service_name} table data cleanup (DELETE) started: [Target={target_table}, Condition='{where_clause}']"
+
+      # Example: logger.info("db_delete_completed", service_name="BigQuery", target_table="proj.ds.tbl", deleted_rows=100)
+      db_delete_completed: "{service_name} table data cleanup completed: [Target={target_table}, Deleted={deleted_rows} rows]"
+
     # --- [Storage Search & File Transfer Universal] ---
     storage:
       # Example: logger.info("folder_search_started", search_prefix="folder/")
@@ -272,6 +278,9 @@ logging_messages:
 
       # Example: logger.exception("db_bulk_streaming_fallback_failed", service_name="BigQuery", error="Permission denied")
       db_bulk_streaming_fallback_failed: "{service_name} bulk streaming fallback load finally failed: error: {error}"
+
+      # Example: logger.exception("db_delete_failed", service_name="BigQuery", target_name="tbl", where_clause="...", error="Permission denied")
+      db_delete_failed: "{service_name} table ({target_name}) data cleanup (DELETE) failed: [Condition='{where_clause}'], error: {error}"
 
       # Example: logger.error("db_file_lock_failed", db_path="data/app.db", error="database is locked")
       db_file_lock_failed: "Failed to connect to database (Path: {db_path}). A server process or another session may be locking the DB file. Please terminate related processes and retry: {error}"

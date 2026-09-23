@@ -78,6 +78,12 @@ logging_messages:
       # 예시: logger.info("db_bulk_streaming_fallback_success", service_name="BigQuery", total_rows=100)
       db_bulk_streaming_fallback_success: "{service_name} 대량(Bulk) 적재 실패 후 스트리밍 Fallback 적재 성공: 총 {total_rows}개 행"
 
+      # 예시: logger.info("db_delete_started", service_name="BigQuery", target_table="proj.ds.tbl", where_clause="jobBaseDd = '20260804'")
+      db_delete_started: "{service_name} 테이블 데이터 정리(DELETE) 시작: [Target={target_table}, 조건='{where_clause}']"
+
+      # 예시: logger.info("db_delete_completed", service_name="BigQuery", target_table="proj.ds.tbl", deleted_rows=100)
+      db_delete_completed: "{service_name} 테이블 데이터 정리 완료: [Target={target_table}, 삭제 건수={deleted_rows}건]"
+
     # --- [스토리지 탐색 및 파일 전송 범용] ---
     storage:
       # 예시: logger.info("folder_search_started", search_prefix="folder/")
@@ -100,6 +106,15 @@ logging_messages:
 
       # 예시: logger.info("transfer_skipped", file_name="sample.pdf", dst_type="스토리지")
       transfer_skipped: "동일 파일이 {dst_type}에 존재하여 복사를 건너뜁니다: {file_name}"
+
+      # 예시: logger.info("gcs_clean_started", prefix_str="PAK/newfile/20260804/")
+      gcs_clean_started: "GCS 대상 데이터 정리(삭제) 시작: [Prefix={prefix_str}]"
+
+      # 예시: logger.info("gcs_clean_prefix_completed", prefix_str="PAK/newfile/20260804/", deleted_count_int=12)
+      gcs_clean_prefix_completed: "GCS 폴더 정리 완료: [Prefix={prefix_str}, 삭제 건수={deleted_count_int}건]"
+
+      # 예시: logger.info("gcs_clean_completed", total_deleted_count_int=12, total_prefixes_int=1)
+      gcs_clean_completed: "GCS 데이터 정리 전체 완료: 총 {total_deleted_count_int}건 삭제 (대상 접두사 {total_prefixes_int}개)"
 
     # --- [성능 및 작업 소요시간 연동] ---
     performance:
@@ -272,6 +287,9 @@ logging_messages:
       # 예시: logger.exception("db_bulk_streaming_fallback_failed", service_name="BigQuery", error="Permission denied")
       db_bulk_streaming_fallback_failed: "{service_name} 대량(Bulk) 스트리밍 Fallback 적재 최종 실패: 에러: {error}"
 
+      # 예시: logger.exception("db_delete_failed", service_name="BigQuery", target_name="tbl", where_clause="...", error="Permission denied")
+      db_delete_failed: "{service_name} 테이블({target_name}) 데이터 정리(DELETE) 실패: [조건='{where_clause}'], 에러: {error}"
+
       # 예시: logger.error("db_file_lock_failed", db_path="data/app.db", error="database is locked")
       db_file_lock_failed: "데이터베이스 연결에 실패했습니다 (경로: {db_path}). 서버 프로세스나 타 세션에서 해당 DB 파일을 잠금(Lock)하고 있을 수 있으니 관련 프로세스를 종료한 뒤 재시도 바랍니다: {error}"
 
@@ -306,6 +324,9 @@ logging_messages:
 
       # 예시: logger.error("source_size_error", source_key="sample.pdf", json_key="sample.json", error="404 Not Found")
       source_size_error: "원천 파일 크기 조회 실패: [Source_Key={source_key} JSON_Key={json_key}], 에러: {error}"
+
+      # 예시: logger.exception("gcs_clean_failed", prefix_str="PAK/newfile/20260804/", error="Access Denied")
+      gcs_clean_failed: "GCS 데이터 정리(삭제) 실패: [Prefix={prefix_str}], 에러: {error}"
 
     # --- [외부 서비스 및 HTTP API 연동 오류] ---
     service:
