@@ -93,10 +93,10 @@ class ErrorHandler:
         err_msg_str: str = self.logger.exception(
             "config_type_coercion_failed",
             key_str=key_str,
-            expected_type=expected_type_str,
-            guide_msg=guide_msg_str,
+            expected_type_str=expected_type_str,
+            guide_msg_str=guide_msg_str,
             val_any=val_repr_str,
-            current_type=current_type_str,
+            current_type_str=current_type_str,
         )
         if cause_exc:
             raise target_exc_cls(err_msg_str) from cause_exc

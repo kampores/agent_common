@@ -92,7 +92,7 @@ class LlmClient:
         # llmpool.yml 내 모델 설정 존재 여부 확인 (Fail-Fast)
         pool_config_any = self.config_loader.setting(f"llm_pool.{self.model_name_str}")
         if not pool_config_any and self.model_name_str not in config.llm_pool:
-            raise LlmInferenceError(self.logger.error("config_load_failed", error=f"llmpool.yml 내 '{self.model_name_str}' 모델 설정이 누락되었습니다."))
+            raise LlmInferenceError(self.logger.error("config_load_failed", error_str=f"llmpool.yml 내 '{self.model_name_str}' 모델 설정이 누락되었습니다."))
 
     @property
     def model_config(self) -> ReadOnlyConfig:
@@ -124,7 +124,7 @@ class LlmClient:
         provider_env_str: str | None = os.getenv("LLM_PROVIDER")
         provider_str: str = (provider_env_str or self.model_config.provider_str).lower()
         if provider_str not in {"auto", "external", "local"}:
-            raise LlmInferenceError(self.logger.error("config_load_failed", error=f"지원하지 않는 LLM_PROVIDER 설정입니다: {provider_str}"))
+            raise LlmInferenceError(self.logger.error("config_load_failed", error_str=f"지원하지 않는 LLM_PROVIDER 설정입니다: {provider_str}"))
 
         # 시스템 프롬프트가 제공되지 않은 경우 설정 파일에서 기본 시스템 지침을 로드한다.
         resolved_system_prompt_str: str = system_prompt_str if system_prompt_str is not None else config.llm.system_prompt_str
@@ -158,16 +158,16 @@ class LlmClient:
 
         self.logger.info(
             "api_call_started",
-            service_name="외부 LLM API",
-            purpose=self.purpose_str,
-            model_name=self.model_name_str,
+            service_name_str="외부 LLM API",
+            purpose_str=self.purpose_str,
+            model_name_str=self.model_name_str,
         )
 
         if not enabled_bool:
-            self.logger.warning("api_disabled", service_name="외부 LLM API")
+            self.logger.warning("api_disabled", service_name_str="외부 LLM API")
             return None
         if not api_key_str:
-            self.logger.warning("api_key_missing", service_name="외부 LLM API", api_key_env=self.model_config.api_key_env_str)
+            self.logger.warning("api_key_missing", service_name_str="외부 LLM API", api_key_env_str=self.model_config.api_key_env_str)
             return None
 
         resolved_system_prompt_str: str = system_prompt_str if system_prompt_str is not None else config.llm.system_prompt_str
@@ -216,16 +216,16 @@ class LlmClient:
                 data_dict = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
             body_str = exc.read().decode("utf-8", errors="replace").replace("\n", " ").replace("\r", " ")
-            raise LlmInferenceError(self.logger.error("api_http_error", service_name="외부 LLM API", code=exc.code, detail=body_str)) from exc
+            raise LlmInferenceError(self.logger.error("api_http_error", service_name_str="외부 LLM API", code_int=exc.code, detail_str=body_str)) from exc
         except URLError as exc:
-            raise LlmInferenceError(self.logger.error("api_connection_error", service_name="외부 LLM API", detail=str(exc.reason))) from exc
+            raise LlmInferenceError(self.logger.error("api_connection_error", service_name_str="외부 LLM API", detail_str=str(exc.reason))) from exc
 
         try:
             content_str = data_dict["choices"][0]["message"]["content"]
             content_flat_str = str(content_str).replace("\n", " ").replace("\r", "")
-            self.logger.info("api_call_success", service_name="외부 LLM API", detail=content_flat_str)
+            self.logger.info("api_call_success", service_name_str="외부 LLM API", detail_str=content_flat_str)
         except (KeyError, IndexError, TypeError) as exc:
-            raise LlmInferenceError(self.logger.error("api_missing_field", service_name="외부 LLM API", field_name="choices[0].message.content")) from exc
+            raise LlmInferenceError(self.logger.error("api_missing_field", service_name_str="외부 LLM API", field_name_str="choices[0].message.content")) from exc
 
         return str(content_str)
 
@@ -252,16 +252,16 @@ class LlmClient:
 
         self.logger.info(
             "api_call_started",
-            service_name="Fabrix API",
-            purpose=self.purpose_str,
-            model_name=self.model_name_str,
+            service_name_str="Fabrix API",
+            purpose_str=self.purpose_str,
+            model_name_str=self.model_name_str,
         )
 
         if not enabled_bool:
-            self.logger.warning("api_disabled", service_name="Fabrix API")
+            self.logger.warning("api_disabled", service_name_str="Fabrix API")
             return None
         if not api_key_str:
-            self.logger.warning("api_key_missing", service_name="Fabrix API", api_key_env=self.model_config.api_key_env_str)
+            self.logger.warning("api_key_missing", service_name_str="Fabrix API", api_key_env_str=self.model_config.api_key_env_str)
             return None
 
         resolved_system_prompt_str: str = system_prompt_str if system_prompt_str is not None else config.llm.system_prompt_str
@@ -301,17 +301,17 @@ class LlmClient:
                 data_dict = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
             body_str = exc.read().decode("utf-8", errors="replace").replace("\n", " ").replace("\r", " ")
-            raise LlmInferenceError(self.logger.error("api_http_error", service_name="Fabrix API", code=exc.code, detail=body_str)) from exc
+            raise LlmInferenceError(self.logger.error("api_http_error", service_name_str="Fabrix API", code_int=exc.code, detail_str=body_str)) from exc
         except URLError as exc:
-            raise LlmInferenceError(self.logger.error("api_connection_error", service_name="Fabrix API", detail=str(exc.reason))) from exc
+            raise LlmInferenceError(self.logger.error("api_connection_error", service_name_str="Fabrix API", detail_str=str(exc.reason))) from exc
 
         # Fabrix API 응답 형식: 최상위 content 필드
         try:
             content_str = data_dict["content"]
             content_flat_str = str(content_str).replace("\n", " ").replace("\r", "")
-            self.logger.info("api_call_success", service_name="Fabrix API", detail=content_flat_str)
+            self.logger.info("api_call_success", service_name_str="Fabrix API", detail_str=content_flat_str)
         except (KeyError, TypeError) as exc:
-            raise LlmInferenceError(self.logger.error("api_missing_field", service_name="Fabrix API", field_name="content")) from exc
+            raise LlmInferenceError(self.logger.error("api_missing_field", service_name_str="Fabrix API", field_name_str="content")) from exc
 
         return str(content_str)
 
@@ -418,11 +418,11 @@ def _get_local_llm(
     try:
         from llama_cpp import Llama
     except ImportError as exc:
-        msg_str = ProjectLogger.get_log_msg("ERROR", "config_load_failed", error="llama-cpp-python 패키지가 설치되어 있지 않습니다.")
+        msg_str = ProjectLogger.get_log_msg("ERROR", "config_load_failed", error_str="llama-cpp-python 패키지가 설치되어 있지 않습니다.")
         raise LlmInferenceError(msg_str) from exc
 
     if not os.path.exists(model_path_str):
-        msg_str = ProjectLogger.get_log_msg("ERROR", "config_file_not_found", path=model_path_str)
+        msg_str = ProjectLogger.get_log_msg("ERROR", "config_file_not_found", path_str=model_path_str)
         raise LlmInferenceError(msg_str)
 
     _LOCAL_LLMS_DICT[model_path_str] = Llama(

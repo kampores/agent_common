@@ -420,6 +420,7 @@ class ConfigLoader:
         """
         target_path = self.config_dir / config_file_name
         self.config_dir.mkdir(parents=True, exist_ok=True)
+        from agent_common.tool.date.date_time_utils import DateTimeUtils
 
         merged_defaults = {}
         if self._registered_schemas:
@@ -443,9 +444,9 @@ class ConfigLoader:
                 yaml_str = yaml.dump(initial_data, allow_unicode=True, sort_keys=False)
                 with open(target_path, "w", encoding="utf-8") as f:
                     f.write(header_comment + yaml_str)
-                self.logger.info("config_file_auto_created", file_path=str(target_path))
+                self.logger.info("config_file_auto_created", file_path_str=str(target_path))
             except Exception as e:
-                self.logger.exception("config_auto_create_failed", file_path=str(target_path), error=str(e))
+                self.logger.exception("config_auto_create_failed", file_path_str=str(target_path), error_str=str(e))
         else:
             # 2. 파일이 존재할 경우 누락된 키가 있으면 자동 보정
             if merged_defaults:
@@ -510,9 +511,13 @@ class ConfigLoader:
                         final_yaml_str = "\n".join(lines) + "\n"
                         with open(target_path, "w", encoding="utf-8") as f:
                             f.write(final_yaml_str)
-                        self.logger.info("config_file_auto_repaired", file_path=str(target_path), repaired_keys=repaired_keys)
+                        self.logger.info(
+                            "config_file_auto_repaired",
+                            file_path_str=str(target_path),
+                            repaired_keys_str=", ".join(repaired_keys),
+                        )
                 except Exception as repair_err:
-                    self.logger.exception("config_auto_repair_failed", file_path=str(target_path), error=str(repair_err))
+                    self.logger.exception("config_auto_repair_failed", file_path_str=str(target_path), error_str=str(repair_err))
 
         self._cached_settings = None
         return target_path
@@ -715,7 +720,7 @@ class ConfigLoader:
             return coerce_type_by_key_suffix(last_key_str, current)
 
         if not path.startswith("logging_messages"):
-            self.logger.warning("config_default_fallback", key=path, default_val=default)
+            self.logger.warning("config_default_fallback", key_str=path, default_val_any=default)
         return default
 
     def require_setting(

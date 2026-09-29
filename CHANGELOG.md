@@ -2,6 +2,36 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.83 (2026-09-29)
+
+- **`utils.py` 순환 참조(Circular Import) 결함 원천 해소 및 단일 책임 원칙(SRP) 기반 모듈 분리 (`time_utils.py`, `progress_tracker.py`, `table_formatter.py`) (규칙 1.4.1, 1.5.3, 4.2 준수)**:
+  - `TimeUtils`: 호스트 시스템 로컬 타임존 동적 감지, 세계 표준시 해석 및 일시 파싱 전담 코어 인프라 모듈(`agent_common.time_utils`)로 완전 독립 (설정 로더 의존성 제로화).
+  - `ProgressTracker`: 배치 작업 실시간 진행률 추적, 처리 속도 및 남은 시간(ETA) 계산, 마일스톤 경고 로깅 전담 모듈(`agent_common.progress_tracker`)로 분리.
+  - `TableFormatter`: 마크다운 및 모노스페이스 콘솔 표 세로줄 정렬 및 전각/반각 표시 폭 계산 전담 모듈(`agent_common.table_formatter`)로 분리.
+  - `config_loader.py`: 도메인 도구(`DateTimeUtils`)에 대한 최상단 모듈 레벨 임포트를 제거하고 `ensure_config_file()` 내 지연 로딩(Lazy Import)으로 전환하여 루트 설정 인프라와 상위 도구 계층 간의 의존성 역전 및 순환 참조 원천 차단.
+  - **레거시 모듈 임포트 정규화 (규칙 1.5.3 준수)**: 기존 `utils.py`에 대한 하위 호환 포워딩 임포트 생성을 배제하고, `clients.py`, `logger.py`, `date_time_utils.py`, `ecs_to_gcs.py` 및 단위 테스트 모듈들의 임포트 경로를 정규 신규 모듈(`time_utils`, `progress_tracker`, `table_formatter`)로 전수 현행화.
+
+### v0.4.82 (2026-09-28)
+
+- **입력 파라미터 및 일자 유효성 검증 표준 로깅 템플릿 신설 (`validation` 섹션) (규칙 1.1, 1.5.1, 1.6.1 준수)**:
+  - `invalid_date_format`: 입력 일자 형식 오류 안내 (`key_str`, `val_str`, `message_str`).
+  - `invalid_date_range`: 입력 일자 범위 오류 안내 (`start_date_str`, `end_date_str`, `message_str`).
+- **설정 파일 자동 생성/보정 및 BigQuery 테이블 메타데이터 로깅 템플릿 정식 등록**:
+  - `config_auto_create_failed`, `config_auto_repair_failed`: 설정 파일 자동 생성/보정 실패 로깅 템플릿 정식 등록 (`file_path_str`, `error_str`).
+  - `table_get_failed`, `table_metadata_update_failed`, `table_timestamp_mode_mismatch`: BigQuery 테이블 메타데이터 조회/갱신 및 모드 검증 로깅 템플릿 정식 등록.
+  - `storage_clean_failed`: 기존 비표준 특정 벤더명 키(`gcs_clean_failed`)를 `storage_type_str` 기반 범용 키로 일원화.
+  - `storage_date_folder_purge_error`: 기존 `storage_date_folder_clean`(INFO) 및 `storage_date_folder_purged`(WARNING)와 쌍을 이루는 날짜 폴더 잔여 정리 실패 에러 템플릿 정식 등록.
+- **공통 라이브러리 순수성 강화 및 애플리케이션 특화 로그 분리 (규칙 1.5.1 준수)**:
+  - ECS/GCS 파이프라인 종속적(ECS_Key, GCS_Blob)인 `storage_direct_upload_failed`를 `agent_common`에서 제거하고, 개별 애플리케이션 설정(`config/logging_messages.yml`)으로 분리 이관하여 중복 및 도메인 결합(Coupling) 해소.
+- **로깅 템플릿 플레이스홀더 및 소스코드 호출부 kwargs 전수 타입 접미사(`_str`, `_int` 등) 표준화 (규칙 1.6.1 준수)**:
+  - `clients.py`, `config_loader.py`, `error_handler.py`, `llm.py`, `tool_parser.py` 전수 리팩토링.
+
+### v0.4.81 (2026-09-28)
+
+- **테이블 WRITE_TRUNCATE 카운트다운 및 분할 배치 적재 범용 로깅 템플릿 추가 (`logging_messages_ko.yml`, `logging_messages_en.yml`) (규칙 1.5.1, 4.2 준수)**:
+  - `table_truncate_countdown`, `table_truncate_tick`, `table_truncate_countdown_completed`: 대량 데이터 유실 방지를 위한 WRITE_TRUNCATE 적재 카운트다운 타이머 및 완료 안내 템플릿 신설.
+  - `db_bulk_load_batch_started`, `db_bulk_load_batch_completed`: 대량 행(Bulk) 분할 배치(청크) 로드 진행 및 완료 안내 템플릿 신설.
+
 ### v0.4.80 (2026-09-23)
 
 - **Google Cloud BigQuery WHERE 조건 기반 안전 삭제(DELETE DML) 메서드 추가 (`clients.py` - `BigQueryClient`) (규칙 1.1, 1.3, 1.6.1 준수)**:

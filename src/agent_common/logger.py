@@ -556,14 +556,14 @@ class ProjectLogger:
         try:
             settings_dict = self.config_loader.get_settings()
             if "bigquery" in settings_dict and settings_dict.get("bigquery"):
-                title_str = title_str.replace("{service_name}", "BigQuery").replace("{client_name}", "BigQuery")
+                title_str = title_str.replace("{service_name_str}", "BigQuery").replace("{client_name_str}", "BigQuery")
             elif "db" in settings_dict and settings_dict.get("db"):
-                title_str = title_str.replace("{service_name}", "데이터베이스").replace("{client_name}", "데이터베이스")
+                title_str = title_str.replace("{service_name_str}", "데이터베이스").replace("{client_name_str}", "데이터베이스")
 
             if "gcs" in settings_dict and settings_dict.get("gcs"):
-                title_str = title_str.replace("{storage_type}", "GCS")
+                title_str = title_str.replace("{storage_type_str}", "GCS")
             elif "ecs" in settings_dict and settings_dict.get("ecs"):
-                title_str = title_str.replace("{storage_type}", "ECS")
+                title_str = title_str.replace("{storage_type_str}", "ECS")
         except Exception:
             pass
 
@@ -747,7 +747,7 @@ class ProjectLogger:
 
         rate_float: float = effective_total_items_int / max(0.001, elapsed_float)
 
-        from agent_common.utils import TableFormatter
+        from agent_common.table_formatter import TableFormatter
 
         table_headers_list: list[str] = ["구분", "세부 항목", "내용 / 수치", "비고"]
         table_data_rows_list: list[list[str]] = [
@@ -825,7 +825,7 @@ class ProjectLogger:
             table_lines_list.append("=" * 80)
 
         summary_block_str: str = "\n" + "\n".join(table_lines_list)
-        self.warning("execution_summary_report", summary=summary_block_str)
+        self.warning("execution_summary_report", summary_str=summary_block_str)
 
     @staticmethod
     def log_request_result(

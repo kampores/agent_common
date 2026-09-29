@@ -6,7 +6,7 @@
 """
 테이블 변환 룰(table_rules.yml) 및 템플릿 구문 치환({DateTimeUtils.get_today_yyyymmdd}, {DateTimeUtils.get_now_compact})에서
 표준 날짜/시간 문자열 생성을 제공하는 agent_common 내장 Tool 클래스 모듈입니다.
-시스템 타임존 감지 및 전 세계 시간 해석은 agent_common.utils.TimeUtils의 코어 인프라에 위임합니다.
+시스템 타임존 감지 및 전 세계 시간 해석은 agent_common.time_utils.TimeUtils의 코어 인프라에 위임합니다.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from agent_common.utils import TimeUtils
+from agent_common.time_utils import TimeUtils
 
 
 class DateTimeUtils:

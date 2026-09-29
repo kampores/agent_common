@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 from agent_common.config_loader import ConfigLoader, config
 from agent_common.logger import ProjectLogger
-from agent_common.utils import TimeUtils
+from agent_common.time_utils import TimeUtils
 
 # ==============================================================================
 # 스토리지 및 데이터베이스 클라이언트 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
@@ -202,7 +202,7 @@ class S3Client:
         except Exception as exc:
             target_service_str: str = "Dell ECS" if self.endpoint_url_str else "AWS S3"
             raise ConnectionError(
-                self.logger.exception("connection_failed", service_name=target_service_str, error=str(exc))
+                self.logger.exception("connection_failed", service_name_str=target_service_str, error_str=str(exc))
             ) from exc
 
     def list_objects(self, prefix_str: str = "") -> Generator[Dict[str, Any], None, None]:
@@ -222,7 +222,7 @@ class S3Client:
                         yield object_item_dict
         except Exception as exc:
             storage_type_str: str = "Dell ECS" if self.endpoint_url_str else "AWS S3"
-            raise RuntimeError(self.logger.exception("list_failed", storage_type=storage_type_str, error=str(exc))) from exc
+            raise RuntimeError(self.logger.exception("list_failed", storage_type_str=storage_type_str, error_str=str(exc))) from exc
 
     def get_object_stream(self, key_str: str = "") -> Any:
         """
@@ -236,7 +236,7 @@ class S3Client:
             response_dict: dict[str, Any] = self.client.get_object(Bucket=self.bucket_name_str, Key=key_str)
             return response_dict["Body"]
         except Exception as exc:
-            raise RuntimeError(self.logger.exception("transfer_failed", file_name=key_str, error=str(exc))) from exc
+            raise RuntimeError(self.logger.exception("transfer_failed", file_name_str=key_str, error_str=str(exc))) from exc
 
     def get_object_size(self, key_str: str = "") -> int | None:
         """
@@ -280,12 +280,12 @@ class S3Client:
 
             # 이미 GCS에 존재하고 용량이 동일한 경우 복사 건너뛰기
             if existing_size_int is not None and existing_size_int == size_int:
-                self.logger.info("transfer_skipped", file_name=s3_key_str, dst_type="GCS")
+                self.logger.info("transfer_skipped", file_name_str=s3_key_str, dst_type_str="GCS")
                 self.logger.info(
                     "elapsed_time",
-                    action_name="GCS 파일 검사",
-                    details=f"[CheckTime={check_elapsed_float:.2f}s Status=Skipped]",
-                    context_info=context_info_str,
+                    action_name_str="GCS 파일 검사",
+                    details_str=f"[CheckTime={check_elapsed_float:.2f}s Status=Skipped]",
+                    context_info_str=context_info_str,
                 )
                 return "SKIPPED"
 
@@ -300,25 +300,25 @@ class S3Client:
             upload_elapsed_float: float = time.time() - upload_start_float
 
             total_elapsed_float: float = time.time() - total_start_float
-            self.logger.info("transfer_completed", file_name=s3_key_str, size_bytes=size_int)
+            self.logger.info("transfer_completed", file_name_str=s3_key_str, size_bytes_int=size_int)
             self.logger.info(
                 "elapsed_time",
-                action_name="GCS 파일 전송",
-                details=(
+                action_name_str="GCS 파일 전송",
+                details_str=(
                     f"[TotalElapsed={total_elapsed_float:.2f}s CheckTime={check_elapsed_float:.2f}s "
                     f"S3StreamTime={stream_elapsed_float:.2f}s GCSUploadTime={upload_elapsed_float:.2f}s]"
                 ),
-                context_info=context_info_str,
+                context_info_str=context_info_str,
             )
             return "UPLOADED"
         except Exception as exc:
             total_elapsed_float = time.time() - total_start_float
-            self.logger.exception("transfer_failed", file_name=s3_key_str, error=str(exc))
+            self.logger.exception("transfer_failed", file_name_str=s3_key_str, error_str=str(exc))
             self.logger.error(
                 "elapsed_time",
-                action_name="GCS 파일 전송 오류",
-                details=f"[TotalElapsed={total_elapsed_float:.2f}s]",
-                context_info=context_info_str,
+                action_name_str="GCS 파일 전송 오류",
+                details_str=f"[TotalElapsed={total_elapsed_float:.2f}s]",
+                context_info_str=context_info_str,
             )
             return "FAILED"
 
@@ -442,7 +442,7 @@ class GcsClient:
             # 버킷에 대한 접근 권한 및 존재 여부 검사 (타임아웃 적용)
             self.bucket = self.client.get_bucket(self.bucket_name_str, timeout=self.timeout_seconds_int)
         except Exception as e:
-            raise ConnectionError(self.logger.exception("connection_failed", service_name="GCS", error=str(e))) from e
+            raise ConnectionError(self.logger.exception("connection_failed", service_name_str="GCS", error_str=str(e))) from e
 
     def get_blob_size(self, destination_blob_name_str: str = "") -> int | None:
         """GCS 목적지 blob의 존재 여부 및 바이트 크기(bytes)를 조회한다.
@@ -456,7 +456,7 @@ class GcsClient:
                 return blob_obj.size
             return None
         except Exception as e:
-            self.logger.exception("storage_meta_error", storage_type="GCS", target_name=destination_blob_name_str, error=str(e))
+            self.logger.exception("storage_meta_error", storage_type_str="GCS", target_name_str=destination_blob_name_str, error_str=str(e))
             return None
 
     def upload_stream(
@@ -484,7 +484,7 @@ class GcsClient:
             # size 인수를 반드시 제공하며 지정된 timeout 내 업로드를 완료하도록 처리
             blob_obj.upload_from_file(stream_any, size=size_int, timeout=upload_timeout_int)
         except Exception as e:
-            raise RuntimeError(self.logger.exception("transfer_failed", file_name=destination_blob_name_str, error=str(e))) from e
+            raise RuntimeError(self.logger.exception("transfer_failed", file_name_str=destination_blob_name_str, error_str=str(e))) from e
 
     def delete_blobs_by_prefix(
         self,
@@ -520,7 +520,8 @@ class GcsClient:
                 blobs_to_delete_list = []
 
             self.logger.info(
-                "gcs_clean_prefix_completed",
+                "storage_clean_prefix_completed",
+                storage_type_str="GCS",
                 prefix_str=clean_prefix_str,
                 deleted_count_int=total_deleted_count_int,
             )
@@ -528,9 +529,10 @@ class GcsClient:
         except Exception as error_object:
             raise RuntimeError(
                 self.logger.exception(
-                    "gcs_clean_failed",
+                    "storage_clean_failed",
+                    storage_type_str="GCS",
                     prefix_str=clean_prefix_str,
-                    error=str(error_object),
+                    error_str=str(error_object),
                 )
             ) from error_object
 
@@ -556,9 +558,10 @@ class GcsClient:
         except Exception as error_object:
             raise RuntimeError(
                 self.logger.exception(
-                    "gcs_clean_failed",
+                    "storage_clean_failed",
+                    storage_type_str="GCS",
                     prefix_str=clean_blob_name_str,
-                    error=str(error_object),
+                    error_str=str(error_object),
                 )
             ) from error_object
 
@@ -664,7 +667,7 @@ class BigQueryClient:
             table_ref_str = f"{effective_project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
             self.table_obj = self.client.get_table(table_ref_str)
         except Exception as e:
-            raise ConnectionError(self.logger.exception("connection_failed", service_name="BigQuery", error=str(e))) from e
+            raise ConnectionError(self.logger.exception("connection_failed", service_name_str="BigQuery", error_str=str(e))) from e
 
     def validate_and_sync_table_timestamp_mode(self, write_disposition_str: str = "WRITE_APPEND") -> None:
         """
@@ -685,7 +688,7 @@ class BigQueryClient:
             try:
                 self.table_obj = self.client.get_table(table_ref_str)
             except Exception as get_exc:
-                self.logger.exception("table_get_failed", table_name=self.table_id_str, error=str(get_exc))
+                self.logger.exception("table_get_failed", table_name_str=self.table_id_str, error_str=str(get_exc))
                 raise RuntimeError(f"BigQuery 테이블({self.table_id_str}) 조회 실패: {str(get_exc)}") from get_exc
 
         if not hasattr(self, "table_obj") or self.table_obj is None:
@@ -767,15 +770,15 @@ class BigQueryClient:
                         self.table_obj = self.client.update_table(self.table_obj, fields_to_update_list)
                         self.logger.info(
                             "table_timestamp_mode_initialized",
-                            table_name=self.table_id_str,
+                            table_name_str=self.table_id_str,
                             mode_str=target_mode_str,
-                            num_rows=num_rows_int,
+                            num_rows_int=num_rows_int,
                         )
                     except Exception as update_exc:
                         self.logger.exception(
                             "table_metadata_update_failed",
-                            table_name=self.table_id_str,
-                            error=str(update_exc),
+                            table_name_str=self.table_id_str,
+                            error_str=str(update_exc),
                         )
                         raise RuntimeError(
                             f"BigQuery 테이블({self.table_id_str}) 메타데이터 갱신 실패: {str(update_exc)}"
@@ -783,14 +786,14 @@ class BigQueryClient:
                 else:
                     self.logger.info(
                         "table_timestamp_mode_initialized",
-                        table_name=self.table_id_str,
+                        table_name_str=self.table_id_str,
                         mode_str=target_mode_str,
-                        num_rows=num_rows_int,
+                        num_rows_int=num_rows_int,
                     )
             else:
                 self.logger.info(
                     "table_timestamp_mode_verified",
-                    table_name=self.table_id_str,
+                    table_name_str=self.table_id_str,
                     mode_str=target_mode_str,
                 )
             return
@@ -800,7 +803,7 @@ class BigQueryClient:
             if recorded_mode_str != target_mode_str:
                 self.logger.error(
                     "table_timestamp_mode_mismatch",
-                    table_name=self.table_id_str,
+                    table_name_str=self.table_id_str,
                     recorded_mode_str=recorded_mode_str,
                     configured_mode_str=target_mode_str,
                 )
@@ -811,16 +814,16 @@ class BigQueryClient:
                 )
             self.logger.info(
                 "table_timestamp_mode_verified",
-                table_name=self.table_id_str,
+                table_name_str=self.table_id_str,
                 mode_str=target_mode_str,
             )
         else:
             # 라벨이 없는 레거시 테이블인 경우 경고 출력
             self.logger.warning(
                 "table_timestamp_mode_legacy_warning",
-                table_name=self.table_id_str,
+                table_name_str=self.table_id_str,
                 mode_str=target_mode_str,
-                num_rows=num_rows_int,
+                num_rows_int=num_rows_int,
             )
 
     def load_table_from_json_data(
@@ -897,16 +900,16 @@ class BigQueryClient:
             clean_error_str: str = str(load_exc) + detailed_info_str
             self.logger.exception(
                 "load_table_from_json_failed",
-                service_name="BigQuery",
-                target_name=self.table_id_str,
-                error=clean_error_str,
+                service_name_str="BigQuery",
+                target_name_str=self.table_id_str,
+                error_str=clean_error_str,
             )
             raise RuntimeError(
                 self.logger.error(
                     "load_table_from_json_failed",
-                    service_name="BigQuery",
-                    target_name=self.table_id_str,
-                    error=clean_error_str,
+                    service_name_str="BigQuery",
+                    target_name_str=self.table_id_str,
+                    error_str=clean_error_str,
                 )
             ) from load_exc
 
@@ -962,7 +965,7 @@ class BigQueryClient:
                 raise RuntimeError(f"BigQuery API insert 반환 상세 에러: {combined_error_message_str}")
         except Exception as insert_exc:
             clean_insert_error_str: str = str(insert_exc)
-            raise RuntimeError(self.logger.exception("insert_failed", service_name="BigQuery", target_name=self.table_id_str, error=clean_insert_error_str)) from insert_exc
+            raise RuntimeError(self.logger.exception("insert_failed", service_name_str="BigQuery", target_name_str=self.table_id_str, error_str=clean_insert_error_str)) from insert_exc
 
     def query(self, query_str: str, timeout_int: int | None = None) -> list[dict[str, Any]]:
         """
@@ -985,9 +988,9 @@ class BigQueryClient:
             return rows_list
         except Exception as query_exc:
             clean_error_str: str = str(query_exc)
-            self.logger.warning("query_execution_failed", service_name="BigQuery", query=query_str, error=clean_error_str)
+            self.logger.warning("query_execution_failed", service_name_str="BigQuery", query_str=query_str, error_str=clean_error_str)
             raise RuntimeError(
-                self.logger.error("query_execution_failed", service_name="BigQuery", error=clean_error_str)
+                self.logger.error("query_execution_failed", service_name_str="BigQuery", query_str=query_str, error_str=clean_error_str)
             ) from query_exc
 
     def get_existing_keys(self, field_name_str: str = "recvPath") -> set[str]:
@@ -1004,7 +1007,7 @@ class BigQueryClient:
             query_results_obj: Any = query_job_obj.result()
             return {str(row[field_name_str]) for row in query_results_obj if row[field_name_str] is not None}
         except Exception as fetch_exc:
-            self.logger.exception("existing_keys_fetch_failed", service_name="BigQuery", error=str(fetch_exc))
+            self.logger.exception("existing_keys_fetch_failed", service_name_str="BigQuery", error_str=str(fetch_exc))
             return set()
 
     def delete_rows(self, where_clause_str: str, timeout_int: int | None = None) -> int:
@@ -1043,9 +1046,9 @@ class BigQueryClient:
 
         self.logger.info(
             "db_delete_started",
-            service_name="BigQuery",
-            target_table=target_table_ref_str,
-            where_clause=normalized_where_str,
+            service_name_str="BigQuery",
+            target_table_str=target_table_ref_str,
+            where_clause_str=normalized_where_str,
         )
 
         try:
@@ -1059,9 +1062,9 @@ class BigQueryClient:
 
             self.logger.info(
                 "db_delete_completed",
-                service_name="BigQuery",
-                target_table=target_table_ref_str,
-                deleted_rows=affected_rows_int,
+                service_name_str="BigQuery",
+                target_table_str=target_table_ref_str,
+                deleted_rows_int=affected_rows_int,
             )
             return affected_rows_int
         except Exception as delete_exc:
@@ -1069,10 +1072,10 @@ class BigQueryClient:
             raise RuntimeError(
                 self.logger.exception(
                     "db_delete_failed",
-                    service_name="BigQuery",
-                    target_name=self.table_id_str,
-                    where_clause=normalized_where_str,
-                    error=clean_error_str,
+                    service_name_str="BigQuery",
+                    target_name_str=self.table_id_str,
+                    where_clause_str=normalized_where_str,
+                    error_str=clean_error_str,
                 )
             ) from delete_exc
 
@@ -1196,12 +1199,12 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
 
         self.logger.info(
             "db_inline_merge_started",
-            service_name="BigQuery",
-            target_table=target_table_ref_str,
-            total_rows=total_rows_int,
-            chunk_size=chunk_size_int,
-            total_chunks=total_chunks_int,
-            pk_key=pk_key_str,
+            service_name_str="BigQuery",
+            target_table_str=target_table_ref_str,
+            total_rows_int=total_rows_int,
+            chunk_size_int=chunk_size_int,
+            total_chunks_int=total_chunks_int,
+            pk_key_str=pk_key_str,
         )
 
         bigquery_module, _ = _get_bigquery()
@@ -1229,10 +1232,10 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
 
                 self.logger.info(
                     "db_inline_merge_chunk_completed",
-                    service_name="BigQuery",
-                    chunk_index=f"{chunk_idx_int + 1}/{total_chunks_int}",
-                    processed_rows=len(chunk_rows_list),
-                    elapsed_time=f"{chunk_elapsed_float:.2f}s",
+                    service_name_str="BigQuery",
+                    chunk_index_str=f"{chunk_idx_int + 1}/{total_chunks_int}",
+                    processed_rows_int=len(chunk_rows_list),
+                    elapsed_time_str=f"{chunk_elapsed_float:.2f}s",
                 )
 
             # 5. 후속 쿼리(연쇄 업데이트 등)가 주입된 경우 동적 실행
@@ -1245,15 +1248,15 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
                         post_job_obj: Any = self.client.query(post_sql_str, job_config=post_job_config_obj, timeout=merge_timeout_int)
                         post_job_obj.result(timeout=merge_timeout_int)
 
-            self.logger.info("db_inline_merge_all_completed", service_name="BigQuery", target_table=target_table_ref_str, total_rows=total_rows_int)
+            self.logger.info("db_inline_merge_all_completed", service_name_str="BigQuery", target_table_str=target_table_ref_str, total_rows_int=total_rows_int)
         except Exception as merge_exc:
             clean_error_str: str = str(merge_exc)
             raise RuntimeError(
                 self.logger.exception(
                     "db_table_merge_failed",
-                    service_name="BigQuery",
-                    target_name=self.table_id_str,
-                    error=clean_error_str,
+                    service_name_str="BigQuery",
+                    target_name_str=self.table_id_str,
+                    error_str=clean_error_str,
                 )
             ) from merge_exc
 

@@ -2,6 +2,27 @@
 
 > [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
 
+### v0.4.82 (2026-09-28)
+
+- **Standard Logging Templates for Input Parameter and Date Validation (`validation` Section) (Rules 1.1, 1.5.1, 1.6.1)**:
+  - `invalid_date_format`: Notification for invalid input date format (`key_str`, `val_str`, `message_str`).
+  - `invalid_date_range`: Notification for invalid input date range (`start_date_str`, `end_date_str`, `message_str`).
+- **Official Registration of Configuration Self-Healing and BigQuery Metadata Templates**:
+  - `config_auto_create_failed`, `config_auto_repair_failed`: Failure logging templates for configuration auto-creation and auto-repair (`file_path_str`, `error_str`).
+  - `table_get_failed`, `table_metadata_update_failed`, `table_timestamp_mode_mismatch`: Metadata retrieval, update, and mode validation logging templates for BigQuery tables.
+  - `storage_clean_failed`: Unified legacy vendor-specific key (`gcs_clean_failed`) into universal `storage_type_str` key.
+  - `storage_date_folder_purge_error`: Officially registered error template pairing with existing `storage_date_folder_clean` (INFO) and `storage_date_folder_purged` (WARNING).
+- **Enhanced Common Library Modularity & Separated Domain-Specific Keys (Rule 1.5.1)**:
+  - Removed pipeline-specific key (`storage_direct_upload_failed` with `ECS_Key`, `GCS_Blob`) from `agent_common` and relocated it exclusively to application config (`config/logging_messages.yml`), eliminating unnecessary duplication and domain coupling.
+- **Project-wide Type Suffixes (`_str`, `_int`, etc.) Standardized on All Logging Placeholders and Kwargs (Rule 1.6.1)**:
+  - Full synchronization across `clients.py`, `config_loader.py`, `error_handler.py`, `llm.py`, and `tool_parser.py`.
+
+### v0.4.81 (2026-09-28)
+
+- **Added universal logging templates for table WRITE_TRUNCATE countdown and split batch loading (`logging_messages_en.yml`, `logging_messages_ko.yml`) (Rules 1.5.1, 4.2)**:
+  - `table_truncate_countdown`, `table_truncate_tick`, `table_truncate_countdown_completed`: Universal templates for countdown timer and completion alerts to prevent accidental data loss during WRITE_TRUNCATE loads.
+  - `db_bulk_load_batch_started`, `db_bulk_load_batch_completed`: Universal templates for tracking progress and completion of chunked bulk batch loads.
+
 ### v0.4.80 (2026-09-23)
 
 - **Added WHERE clause-based safe deletion (DELETE DML) method in BigQueryClient (`clients.py`) (Rules 1.1, 1.3, 1.6.1)**:

@@ -15,332 +15,429 @@ logging_messages:
   DEBUG:
     # --- [Storage Debug Discovery] ---
     storage:
-      # Example: logger.debug("targets_detected", target_type="Full Storage", total_files=10, max_workers=4)
-      targets_detected: "{target_type} targets detected: {total_files} files total [MaxWorkers={max_workers}]"
+      # Example: logger.debug("targets_detected", target_type_str="Full Storage", total_files_int=10, max_workers_int=4)
+      targets_detected: "{target_type_str} targets detected: {total_files_int} files total [MaxWorkers={max_workers_int}]"
 
   INFO:
     # --- [Program Lifecycle & Synchronization] ---
     lifecycle:
-      # Example: logger.info("program_started", program_name="File Transfer", folder_msg=" [Folder=PAK]", date_msg=" [Date=20260804]")
-      program_started: "Starting {program_name} program.{folder_msg}{date_msg}"
+      # Example: logger.info("program_started", program_name_str="File Transfer", folder_msg_str=" [Folder=PAK]", date_msg_str=" [Date=20260804]")
+      program_started: "Starting {program_name_str} program.{folder_msg_str}{date_msg_str}"
 
-      # Example: logger.info("client_initialized", client_name="Google Cloud BigQuery")
-      client_initialized: "{client_name} client successfully initialized."
+      # Example: logger.info("client_initialized", client_name_str="Google Cloud BigQuery")
+      client_initialized: "{client_name_str} client successfully initialized."
 
-      # Example: logger.info("program_finished", program_name="File Transfer")
-      program_finished: "{program_name} program completed successfully."
+      # Example: logger.info("program_finished", program_name_str="File Transfer")
+      program_finished: "{program_name_str} program completed successfully."
 
-      # Example: logger.info("sync_started", sync_type="Database", src_type="Storage", src_name="my-bucket", dst_type="Table", dst_name="proj.ds.tbl", context="[Mode=Realtime]")
-      sync_started: "{sync_type} sync started: {src_type} '{src_name}' -> {dst_type} '{dst_name}' {context}"
+      # Example: logger.info("sync_started", sync_type_str="Database", src_type_str="Storage", src_name_str="my-bucket", dst_type_str="Table", dst_name_str="proj.ds.tbl", context_str="[Mode=Realtime]")
+      sync_started: "{sync_type_str} sync started: {src_type_str} '{src_name_str}' -> {dst_type_str} '{dst_name_str}' {context_str}"
 
-      # Example: logger.info("sync_completed", sync_type="Database", success_count=100, failure_count=0, total_files=100)
-      sync_completed: "{sync_type} sync completed: {success_count} succeeded (or skipped), {failure_count} failed / {total_files} total"
+      # Example: logger.info("sync_completed", sync_type_str="Database", success_count_int=100, failure_count_int=0, total_files_int=100)
+      sync_completed: "{sync_type_str} sync completed: {success_count_int} succeeded (or skipped), {failure_count_int} failed / {total_files_int} total"
 
-      transfer_limit_applied: "File copy limit applied: [Max limit={max_limit} / Total extracted={total_extracted}]"
+      transfer_limit_applied: "File copy limit applied: [Max limit={max_limit_int} / Total extracted={total_extracted_int}]"
 
-      # Example: logger.info("run_started", lodin_dstlc_cd="01", target_date="20260804", target_folder="data")
-      run_started: "Transfer job started: division code={lodin_dstlc_cd}, target date={target_date}, target folder={target_folder}"
+      # Example: logger.info("run_started", lodin_dstlc_cd_str="01", target_date_str="20260804", target_folder_str="data")
+      run_started: "Transfer job started: division code={lodin_dstlc_cd_str}, target date={target_date_str}, target folder={target_folder_str}"
 
-      # Example: logger.info("run_finished", total_count=100, success_count=98, skip_count=2, fail_count=0, total_elapsed=12.34)
-      run_finished: "Transfer job completed: total processed={total_count}, succeeded={success_count}, skipped={skip_count}, failed={fail_count}, total elapsed={total_elapsed:.2f}s"
+      # Example: logger.info("run_finished", total_count_int=100, success_count_int=98, skip_count_int=2, fail_count_int=0, total_elapsed_float=12.34)
+      run_finished: "Transfer job completed: total processed={total_count_int}, succeeded={success_count_int}, skipped={skip_count_int}, failed={fail_count_int}, total elapsed={total_elapsed_float:.2f}s"
 
-      # Example: logger.info("operation_cancelled_by_user", reason="User cancelled WRITE_TRUNCATE")
-      operation_cancelled_by_user: "Operation cancelled by user: {reason}"
+      # Example: logger.info("operation_cancelled_by_user", reason_str="User cancelled WRITE_TRUNCATE")
+      operation_cancelled_by_user: "Operation cancelled by user: {reason_str}"
 
-      # Example: logger.info("progress_update", message="[Progress] 370 / 1,000 items (37.0%) ...")
-      progress_update: "{message}"
+      # Example: logger.info("progress_update", message_str="[Progress] 370 / 1,000 items (37.0%) ...")
+      progress_update: "{message_str}"
+
+      # Example: logger.info("thread_runner_no_targets", task_name_str="Parallel Task")
+      thread_runner_no_targets: "{task_name_str}: No target items to process."
+
+      # Example: logger.info("thread_runner_execution_started", task_name_str="Parallel Task", total_items_int=100, max_workers_int=4, batch_chunk_size_int=1000)
+      thread_runner_execution_started: "{task_name_str} started: {total_items_int} total items [Workers={max_workers_int} / BatchChunk={batch_chunk_size_int}]"
+
+      # Example: logger.info("thread_runner_execution_completed", task_name_str="Parallel Task", total_items_int=100, success_count_int=100, failure_count_int=0, total_flushed_rows_int=100, total_batches_int=1, failed_batches_int=0, elapsed_time_str="1.23s")
+      thread_runner_execution_completed: "{task_name_str} completed: {total_items_int} total items (succeeded {success_count_int}, failed {failure_count_int}, flushed {total_flushed_rows_int} rows / {total_batches_int} batches [{failed_batches_int} failed], elapsed={elapsed_time_str})"
 
     # --- [Database & Table Loading Universal] ---
     db:
-      # Example: logger.info("db_inline_merge_started", service_name="BigQuery", target_table="proj.ds.tbl", total_rows=100, chunk_size=500, total_chunks=1, pk_key="id")
-      db_inline_merge_started: "{service_name} inline MERGE load started: target table={target_table}, {total_rows} total rows [chunk size={chunk_size} / total chunks={total_chunks} / PK={pk_key}]"
+      # Example: logger.info("db_inline_merge_started", service_name_str="BigQuery", target_table_str="proj.ds.tbl", total_rows_int=100, chunk_size_int=500, total_chunks_int=1, pk_key_str="id")
+      db_inline_merge_started: "{service_name_str} inline MERGE load started: target table={target_table_str}, {total_rows_int} total rows [chunk size={chunk_size_int} / total chunks={total_chunks_int} / PK={pk_key_str}]"
 
-      # Example: logger.info("db_inline_merge_chunk_completed", service_name="BigQuery", chunk_index="1/1", processed_rows=100, elapsed_time="1.20s")
-      db_inline_merge_chunk_completed: "{service_name} inline MERGE chunk completed: [chunk={chunk_index}, processed={processed_rows}, elapsed={elapsed_time}]"
+      # Example: logger.info("db_inline_merge_chunk_completed", service_name_str="BigQuery", chunk_index_str="1/1", processed_rows_int=100, elapsed_time_str="1.20s")
+      db_inline_merge_chunk_completed: "{service_name_str} inline MERGE chunk completed: [chunk={chunk_index_str}, processed={processed_rows_int}, elapsed={elapsed_time_str}]"
 
-      # Example: logger.info("db_inline_merge_all_completed", service_name="BigQuery", target_table="proj.ds.tbl", total_rows=100)
-      db_inline_merge_all_completed: "{service_name} inline MERGE fully completed: target table={target_table}, {total_rows} total rows"
+      # Example: logger.info("db_inline_merge_all_completed", service_name_str="BigQuery", target_table_str="proj.ds.tbl", total_rows_int=100)
+      db_inline_merge_all_completed: "{service_name_str} inline MERGE fully completed: target table={target_table_str}, {total_rows_int} total rows"
 
-      # Example: logger.info("db_existing_keys_loaded", service_name="BigQuery", total_count=1000)
-      db_existing_keys_loaded: "{service_name} existing loaded keys fetched: {total_count} keys cached"
+      # Example: logger.info("db_existing_keys_loaded", service_name_str="BigQuery", total_count_int=1000)
+      db_existing_keys_loaded: "{service_name_str} existing loaded keys fetched: {total_count_int} keys cached"
 
-      # Example: logger.info("db_load_completed", service_name="BigQuery", total_rows=100, elapsed_time="1.20s", mode="INLINE_MERGE")
-      db_load_completed: "{service_name} load completed [Mode={mode}]: {total_rows} total rows, elapsed time={elapsed_time}"
+      # Example: logger.info("db_existing_records_loaded", service_name_str="BigQuery", total_count_int=1000)
+      db_existing_records_loaded: "{service_name_str} existing loaded record metadata fetched: {total_count_int} cached"
 
-      # Example: logger.info("db_transfer_skipped", service_name="BigQuery", target_key="sample.json", context_info="[Table=tbl]")
-      db_transfer_skipped: "Data already loaded in {service_name}. Skipping load: {target_key} {context_info}"
+      # Example: logger.info("db_load_completed", service_name_str="BigQuery", total_rows_int=100, elapsed_time_str="1.20s", mode_str="INLINE_MERGE")
+      db_load_completed: "{service_name_str} load completed [Mode={mode_str}]: {total_rows_int} total rows, elapsed time={elapsed_time_str}"
 
-      # Example: logger.info("db_bulk_load_started", service_name="BigQuery", total_rows=100, write_disposition="WRITE_TRUNCATE", lodin_dstlc_cd="01")
-      db_bulk_load_started: "{service_name} bulk load started: {total_rows} total rows [Option={write_disposition} / LoadType={lodin_dstlc_cd}]"
+      # Example: logger.info("db_transfer_skipped", service_name_str="BigQuery", target_key_str="sample.json", context_info_str="[Table=tbl]")
+      db_transfer_skipped: "Data already loaded in {service_name_str}. Skipping load: {target_key_str} {context_info_str}"
 
-      # Example: logger.info("db_bulk_load_completed", service_name="BigQuery", total_rows=100, elapsed_time="1.20s")
-      db_bulk_load_completed: "{service_name} bulk load completed: {total_rows} total rows [elapsed={elapsed_time}]"
+      # Example: logger.info("db_bulk_load_started", service_name_str="BigQuery", total_rows_int=100, write_disposition_str="WRITE_TRUNCATE", lodin_dstlc_cd_str="01")
+      db_bulk_load_started: "{service_name_str} bulk load started: {total_rows_int} total rows [Option={write_disposition_str} / LoadType={lodin_dstlc_cd_str}]"
 
-      # Example: logger.info("db_bulk_streaming_fallback_success", service_name="BigQuery", total_rows=100)
-      db_bulk_streaming_fallback_success: "{service_name} streaming fallback load succeeded after bulk load failure: {total_rows} total rows"
+      # Example: logger.info("db_bulk_load_batch_started", service_name_str="BigQuery", batch_index_int=1, batch_rows_int=500, write_disposition_str="WRITE_APPEND")
+      db_bulk_load_batch_started: "{service_name_str} split batch ({batch_index_int}) load started: {batch_rows_int} target rows [Mode={write_disposition_str}]"
 
-      # Example: logger.info("db_delete_started", service_name="BigQuery", target_table="proj.ds.tbl", where_clause="jobBaseDd = '20260804'")
-      db_delete_started: "{service_name} table data cleanup (DELETE) started: [Target={target_table}, Condition='{where_clause}']"
+      # Example: logger.info("db_bulk_load_completed", service_name_str="BigQuery", total_rows_int=100, elapsed_time_str="1.20s")
+      db_bulk_load_completed: "{service_name_str} bulk load completed: {total_rows_int} total rows [elapsed={elapsed_time_str}]"
 
-      # Example: logger.info("db_delete_completed", service_name="BigQuery", target_table="proj.ds.tbl", deleted_rows=100)
-      db_delete_completed: "{service_name} table data cleanup completed: [Target={target_table}, Deleted={deleted_rows} rows]"
+      # Example: logger.info("table_truncate_countdown_completed", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_countdown_completed: "{service_name_str} target table ({table_name_str}) WRITE_TRUNCATE countdown completed: Starting data deletion and ingestion."
+
+      # Example: logger.info("db_bulk_streaming_fallback_success", service_name_str="BigQuery", total_rows_int=100)
+      db_bulk_streaming_fallback_success: "{service_name_str} streaming fallback load succeeded after bulk load failure: {total_rows_int} total rows"
+
+      # Example: logger.info("db_delete_started", service_name_str="BigQuery", target_table_str="proj.ds.tbl", where_clause_str="jobBaseDd = '20260804'")
+      db_delete_started: "{service_name_str} table data cleanup (DELETE) started: [Target={target_table_str}, Condition='{where_clause_str}']"
+
+      # Example: logger.info("db_delete_completed", service_name_str="BigQuery", target_table_str="proj.ds.tbl", deleted_rows_int=100)
+      db_delete_completed: "{service_name_str} table data cleanup completed: [Target={target_table_str}, Deleted={deleted_rows_int} rows]"
 
     # --- [Storage Search & File Transfer Universal] ---
     storage:
-      # Example: logger.info("folder_search_started", search_prefix="folder/")
-      folder_search_started: "Target folder search started: {search_prefix}"
+      # Example: logger.info("folder_search_started", search_prefix_str="folder/")
+      folder_search_started: "Target folder search started: {search_prefix_str}"
 
-      # Example: logger.info("folder_search_completed", search_prefix="folder/", count=50)
-      folder_search_completed: "Target folder search completed: {search_prefix}, found files: {count}"
+      # Example: logger.info("folder_search_completed", search_prefix_str="folder/", count_int=50)
+      folder_search_completed: "Target folder search completed: {search_prefix_str}, found files: {count_int}"
 
-      # Example: logger.info("folder_searching", storage_type="Storage", target_info="", search_prefix="folder/")
-      folder_searching: "Searching {storage_type} folder{target_info}: {search_prefix}"
+      # Example: logger.info("folder_searching", storage_type_str="Storage", target_info_str="", search_prefix_str="folder/")
+      folder_searching: "Searching {storage_type_str} folder{target_info_str}: {search_prefix_str}"
 
-      # Example: logger.info("no_target_files", target_type="Load target")
-      no_target_files: "No {target_type} target files found."
+      # Example: logger.info("no_target_files", target_type_str="Load target")
+      no_target_files: "No {target_type_str} target files found."
 
-      # Example: logger.info("targets_detected", target_type="Load", total_files=50, max_workers=4)
-      targets_detected: "{target_type} targets detected: {total_files} files total [MaxWorkers={max_workers}]"
+      # Example: logger.info("targets_detected", target_type_str="Load", total_files_int=50, max_workers_int=4)
+      targets_detected: "{target_type_str} targets detected: {total_files_int} files total [MaxWorkers={max_workers_int}]"
 
-      # Example: logger.info("transfer_completed", file_name="sample.pdf", size_bytes=102400)
-      transfer_completed: "File transfer completed: {file_name}, size: {size_bytes} bytes"
+      # Example: logger.info("transfer_completed", file_name_str="sample.pdf", size_bytes_int=102400)
+      transfer_completed: "File transfer completed: {file_name_str}, size: {size_bytes_int} bytes"
 
-      # Example: logger.info("transfer_skipped", file_name="sample.pdf", dst_type="Storage")
-      transfer_skipped: "Identical file already exists in {dst_type}. Skipping copy: {file_name}"
+      # Example: logger.info("transfer_skipped", file_name_str="sample.pdf", dst_type_str="Storage")
+      transfer_skipped: "Identical file already exists in {dst_type_str}. Skipping copy: {file_name_str}"
+
+      # Example: logger.info("storage_clean_started", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/")
+      storage_clean_started: "{storage_type_str} target cleanup started: [Prefix={prefix_str}]"
+
+      # Example: logger.info("storage_clean_prefix_completed", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", deleted_count_int=12)
+      storage_clean_prefix_completed: "{storage_type_str} folder cleanup completed: [Prefix={prefix_str}, Deleted={deleted_count_int}]"
+
+      # Example: logger.info("storage_clean_completed", storage_type_str="GCS", total_deleted_count_int=12, total_prefixes_int=1)
+      storage_clean_completed: "{storage_type_str} cleanup completed: total {total_deleted_count_int} deleted across {total_prefixes_int} prefixes"
+
+      # Example: logger.info("storage_date_folder_clean", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/")
+      storage_date_folder_clean: "{storage_type_str} specific date folder cleanup: [Prefix={prefix_str}]"
+
+      # Example: logger.info("storage_direct_upload_completed", storage_type_str="GCS", key_str="data/sample.pdf", target_path_str="data/sample.pdf", size_bytes_int=1024)
+      storage_direct_upload_completed: "{storage_type_str} direct stream upload completed: [Key={key_str}, Target={target_path_str}, size={size_bytes_int} bytes]"
 
     # --- [Performance & Execution Elapsed Time] ---
     performance:
-      # Example: logger.info("elapsed_time", action_name="File transfer", details="[TotalElapsed=1.20s]", context_info="[Key=...]")
-      elapsed_time: "Execution elapsed time [{action_name}]: {details} {context_info}"
+      # Example: logger.info("elapsed_time", action_name_str="File transfer", details_str="[TotalElapsed=1.20s]", context_info_str="[Key=...]")
+      elapsed_time: "Execution elapsed time [{action_name_str}]: {details_str} {context_info_str}"
 
     # --- [External Services & HTTP API] ---
     service:
-      # Example: logger.info("api_call_started", service_name="External API", purpose="processor", model_name="gpt4")
-      api_call_started: "{service_name} call started [Purpose={purpose}, Model={model_name}]"
+      # Example: logger.info("api_call_started", service_name_str="External API", purpose_str="processor", model_name_str="gpt4")
+      api_call_started: "{service_name_str} call started [Purpose={purpose_str}, Model={model_name_str}]"
 
-      # Example: logger.info("api_call_success", service_name="External API", detail="OK")
-      api_call_success: "{service_name} response received successfully: {detail}"
+      # Example: logger.info("api_call_success", service_name_str="External API", detail_str="OK")
+      api_call_success: "{service_name_str} response received successfully: {detail_str}"
 
     # --- [Config File Management & Self-Healing] ---
     config:
-      # Example: logger.info("config_file_auto_created", file_path="config/config.yml")
-      config_file_auto_created: "Configuration file did not exist and was automatically created from default template: {file_path}"
+      # Example: logger.info("config_file_auto_created", file_path_str="config/config.yml")
+      config_file_auto_created: "Configuration file did not exist and was automatically created from default template: {file_path_str}"
 
-      # Example: logger.info("config_file_auto_repaired", file_path="config/config.yml", repaired_keys="...")
-      config_file_auto_repaired: "Missing items in configuration file were automatically repaired (self-healing): {file_path} [repaired items={repaired_keys}]"
+      # Example: logger.info("config_file_auto_repaired", file_path_str="config/config.yml", repaired_keys_str="...")
+      config_file_auto_repaired: "Missing items in configuration file were automatically repaired (self-healing): {file_path_str} [repaired items={repaired_keys_str}]"
 
     # --- [Rule Evaluation & Template Processing] ---
     rule:
-      # Example: logger.info("rule_eval_success", col_name="field", folder_val="common", tmpl="{seq}", res="123", json_info="")
-      rule_eval_success: "Template evaluation succeeded{json_info}: [Col={col_name} Folder={folder_val} Tmpl='{tmpl}' Result='{res}']"
+      # Example: logger.info("rule_eval_success", col_name_str="field", folder_val_str="common", tmpl_str="{seq}", res_str="123", json_info_str="")
+      rule_eval_success: "Template evaluation succeeded{json_info_str}: [Col={col_name_str} Folder={folder_val_str} Tmpl='{tmpl_str}' Result='{res_str}']"
 
   WARNING:
     # --- [Program Lifecycle & Summary Reports] ---
     lifecycle:
-      # Example: logger.warning("progress_milestone", message="[Progress] 400 / 1,000 items (40.0%) ...")
-      progress_milestone: "{message}"
+      # Example: logger.warning("progress_milestone", message_str="[Progress] 400 / 1,000 items (40.0%) ...")
+      progress_milestone: "{message_str}"
 
-      # Example: logger.warning("execution_summary_report", summary="\n================...")
-      execution_summary_report: "{summary}"
+      # Example: logger.warning("execution_summary_report", summary_str="\n================...")
+      execution_summary_report: "{summary_str}"
 
-      # Example: logger.warning("extension_matrix_summary_report", summary="\n================...")
-      extension_matrix_summary_report: "{summary}"
+      # Example: logger.warning("extension_matrix_summary_report", summary_str="\n================...")
+      extension_matrix_summary_report: "{summary_str}"
+
+    # --- [Storage Management & Cleanup Warnings] ---
+    storage:
+      # Example: logger.warning("storage_clean_empty_targets", storage_type_str="GCS", prefix_str="Uncreated")
+      storage_clean_empty_targets: "No files match the target cleanup prefix in {storage_type_str}: [Prefix={prefix_str}]"
+
+      # Example: logger.warning("storage_date_folder_purged", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", deleted_count_int=10)
+      storage_date_folder_purged: "{storage_type_str} specific date residual folder cleanup completed: [Prefix={prefix_str}, Deleted={deleted_count_int}]"
 
     # --- [Config File Management Warnings] ---
     config:
-      # Example: logger.warning("config_auto_create_failed", file_path="config/config.yml", error="Permission denied")
-      config_auto_create_failed: "Error occurred while auto-creating configuration file: {file_path}, error: {error}"
+      # Example: logger.warning("config_auto_create_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_create_failed: "Error occurred while auto-creating configuration file: {file_path_str}, error: {error_str}"
 
-      # Example: logger.warning("config_auto_repair_failed", file_path="config/config.yml", error="Permission denied")
-      config_auto_repair_failed: "Error occurred while auto-repairing configuration file: {file_path}, error: {error}"
+      # Example: logger.warning("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_repair_failed: "Error occurred while auto-repairing configuration file: {file_path_str}, error: {error_str}"
 
-      # Example: logger.warning("config_default_fallback", key="timeout_seconds", default_val=30)
-      config_default_fallback: "Configuration item (key: '{key}') does not exist. Falling back to system default value ({default_val})."
+      # Example: logger.warning("config_default_fallback", key_str="timeout_seconds", default_val_any=30)
+      config_default_fallback: "Configuration item (key: '{key_str}') does not exist. Falling back to system default value ({default_val_any})."
 
     # --- [Fallback & Recovery Processing] ---
     fallback:
-      # Example: logger.warning("fallback_applied", target_name="Candidate file", fallback_key="default.pdf", key="sample.json")
-      fallback_applied: "{target_name} not found. Applying fallback to default key ({fallback_key}). [Key={key}]"
+      # Example: logger.warning("fallback_applied", target_name_str="Candidate file", fallback_key_str="default.pdf", key_str="sample.json")
+      fallback_applied: "{target_name_str} not found. Applying fallback to default key ({fallback_key_str}). [Key={key_str}]"
 
     # --- [Rule Evaluation & Template Warnings] ---
     rule:
-      # Example: logger.warning("rule_eval_failed", col_name="field", folder_val="common", tmpl="{seq}", res="{seq}", default_fallback="", context_keys="...", json_info="")
-      rule_eval_failed: "Template evaluation failed or returned unreplaced placeholder{json_info}: [Col={col_name} Folder={folder_val} Tmpl='{tmpl}' Res='{res}' Fallback='{default_fallback}' ContextKeys={context_keys}]"
+      # Example: logger.warning("rule_eval_failed", col_name_str="field", folder_val_str="common", tmpl_str="{seq}", res_str="{seq}", default_fallback_str="", context_keys_str="...", json_info_str="")
+      rule_eval_failed: "Template evaluation failed or returned unreplaced placeholder{json_info_str}: [Col={col_name_str} Folder={folder_val_str} Tmpl='{tmpl_str}' Res='{res_str}' Fallback='{default_fallback_str}' ContextKeys={context_keys_str}]"
 
-      # Example: logger.warning("rule_not_found", col_name="field", target_rule="RULES", rules_filepath="config/rules.yml", loaded_keys="...")
-      rule_not_found: "Item definition not found in rule configuration: [Col={col_name} TargetRule={target_rule} FilePath={rules_filepath} LoadedKeys={loaded_keys}]"
+      # Example: logger.warning("rule_not_found", col_name_str="field", target_rule_str="RULES", rules_filepath_str="config/rules.yml", loaded_keys_str="...")
+      rule_not_found: "Item definition not found in rule configuration: [Col={col_name_str} TargetRule={target_rule_str} FilePath={rules_filepath_str} LoadedKeys={loaded_keys_str}]"
+
+      # Example: logger.warning("tool_load_failed", func_name_str="func", module_str="module", error_str="...")
+      tool_load_failed: "Dynamic rule utility module/function ({func_name_str}) failed to load (Module: {module_str}): {error_str}"
 
     # --- [Permission & Access Bypass Warnings] ---
     permission:
-      # Example: logger.warning("permission_fallback_applied", service_name="DB", action_name="Batch load", fallback_mode="Streaming only")
-      permission_fallback_applied: "Insufficient permissions for {service_name} {action_name}. Switching to {fallback_mode} mode."
+      # Example: logger.warning("permission_fallback_applied", service_name_str="DB", action_name_str="Batch load", fallback_mode_str="Streaming only")
+      permission_fallback_applied: "Insufficient permissions for {service_name_str} {action_name_str}. Switching to {fallback_mode_str} mode."
 
     # --- [External Services & HTTP API Warnings] ---
     service:
-      # Example: logger.warning("api_disabled", service_name="External API")
-      api_disabled: "{service_name} usage is currently disabled."
+      # Example: logger.warning("api_disabled", service_name_str="External API")
+      api_disabled: "{service_name_str} usage is currently disabled."
 
-      # Example: logger.warning("api_key_missing", service_name="External API", api_key_env="API_KEY")
-      api_key_missing: "{service_name} API Key is not configured [KeyEnv={api_key_env}]"
+      # Example: logger.warning("api_key_missing", service_name_str="External API", api_key_env_str="API_KEY")
+      api_key_missing: "{service_name_str} API Key is not configured [KeyEnv={api_key_env_str}]"
 
     # --- [Database Metadata & Loading Warnings] ---
     db:
-      # Example: logger.warning("table_fetch_failed", service_name="Database", fallback_ref="TB_SAMPLE", error="Table not found")
-      table_fetch_failed: "Failed to fetch {service_name} table object. Falling back to default string reference ({fallback_ref}): {error}"
+      # Example: logger.warning("table_fetch_failed", service_name_str="Database", fallback_ref_str="TB_SAMPLE", error_str="Table not found")
+      table_fetch_failed: "Failed to fetch {service_name_str} table object. Falling back to default string reference ({fallback_ref_str}): {error_str}"
 
-      # Example: logger.warning("existing_keys_fetch_failed", service_name="Database", error="Column not found")
-      existing_keys_fetch_failed: "Error occurred while querying existing loaded keys in {service_name}: {error}"
+      # Example: logger.warning("existing_keys_fetch_failed", service_name_str="Database", error_str="Column not found")
+      existing_keys_fetch_failed: "Error occurred while querying existing loaded keys in {service_name_str}: {error_str}"
 
-      # Example: logger.warning("db_load_skipped_no_data", service_name="BigQuery", reason="No data to load")
-      db_load_skipped_no_data: "Skipping {service_name} load: {reason}"
+      # Example: logger.warning("existing_records_metadata_fetch_failed", service_name_str="BigQuery", error_str="...")
+      existing_records_metadata_fetch_failed: "{service_name_str} error occurred while querying existing records metadata (falling back to keys list): {error_str}"
 
-      # Example: logger.warning("db_load_retry", service_name="BigQuery", attempt=1, max_retries=3, target_key="sample.json", error="Connection reset")
-      db_load_retry: "Retrying {service_name} batch load ({attempt}/{max_retries}): [Key={target_key}] error: {error}"
+      # Example: logger.warning("db_load_skipped_no_data", service_name_str="BigQuery", reason_str="No data to load")
+      db_load_skipped_no_data: "Skipping {service_name_str} load: {reason_str}"
 
-      # Example: logger.warning("db_load_max_retries_exceeded_fallback", service_name="BigQuery", max_retries=3, target_key="sample.json", error="Connection reset")
-      db_load_max_retries_exceeded_fallback: "{service_name} batch load failed after {max_retries} retries. Attempting fallback to streaming load: [Key={target_key}] reason: {error}"
+      # Example: logger.warning("db_load_retry", service_name_str="BigQuery", attempt_int=1, max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_retry: "Retrying {service_name_str} batch load ({attempt_int}/{max_retries_int}): [Key={target_key_str}] error: {error_str}"
 
-      # Example: logger.warning("db_bulk_load_retry", service_name="BigQuery", attempt=1, max_retries=3, error="Connection reset")
-      db_bulk_load_retry: "Retrying {service_name} bulk load ({attempt}/{max_retries}): error: {error}"
+      # Example: logger.warning("db_load_max_retries_exceeded_fallback", service_name_str="BigQuery", max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_max_retries_exceeded_fallback: "{service_name_str} batch load failed after {max_retries_int} retries. Attempting fallback to streaming load: [Key={target_key_str}] reason: {error_str}"
 
-      # Example: logger.warning("db_bulk_load_max_retries_exceeded_fallback", service_name="BigQuery", max_retries=3, error="Connection reset")
-      db_bulk_load_max_retries_exceeded_fallback: "{service_name} bulk load failed after {max_retries} retries. Attempting fallback to streaming load: reason: {error}"
+      # Example: logger.warning("db_bulk_load_retry", service_name_str="BigQuery", attempt_int=1, max_retries_int=3, error_str="Connection reset")
+      db_bulk_load_retry: "Retrying {service_name_str} bulk load ({attempt_int}/{max_retries_int}): error: {error_str}"
 
-      # Example: logger.warning("db_bulk_load_skipped_no_data", service_name="BigQuery", reason="No data to load")
-      db_bulk_load_skipped_no_data: "Skipping {service_name} bulk load: {reason}"
+      # Example: logger.warning("db_bulk_load_max_retries_exceeded_fallback", service_name_str="BigQuery", max_retries_int=3, error_str="Connection reset")
+      db_bulk_load_max_retries_exceeded_fallback: "{service_name_str} bulk load failed after {max_retries_int} retries. Attempting fallback to streaming load: reason: {error_str}"
 
-      # Example: logger.warning("table_truncate_warning", service_name="BigQuery", table_name="TB_SAMPLE")
-      table_truncate_warning: "All existing data in {service_name} table ({table_name}) will be deleted (TRUNCATE). Caution is required."
+      # Example: logger.warning("db_bulk_load_skipped_no_data", service_name_str="BigQuery", reason_str="No data to load")
+      db_bulk_load_skipped_no_data: "Skipping {service_name_str} bulk load: {reason_str}"
 
-      # Example: logger.warning("db_deleted_status_skipped", service_name="BigQuery", asst_id="DOC001", status_cd="09", ecs_key="data/sample.json")
-      db_deleted_status_skipped: "Actively skipping from {service_name} load target due to deleted status code ({status_cd}): [ID={asst_id}] [Key={ecs_key}]"
+      # Example: logger.warning("db_bulk_load_batch_completed", service_name_str="BigQuery", batch_index_int=1, total_inserted_rows_str="500", elapsed_time_str="1.20s")
+      db_bulk_load_batch_completed: "{service_name_str} split batch ({batch_index_int}) load completed: {total_inserted_rows_str} accumulated rows (Elapsed={elapsed_time_str})"
 
-      # Example: logger.warning("db_all_rows_deleted_status_skipped", service_name="BigQuery", ecs_key="data/sample.json", context_info="...")
-      db_all_rows_deleted_status_skipped: "All rows determined as deleted status code. Skipping {service_name} load: [Key={ecs_key}] {context_info}"
+      # Example: logger.warning("table_truncate_countdown", service_name_str="BigQuery", table_name_str="TB_SAMPLE", countdown_seconds_int=10)
+      table_truncate_countdown: "{service_name_str} target table ({table_name_str}) specified with WRITE_TRUNCATE mode. All existing data will be deleted and reloaded after {countdown_seconds_int} seconds."
 
-      # Example: logger.warning("db_duplicate_pk_skipped", service_name="BigQuery", asst_id="DOC001", ecs_key="data/sample.json", context_info="...")
-      db_duplicate_pk_skipped: "Already existing or duplicate primary key (PK={asst_id}) in {service_name}. Skipping from load target: [Key={ecs_key}] {context_info}"
+      # Example: logger.warning("table_truncate_tick", remaining_sec_int=5, service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_tick: "\r[Countdown] Starting WRITE_TRUNCATE ingestion on {service_name_str} table ({table_name_str}) in {remaining_sec_int}s (Cancel: Ctrl+C)... "
 
-      # Example: logger.warning("sql_fallback_applied", context="SQL processing", error=str(e), sql="SELECT ...")
-      sql_fallback_applied: "An exception occurred during {context}. Returning original SQL as fallback. Error: {error}. Original SQL:\n{sql}"
+      # Example: logger.warning("table_truncate_warning", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_warning: "All existing data in {service_name_str} table ({table_name_str}) will be deleted (TRUNCATE). Caution is required."
+
+      # Example: logger.warning("table_timestamp_mode_legacy_warning", table_name_str="TB_SAMPLE", mode_str="utc", num_rows_int=100)
+      table_timestamp_mode_legacy_warning: "Existing data without timezone mode labels exists in {table_name_str}. Applying current setting '{mode_str}', but caution is required for consistency. [Rows={num_rows_int}]"
+
+      # Example: logger.warning("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
+      query_execution_failed: "{service_name_str} query execution failed: [Error={error_str}] Query: {query_str}"
+
+      # Example: logger.warning("db_deleted_status_skipped", service_name_str="BigQuery", asst_id_str="DOC001", status_cd_str="09", ecs_key_str="data/sample.json")
+      db_deleted_status_skipped: "Actively skipping from {service_name_str} load target due to deleted status code ({status_cd_str}): [ID={asst_id_str}] [Key={ecs_key_str}]"
+
+      # Example: logger.warning("db_all_rows_deleted_status_skipped", service_name_str="BigQuery", ecs_key_str="data/sample.json", context_info_str="...")
+      db_all_rows_deleted_status_skipped: "All rows determined as deleted status code. Skipping {service_name_str} load: [Key={ecs_key_str}] {context_info_str}"
+
+      # Example: logger.warning("db_duplicate_pk_skipped", service_name_str="BigQuery", asst_id_str="DOC001", ecs_key_str="data/sample.json", context_info_str="...")
+      db_duplicate_pk_skipped: "Already existing or duplicate primary key (PK={asst_id_str}) in {service_name_str}. Skipping from load target: [Key={ecs_key_str}] {context_info_str}"
+
+      # Example: logger.warning("sql_fallback_applied", context_str="SQL processing", error_str=str(e), sql_str="SELECT ...")
+      sql_fallback_applied: "An exception occurred during {context_str}. Returning original SQL as fallback. Error: {error_str}. Original SQL:\n{sql_str}"
 
   ERROR:
     # --- [Config & Regex Errors] ---
     config:
-      # Example: logger.error("regex_compile_error", path_regex_str=".*\\.json", error="bad character range")
-      regex_compile_error: "Failed to compile path matching regex: {path_regex_str}, error: {error}"
+      # Example: logger.error("regex_compile_error", path_regex_str=".*\\.json", error_str="bad character range")
+      regex_compile_error: "Failed to compile path matching regex: {path_regex_str}, error: {error_str}"
 
-      # Example: logger.error("missing_required_config", key="storage.bucket_name")
-      missing_required_config: "Required configuration item is missing: {key}"
+      # Example: logger.error("missing_required_config", key_str="storage.bucket_name")
+      missing_required_config: "Required configuration item is missing: {key_str}"
 
-      # Example: logger.error("config_file_not_found", path="config/config.yml")
-      config_file_not_found: "Configuration file not found: {path}"
+      # Example: logger.error("config_file_not_found", path_str="config/config.yml")
+      config_file_not_found: "Configuration file not found: {path_str}"
 
-      # Example: logger.error("config_load_failed", error="YAML syntax error at line 5")
-      config_load_failed: "Failed to load configuration file: {error}"
+      # Example: logger.error("config_load_failed", error_str="YAML syntax error at line 5")
+      config_load_failed: "Failed to load configuration file: {error_str}"
 
-      # Example: logger.exception("config_type_coercion_failed", key_str="timeout_int", expected_type="integer (int)", guide_msg="Please provide an integer value.", val_any="'abc'", current_type="str")
-      config_type_coercion_failed: "[Config Type Guarantee Error] Setting '{key_str}' must be of type {expected_type}. {guide_msg} (Value: {val_any}, CurrentType: {current_type})"
+      # Example: logger.exception("config_type_coercion_failed", key_str="timeout_int", expected_type_str="integer (int)", guide_msg_str="Please provide an integer value.", val_any="'abc'", current_type_str="str")
+      config_type_coercion_failed: "[Config Type Guarantee Error] Setting '{key_str}' must be of type {expected_type_str}. {guide_msg_str} (Value: {val_any}, CurrentType: {current_type_str})"
+
+      # Example: logger.exception("config_auto_create_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_create_failed: "Failed to auto-create configuration file [File={file_path_str}], error: {error_str}"
+
+      # Example: logger.exception("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_repair_failed: "Failed to auto-repair configuration file [File={file_path_str}], error: {error_str}"
+
+    # --- [Input Parameter & Date Validation Errors] ---
+    validation:
+      # Example: logger.error("invalid_date_format", key_str="date", val_str="2026-99-99", message_str="Must be in YYYYMMDD format.")
+      invalid_date_format: "Invalid date format error [Key={key_str}, Val={val_str}]: {message_str}"
+
+      # Example: logger.error("invalid_date_range", start_date_str="20261231", end_date_str="20260101", message_str="Start date cannot be after end date.")
+      invalid_date_range: "Invalid date range error [Start={start_date_str}, End={end_date_str}]: {message_str}"
 
     # --- [Rule & Schema Load Errors] ---
     rule:
-      # Example: logger.exception("tool_import_failed", tool_name="code.date_check", error="Module not found")
-      tool_import_failed: "Failed to load dynamic rule utility module/function ({tool_name}): {error}"
+      # Example: logger.exception("tool_import_failed", tool_name_str="code.date_check", error_str="Module not found")
+      tool_import_failed: "Failed to load dynamic rule utility module/function ({tool_name_str}): {error_str}"
 
-      # Example: logger.exception("schema_load_failed", namespace="sys", path="schemas/sys/sys.json", error="JSONDecodeError")
-      schema_load_failed: "Failed to load schema specification ({namespace}) file ({path}): {error}"
+      # Example: logger.exception("schema_load_failed", namespace_str="sys", path_str="schemas/sys/sys.json", error_str="JSONDecodeError")
+      schema_load_failed: "Failed to load schema specification ({namespace_str}) file ({path_str}): {error_str}"
 
-      # Example: logger.exception("tool_eval_error", func_name="code.date_check", error="TypeError")
-      tool_eval_error: "Dynamic rule utility function evaluation failed [Tool={func_name}], error: {error}"
+      # Example: logger.exception("tool_eval_error", func_name_str="code.date_check", error_str="TypeError")
+      tool_eval_error: "Dynamic rule utility function evaluation failed [Tool={func_name_str}], error: {error_str}"
+
+      # Example: logger.exception("tool_execution_failed", func_name_str="code.date_check", error_str="RuntimeError")
+      tool_execution_failed: "Dynamic rule utility function execution failed [Tool={func_name_str}], error: {error_str}"
 
     # --- [Database Load Errors] ---
     db:
-      # Example: logger.error("insert_failed", service_name="Database", target_name="TB_SAMPLE", error="Invalid schema")
-      insert_failed: "{service_name} data load failed: {target_name}, error: {error}"
+      # Example: logger.exception("table_get_failed", table_name_str="TB_SAMPLE", error_str="Table not found")
+      table_get_failed: "Failed to retrieve BigQuery table({table_name_str}) info: {error_str}"
 
-      # Example: logger.exception("load_table_from_json_failed", service_name="Database", target_name="TB_SAMPLE", error="Invalid schema")
-      load_table_from_json_failed: "{service_name} table load failed: {target_name}, error: {error}"
+      # Example: logger.exception("table_metadata_update_failed", table_name_str="TB_SAMPLE", error_str="Permission denied")
+      table_metadata_update_failed: "Failed to update BigQuery table({table_name_str}) metadata: {error_str}"
 
-      # Example: logger.exception("db_table_merge_failed", service_name="Database", target_name="TB_SAMPLE", error="Invalid schema")
-      db_table_merge_failed: "{service_name} table ({target_name}) MERGE load failed: {error}"
+      # Example: logger.error("table_timestamp_mode_mismatch", table_name_str="TB_SAMPLE", recorded_mode_str="kst_as_utc", configured_mode_str="standard_utc")
+      table_timestamp_mode_mismatch: "BigQuery target table '{table_name_str}' timestamp mode mismatch (recorded: {recorded_mode_str}, configured: {configured_mode_str})"
 
-      # Example: logger.exception("db_merge_load_failed", service_name="BigQuery", total_rows=100, error="Invalid schema")
-      db_merge_load_failed: "{service_name} MERGE load finally failed: {total_rows} total rows, error: {error}"
+      # Example: logger.error("insert_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      insert_failed: "{service_name_str} data load failed: {target_name_str}, error: {error_str}"
 
-      # Example: logger.exception("db_load_max_retries_exceeded", service_name="BigQuery", max_retries=3, target_key="sample.json", error="Connection reset")
-      db_load_max_retries_exceeded: "{service_name} batch load exceeded maximum retries ({max_retries}) and finally failed: [Key={target_key}] error: {error}"
+      # Example: logger.exception("load_table_from_json_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      load_table_from_json_failed: "{service_name_str} table load failed: {target_name_str}, error: {error_str}"
 
-      # Example: logger.exception("db_streaming_fallback_failed", service_name="BigQuery", target_key="sample.json", error="Permission denied")
-      db_streaming_fallback_failed: "{service_name} streaming fallback load finally failed: [Key={target_key}] error: {error}"
+      # Example: logger.exception("db_table_merge_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      db_table_merge_failed: "{service_name_str} table ({target_name_str}) MERGE load failed: {error_str}"
 
-      # Example: logger.exception("db_bulk_load_failed", service_name="BigQuery", total_rows=100, error="Invalid schema")
-      db_bulk_load_failed: "{service_name} bulk load finally failed: {total_rows} total rows, error: {error}"
+      # Example: logger.exception("db_merge_load_failed", service_name_str="BigQuery", total_rows_int=100, error_str="Invalid schema")
+      db_merge_load_failed: "{service_name_str} MERGE load finally failed: {total_rows_int} total rows, error: {error_str}"
 
-      # Example: logger.exception("db_bulk_streaming_fallback_failed", service_name="BigQuery", error="Permission denied")
-      db_bulk_streaming_fallback_failed: "{service_name} bulk streaming fallback load finally failed: error: {error}"
+      # Example: logger.exception("db_load_max_retries_exceeded", service_name_str="BigQuery", max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_max_retceeded: "{service_name_str} batch load exceeded maximum retries ({max_retries_int}) and finally failed: [Key={target_key_str}] error: {error_str}"
 
-      # Example: logger.exception("db_delete_failed", service_name="BigQuery", target_name="tbl", where_clause="...", error="Permission denied")
-      db_delete_failed: "{service_name} table ({target_name}) data cleanup (DELETE) failed: [Condition='{where_clause}'], error: {error}"
+      # Example: logger.exception("db_streaming_fallback_failed", service_name_str="BigQuery", target_key_str="sample.json", error_str="Permission denied")
+      db_streaming_fallback_failed: "{service_name_str} streaming fallback load finally failed: [Key={target_key_str}] error: {error_str}"
 
-      # Example: logger.error("db_file_lock_failed", db_path="data/app.db", error="database is locked")
-      db_file_lock_failed: "Failed to connect to database (Path: {db_path}). A server process or another session may be locking the DB file. Please terminate related processes and retry: {error}"
+      # Example: logger.exception("db_bulk_load_failed", service_name_str="BigQuery", total_rows_int=100, error_str="Invalid schema")
+      db_bulk_load_failed: "{service_name_str} bulk load finally failed: {total_rows_int} total rows, error: {error_str}"
+
+      # Example: logger.exception("db_bulk_streaming_fallback_failed", service_name_str="BigQuery", error_str="Permission denied")
+      db_bulk_streaming_fallback_failed: "{service_name_str} bulk streaming fallback load finally failed: error: {error_str}"
+
+      # Example: logger.exception("db_delete_failed", service_name_str="BigQuery", target_name_str="tbl", where_clause_str="...", error_str="Permission denied")
+      db_delete_failed: "{service_name_str} table ({target_name_str}) data cleanup (DELETE) failed: [Condition='{where_clause_str}'], error: {error_str}"
+
+      # Example: logger.error("db_file_lock_failed", db_path_str="data/app.db", error_str="database is locked")
+      db_file_lock_failed: "Failed to connect to database (Path: {db_path_str}). A server process or another session may be locking the DB file. Please terminate related processes and retry: {error_str}"
+
+      # Example: logger.error("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
+      query_execution_failed: "{service_name_str} query execution failed: [Error={error_str}] Query: {query_str}"
 
     # --- [Storage Connection, Metadata & File Transfer Errors] ---
     storage:
-      # Example: logger.exception("storage_client_init_failed", storage_type="GCS", error="Bucket not found")
-      storage_client_init_failed: "{storage_type} client initialization failed: {error}"
+      # Example: logger.exception("storage_client_init_failed", storage_type_str="GCS", error_str="Bucket not found")
+      storage_client_init_failed: "{storage_type_str} client initialization failed: {error_str}"
 
-      # Example: logger.error("connection_failed", service_name="Storage", error="Connection timed out")
-      connection_failed: "Failed to connect to {service_name}: {error}"
+      # Example: logger.error("connection_failed", service_name_str="Storage", error_str="Connection timed out")
+      connection_failed: "Failed to connect to {service_name_str}: {error_str}"
 
-      # Example: logger.error("list_failed", storage_type="Storage", error="Access Denied")
-      list_failed: "Failed to query {storage_type} object list: {error}"
+      # Example: logger.error("list_failed", storage_type_str="Storage", error_str="Access Denied")
+      list_failed: "Failed to query {storage_type_str} object list: {error_str}"
 
-      # Example: logger.error("bucket_not_found", storage_type="Storage", bucket_name="my-bucket", error="Bucket not found")
-      bucket_not_found: "{storage_type} bucket not found or access denied: {bucket_name}, error: {error}"
+      # Example: logger.error("bucket_not_found", storage_type_str="Storage", bucket_name_str="my-bucket", error_str="Bucket not found")
+      bucket_not_found: "{storage_type_str} bucket not found or access denied: {bucket_name_str}, error: {error_str}"
 
-      # Example: logger.error("storage_meta_error", storage_type="Storage", target_name="path/file.pdf", error="404 Not Found")
-      storage_meta_error: "Error occurred while querying {storage_type} metadata ({target_name}): {error}"
+      # Example: logger.error("storage_meta_error", storage_type_str="Storage", target_name_str="path/file.pdf", error_str="404 Not Found")
+      storage_meta_error: "Error occurred while querying {storage_type_str} metadata ({target_name_str}): {error_str}"
 
-      # Example: logger.error("transfer_failed", file_name="sample.pdf", error="Network dropped")
-      transfer_failed: "File transfer failed: {file_name}, error: {error}"
+      # Example: logger.error("transfer_failed", file_name_str="sample.pdf", error_str="Network dropped")
+      transfer_failed: "File transfer failed: {file_name_str}, error: {error_str}"
 
-      # Example: logger.exception("storage_extract_failed", target_file="sample.json", error="KeyError")
-      storage_extract_failed: "Failed to extract and transform data from storage file ({target_file}): {error}"
+      # Example: logger.exception("storage_extract_failed", target_file_str="sample.json", error_str="KeyError")
+      storage_extract_failed: "Failed to extract and transform data from storage file ({target_file_str}): {error_str}"
 
-      # Example: logger.exception("folder_search_error", search_prefix="folder/", error="Access Denied")
-      folder_search_error: "Error occurred while searching storage folder '{search_prefix}': {error}"
+      # Example: logger.exception("folder_search_error", search_prefix_str="folder/", error_str="Access Denied")
+      folder_search_error: "Error occurred while searching storage folder '{search_prefix_str}': {error_str}"
 
-      # Example: logger.error("json_process_error", stage="decoding/parsing", json_key="folder/123.json", error="JSONDecodeError")
-      json_process_error: "Metadata {stage} failed: [Key={json_key}], error: {error}"
+      # Example: logger.error("json_process_error", stage_str="decoding/parsing", json_key_str="folder/123.json", error_str="JSONDecodeError")
+      json_process_error: "Metadata {stage_str} failed: [Key={json_key_str}], error: {error_str}"
 
-      # Example: logger.error("source_size_error", source_key="sample.pdf", json_key="sample.json", error="404 Not Found")
-      source_size_error: "Failed to query source file size: [Source_Key={source_key} JSON_Key={json_key}], error: {error}"
+      # Example: logger.error("source_size_error", source_key_str="sample.pdf", json_key_str="sample.json", error_str="404 Not Found")
+      source_size_error: "Failed to query source file size: [Source_Key={source_key_str} JSON_Key={json_key_str}], error: {error_str}"
+
+      # Example: logger.exception("storage_clean_failed", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", error_str="Access Denied")
+      storage_clean_failed: "{storage_type_str} data cleanup failed: [Prefix={prefix_str}], error: {error_str}"
+
+      # Example: logger.exception("storage_date_folder_purge_error", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", error_str="Access Denied")
+      storage_date_folder_purge_error: "{storage_type_str} residual folder cleanup failed: [Prefix={prefix_str}], error: {error_str}"
 
     # --- [External Services & HTTP API Errors] ---
     service:
-      # Example: logger.error("api_http_error", service_name="External API", code=500, detail="Internal Server Error")
-      api_http_error: "{service_name} server error HTTP {code}: {detail}"
+      # Example: logger.error("api_http_error", service_name_str="External API", code_int=500, detail_str="Internal Server Error")
+      api_http_error: "{service_name_str} server error HTTP {code_int}: {detail_str}"
 
-      # Example: logger.error("api_connection_error", service_name="External API", detail="Port unreachable")
-      api_connection_error: "{service_name} connection failed (server inactive or network failure): {detail}"
+      # Example: logger.error("api_connection_error", service_name_str="External API", detail_str="Port unreachable")
+      api_connection_error: "{service_name_str} connection failed (server inactive or network failure): {detail_str}"
 
-      # Example: logger.error("api_unexpected_error", service_name="Agent", detail="KeyError")
-      api_unexpected_error: "Unexpected error occurred during {service_name} integration: {detail}"
+      # Example: logger.error("api_unexpected_error", service_name_str="Agent", detail_str="KeyError")
+      api_unexpected_error: "Unexpected error occurred during {service_name_str} integration: {detail_str}"
 
-      # Example: logger.error("api_missing_field", service_name="Generator", field_name="result")
-      api_missing_field: "Field '{field_name}' is missing in {service_name} response."
+      # Example: logger.error("api_missing_field", service_name_str="Generator", field_name_str="result")
+      api_missing_field: "Field '{field_name_str}' is missing in {service_name_str} response."
 
     # --- [Permission Errors] ---
     permission:
-      # Example: logger.error("permission_denied", resource_type="Table", resource_name="proj.ds.tbl", error="Access Denied")
-      permission_denied: "Insufficient access/execution permission for {resource_type}. Operation denied: {resource_name}, error: {error}"
+      # Example: logger.error("permission_denied", resource_type_str="Table", resource_name_str="proj.ds.tbl", error_str="Access Denied")
+      permission_denied: "Insufficient access/execution permission for {resource_type_str}. Operation denied: {resource_name_str}, error: {error_str}"
 
   CRITICAL:
     # --- [System Fatal Errors] ---
     system:
-      # Example: logger.critical("client_init_failed", client_name="Storage", error="Connection refused")
-      client_init_failed: "A fatal error occurred during {client_name} client initialization. Terminating program: {error}"
+      # Example: logger.critical("client_init_failed", client_name_str="Storage", error_str="Connection refused")
+      client_init_failed: "A fatal error occurred during {client_name_str} client initialization. Terminating program: {error_str}"
 
-      # Example: logger.critical("fail_fast_config_missing", path="storage.bucket_name", desc_info=" (bucket name)", config_file="config.yml")
-      fail_fast_config_missing: "[FATAL][Fail-Fast] Required configuration value is missing. Terminating program immediately: '{path}'{desc_info}. You must define this configuration value in configuration file ({config_file})."
+      # Example: logger.critical("fail_fast_config_missing", path_str="storage.bucket_name", desc_info_str=" (bucket name)", config_file_str="config.yml")
+      fail_fast_config_missing: "[FATAL][Fail-Fast] Required configuration value is missing. Terminating program immediately: '{path_str}'{desc_info_str}. You must define this configuration value in configuration file ({config_file_str})."

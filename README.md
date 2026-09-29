@@ -65,10 +65,13 @@
   - `get_now_compact(tz_obj)`: `YYYYMMDDHHMMSS` 형식 14자리 압축 일시 반환 (예: `20260824110500`)
   - `get_today_yyyymmdd(tz_obj)`: `YYYYMMDD` 형식 8자리 일자 반환 (새벽 배치 날짜 역전 방지, 예: `20260824`)
 
-#### 5. 진행률 트래커 및 공용 유틸리티 (`agent_common.utils`)
+#### 5. 진행률 트래커, 테이블 포매터 및 시간 유틸리티 (`agent_common.time_utils`, `agent_common.progress_tracker`, `agent_common.table_formatter`)
 - **5.1. [호스트 시스템 타임존 감지, 전 세계 표준시 해석 및 일시 정규화 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/01_time_utils_and_timezone_resolution.md)**: 호스트 시스템(배치 KST vs 파드 UTC) 타임존 동적 자동 감지, 전 세계 30여 개 주요 표준 타임존(UTC, KST, JST, EST, CET 등) 해석, ISO 8601 오프셋 계산, 일시 객체/문자열을 timezone-aware datetime으로 정규화하는 `parse_datetime` 지원 코어 시간 인프라 유틸리티 (v0.4.69 / v0.4.74)
 - **5.2. [멀티스레드 실시간 진행률 추적 및 마일스톤 경고 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/02_progress_tracker_and_milestones.md)**: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도(건/s, MB/s) 및 남은 시간(ETA) 예측, 일반 진행 `INFO` vs 10% 단위 마일스톤 `WARNING` 승격 로깅
 - **5.3. [유니코드 전각 문자 폭 계산 및 마크다운/콘솔 테이블 칼맞춤 포매터 (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/03_unicode_table_formatter.md)**: 유니코드 동아시아 문자 폭(`unicodedata.east_asian_width`) 정밀 계산 기반 한글/한자(2칸) vs 영문(1칸) 모노스페이스 콘솔 및 마크다운 테이블 세로줄 자동 맞춤 포매터 (v0.4.63)
+
+#### 6. 공용 에러 및 예외 핸들러 (`agent_common.error_handler`)
+- 네트워크 장애, 설정 오류, 런타임 예외에 대한 일관된 로깅 및 핸들링 제공
 
 #### 7. 통합 LLM 클라이언트 및 추론 엔진 (`agent_common.llm`)
 
@@ -431,6 +434,9 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **5.2. [Multithreaded Progress Tracking & Milestone Telemetry (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/02_progress_tracker_and_milestones.md)**: Real-time multithreaded progress tracking (`[N/Total] (P%)`), throughput/ETA calculation, and tiered logging (standard `INFO` vs 10% milestone `WARNING` level elevation).
 - **5.3. [Unicode East Asian Width Alignment & Table Formatter (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/03_unicode_table_formatter.md)**: Precision terminal and Markdown table column width alignment utility calculating Unicode East Asian character display widths (`unicodedata.east_asian_width`) (v0.4.63).
 
+#### 6. Common Error & Exception Handler (`agent_common.error_handler`)
+- Consistent exception logging and handling for network failures, configuration errors, and runtime exceptions.
+
 #### 7. Unified LLM Client & Inference Engine (`agent_common.llm`)
 
 - **7.1. [Model Profiles and Text Generation](https://github.com/kampores/agent_common/blob/main/manual/en/llm/01_model_profiles_and_generation.md)**
@@ -673,6 +679,12 @@ For comprehensive architecture details and practical code examples for each modu
 ---
 
 ### 📋 Version History (Changelog)
+
+#### v0.4.81 (2026-09-28)
+
+- Added universal logging templates for table `WRITE_TRUNCATE` countdown and split batch loading (`logging_messages_en.yml`, `logging_messages_ko.yml`).
+- Promoted data loss prevention countdown alerts and chunked bulk batch load tracking templates from project layer to universal framework.
+- Bumped the package version to `0.4.81`.
 
 #### v0.4.78 (2026-09-21)
 

@@ -168,9 +168,9 @@ class ToolParser:
                     except Exception as import_err:
                         self.logger.warning(
                             "tool_load_failed",
-                            func_name=func_name_str,
-                            module=mod_name_str,
-                            error=str(import_err)
+                            func_name_str=func_name_str,
+                            module_str=mod_name_str,
+                            error_str=str(import_err),
                         )
 
         return None
@@ -202,7 +202,7 @@ class ToolParser:
                 bound_kwargs = {k: v for k, v in kwargs_dict.items() if k in params}
                 return tool_func(*args_list, **bound_kwargs)
         except Exception as exec_err:
-            self.logger.exception("tool_execution_failed", func_name=func_name_str, error=str(exec_err))
+            self.logger.exception("tool_execution_failed", func_name_str=func_name_str, error_str=str(exec_err))
             raise
 
     def eval(self, template_str: Optional[str], context_dict: Optional[Dict[str, Any]] = None) -> Optional[str]:
