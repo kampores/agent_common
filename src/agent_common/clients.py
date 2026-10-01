@@ -1346,5 +1346,76 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
 
         return f"{datetime_part_str}{tz_suffix_str}"
 
-        return None
+    def convert_to_bigquery_datetime(self, val_any: Any) -> Optional[str]:
+        """
+        다양한 원천 날짜/시간 문자열(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 DATETIME(YYYY-MM-DD HH:MM:SS) 포맷으로 변환합니다.
+        BigQuery DATETIME은 특정 시간대와 무관한 벽시계 시각이므로 타임존 오프셋(+09:00, Z 등)을 배제한 순수 일시 문자열을 반환합니다.
+        원천 데이터에 명시적인 타임존이 포함된 경우 한국 시각(KST)으로 변환 후 일시 문자열을 추출합니다.
+
+        :param val_any: 변환 대상 날짜/시간 데이터 (str, datetime, int 등)
+        :return: BigQuery 표준 DATETIME 문자열 ('YYYY-MM-DD HH:MM:SS', 변환 실패 시 None)
+        """
+        if val_any is None:
+            return None
+        val_str: str = str(val_any).strip()
+        if not val_str or val_str.lower() in ("none", "null", "{}") or "{" in val_str:
+            return None
+
+        # 타임존 오프셋 추출 정규식 (+09:00, +0900, -05:00, Z 등)
+        tz_pattern_str: str = r"(?P<tz>Z|[+-]\d{2}:?\d{2})$"
+        tz_match_obj: Any = re.search(tz_pattern_str, val_str)
+        has_explicit_tz_bool: bool = False
+        raw_tz_val_str: str = ""
+        if tz_match_obj:
+            has_explicit_tz_bool = True
+            raw_tz_str: str = tz_match_obj.group("tz")
+            if raw_tz_str == "Z":
+                raw_tz_val_str = "+00:00"
+            elif len(raw_tz_str) == 5 and raw_tz_str[0] in "+-":
+                raw_tz_val_str = f"{raw_tz_str[:3]}:{raw_tz_str[3:]}"
+            else:
+                raw_tz_val_str = raw_tz_str
+            val_str = val_str[:tz_match_obj.start()].strip()
+
+        datetime_part_str: Optional[str] = None
+        # 1. YYYY-MM-DD HH:MM:SS (또는 T 구분자)
+        match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2})", val_str)
+        if match_obj:
+            datetime_part_str = match_obj.group(1).replace("T", " ").replace("/", "-")
+        else:
+            # 2. YYYY-MM-DD HH:MM
+            match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2})", val_str)
+            if match_obj:
+                datetime_part_str = f"{match_obj.group(1).replace('T', ' ').replace('/', '-')}:00"
+            else:
+                # 3. YYYY-MM-DD
+                match_obj = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2})", val_str)
+                if match_obj:
+                    datetime_part_str = f"{match_obj.group(1).replace('/', '-')} 00:00:00"
+                else:
+                    # 4. YYYYMMDDHHMMSS (14자리 숫자)
+                    match_obj = re.search(r"(\d{14})", val_str)
+                    if match_obj:
+                        num_str: str = match_obj.group(1)
+                        datetime_part_str = f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} {num_str[8:10]}:{num_str[10:12]}:{num_str[12:14]}"
+                    else:
+                        # 5. YYYYMMDD (8자리 숫자)
+                        match_obj = re.search(r"(\d{8})", val_str)
+                        if match_obj:
+                            num_str = match_obj.group(1)
+                            datetime_part_str = f"{num_str[:4]}-{num_str[4:6]}-{num_str[6:8]} 00:00:00"
+
+        if not datetime_part_str:
+            return None
+
+        if has_explicit_tz_bool and raw_tz_val_str:
+            try:
+                dt_with_tz_obj: datetime = datetime.fromisoformat(f"{datetime_part_str}{raw_tz_val_str}")
+                kst_tz_obj: timezone = TimeUtils.resolve_timezone("KST")
+                kst_dt_obj: datetime = dt_with_tz_obj.astimezone(kst_tz_obj)
+                return kst_dt_obj.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                return datetime_part_str
+
+        return datetime_part_str
 

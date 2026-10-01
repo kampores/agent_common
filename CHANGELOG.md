@@ -2,6 +2,37 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.88 (2026-10-01)
+
+- **`BigQueryClient.convert_to_bigquery_datetime` 메서드 신규 구현 (규칙 1.4, 4.2 준수)**:
+  - BigQuery의 `DATETIME` 데이터 타입 적재 규격에 맞추어 다양한 원천 일시 문자열(ISO8601, 공백 구분, 14자리/8자리 숫자 등)을 순수 벽시계 시각(`YYYY-MM-DD HH:MM:SS`)으로 변환하는 메서드 신설.
+  - BigQuery `DATETIME`은 타임존 오프셋(`+09:00`, `Z` 등) 포함 시 파싱 오류를 유발하므로 타임존 오프셋을 배제하며, 명시적 타임존 포함 데이터는 한국 시각(KST)으로 정규화 변환 후 반환.
+
+### v0.4.87 (2026-10-01)
+
+- **`_SafeNamespace` 무한 재귀(`RecursionError`) 결함 원천 해소 (규칙 1.3, 1.4, 4.2 준수)**:
+  - `_SafeNamespace.__getattr__` 및 내부 매직 메서드에서 `hasattr(self, "_data")` 호출 시, `_data` 속성이 없을 때 `__getattr__`가 재귀적으로 호출되어 발생하던 `RecursionError: maximum recursion depth exceeded` 결함 원천 차단.
+  - `self.__dict__.get("_data")` 직접 접근 방식으로 전면 전환하여 매직 메서드 재귀 호출 위험을 0%로 제거하고, 인스턴스 초기화 시 `self._data = None` 기본 속성을 명시적으로 보장.
+
+### v0.4.86 (2026-10-01)
+
+- **`SingleLineFlattenFormatter` 및 로거 계층 단일 책임 원칙(SRP) 구조 분리 (규칙 1.4.1, 4.2 준수)**:
+  - `SingleLineFlattenFormatter` 내부에 혼재되어 있던 호출 스택 검사 및 `caller`(`ClassName.funcName()`) / `className` 추출 루틴을 로거 계층(`logging.setLogRecordFactory`, `_safe_log_record_factory`)으로 완전 이관.
+  - `LogRecord` 생성 시점에 `caller`와 `className`이 항상 채워지도록 보장하여, 포매터의 종류(기본 `Formatter`, `SingleLineFlattenFormatter` 등)와 무관하게 `%(caller)s` 누락으로 인한 `KeyError` 원천 차단.
+  - `SingleLineFlattenFormatter`는 개행 평탄화(`\n` -> 공백) 및 최종 문자열 포맷팅이라는 본연의 책임만 순수하게 전담하도록 구조 최적화.
+
+### v0.4.85 (2026-10-01)
+
+- **`TimeUtils.format_elapsed_time` 소요시간 포맷팅 유틸리티 메서드 신설 (규칙 1.4, 4.2 준수)**:
+  - 파이프라인 단계별 및 전체 작업 실행 소요시간(초)을 가독성 높은 시간 문자열(예: `1h 23m 45.67s`, `2m 15.30s`, `4.25s`)로 변환하는 클래스 메서드 추가.
+
+### v0.4.84 (2026-09-30)
+
+- **`_SafeNamespace(dict)` 통합 및 Fail-Fast 실현 (규칙 1.5.3, 1.4.6, 4.2 준수)**:
+  - 대소문자 무시(case-insensitive) 탐색 및 빈 문자열(`""`) 침묵 반환 방어 코드를 전면 제거하고, 필드 누락 시 `AttributeError` / `KeyError`를 발생시켜 Fail-Fast 실현.
+  - `dict` 상속 매핑 클래스로 구조화하여 `eval()`의 로컬 변수 사전(Locals) 역할과 점(.) 속성 접근을 단일 클래스로 통합 전담.
+  - `agent_common` 최상위 패키지(`__init__.py`)에 `_SafeNamespace`를 공식 공개(`__all__`)하여 애플리케이션의 중복 클래스 정의를 원천 제거.
+
 ### v0.4.83 (2026-09-29)
 
 - **`utils.py` 순환 참조(Circular Import) 결함 원천 해소 및 단일 책임 원칙(SRP) 기반 모듈 분리 (`time_utils.py`, `progress_tracker.py`, `table_formatter.py`) (규칙 1.4.1, 1.5.3, 4.2 준수)**:

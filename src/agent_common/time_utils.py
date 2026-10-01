@@ -189,6 +189,27 @@ class TimeUtils:
         except (ValueError, TypeError):
             return None
 
+    @classmethod
+    def format_elapsed_time(cls, seconds_float: float | int) -> str:
+        """
+        소요 시간(초)을 가독성 높은 문자열(예: '1h 23m 45.67s', '2m 15.30s', '4.25s')로 변환합니다.
+
+        :param seconds_float: 소요 시간(초)
+        :return: 가독성 높은 포맷팅 문자열
+        """
+        if seconds_float is None or seconds_float < 0:
+            return "0.00s"
+        total_seconds_float: float = float(seconds_float)
+        hours_int: int = int(total_seconds_float // 3600)
+        minutes_int: int = int((total_seconds_float % 3600) // 60)
+        remaining_seconds_float: float = total_seconds_float % 60
+
+        if hours_int > 0:
+            return f"{hours_int}h {minutes_int}m {remaining_seconds_float:.2f}s"
+        elif minutes_int > 0:
+            return f"{minutes_int}m {remaining_seconds_float:.2f}s"
+        return f"{remaining_seconds_float:.2f}s"
+
 
 __all__ = [
     "TimeUtils",

@@ -29,48 +29,54 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
 
 
 
-class _SafeNamespace:
+class _SafeNamespace(dict):
     """
-    딕셔너리 및 중첩 객체에 대해 점(.) 속성 접근 및 안전한 키 탐색을 지원하는 래퍼 클래스입니다.
+    딕셔너리 및 점(.) 속성 접근을 통합 지원하는 네임스페이스 매핑 클래스입니다.
+    eval() 표현식 평가의 로컬 변수 사전(Locals) 및 중첩 객체 탐색을 단일 클래스로 전담하며,
+    필드 누락 또는 미정의 변수 참조 시 AttributeError / KeyError를 발생시킵니다.
     """
 
-    def __init__(self, data_obj: Any):
-        self._data = data_obj
+    def __init__(self, data_obj: Any = None):
+        self._data: Any = None
+        if isinstance(data_obj, dict):
+            super().__init__(data_obj)
+        elif data_obj is not None:
+            super().__init__()
+            self._data = data_obj
+        else:
+            super().__init__()
 
     def __getattr__(self, name_str: str) -> Any:
-        if isinstance(self._data, dict):
-            if name_str in self._data:
-                val_any = self._data[name_str]
+        data_obj = self.__dict__.get("_data")
+        if data_obj is not None:
+            if hasattr(data_obj, name_str):
+                val_any = getattr(data_obj, name_str)
                 return _SafeNamespace(val_any) if isinstance(val_any, (dict, list)) else val_any
-            name_lower_str = name_str.lower()
-            for k_str, v_val in self._data.items():
-                if k_str.lower() == name_lower_str:
-                    return _SafeNamespace(v_val) if isinstance(v_val, (dict, list)) else v_val
-        return ""
+            raise AttributeError(f"'{type(data_obj).__name__}' 객체는 '{name_str}' 속성을 지원하지 않습니다.")
+        if name_str in self:
+            val_any = self[name_str]
+            return _SafeNamespace(val_any) if isinstance(val_any, (dict, list)) else val_any
+        raise AttributeError(f"필드 '{name_str}'가 존재하지 않습니다.")
 
     def __getitem__(self, item_key: Any) -> Any:
-        if isinstance(self._data, dict):
-            if item_key in self._data:
-                val_any = self._data[item_key]
-                return _SafeNamespace(val_any) if isinstance(val_any, (dict, list)) else val_any
-            item_lower_str = str(item_key).lower()
-            for k_str, v_val in self._data.items():
-                if k_str.lower() == item_lower_str:
-                    return _SafeNamespace(v_val) if isinstance(v_val, (dict, list)) else v_val
-            return ""
-        elif isinstance(self._data, list):
-            try:
-                val_any = self._data[item_key]
-                return _SafeNamespace(val_any) if isinstance(val_any, (dict, list)) else val_any
-            except (IndexError, TypeError):
-                return ""
-        return ""
+        data_obj = self.__dict__.get("_data")
+        val_any = data_obj[item_key] if data_obj is not None else super().__getitem__(item_key)
+        return _SafeNamespace(val_any) if isinstance(val_any, (dict, list)) else val_any
 
-    def __str__(self) -> str:
-        return str(self._data) if self._data is not None else ""
+    def __missing__(self, key_str: str) -> Any:
+        raise KeyError(f"미정의 변수 '{key_str}'를 참조할 수 없습니다.")
 
     def __bool__(self) -> bool:
-        return bool(self._data)
+        data_obj = self.__dict__.get("_data")
+        return bool(data_obj) if data_obj is not None else bool(len(self))
+
+    def __str__(self) -> str:
+        data_obj = self.__dict__.get("_data")
+        return str(data_obj) if data_obj is not None else super().__str__()
+
+    def __repr__(self) -> str:
+        data_obj = self.__dict__.get("_data")
+        return repr(data_obj) if data_obj is not None else super().__repr__()
 
 
 class ToolParser:
@@ -329,3 +335,6 @@ class ToolParser:
         elif isinstance(rule_node_any, list):
             for item in rule_node_any:
                 self.scan_rules_for_tool_functions(item, found_funcs_set)
+
+
+__all__ = ["ToolParser", "_SafeNamespace"]

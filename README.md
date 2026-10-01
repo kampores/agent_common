@@ -31,7 +31,7 @@
 - **1.7. [환경변수 템플릿 치환 (`_interpolate_env_vars`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/01_hierarchical_yaml_merge.md)**: YAML 파일 및 설정 딕셔너리 내 `${VAR_NAME:-default}` 구문 자동 치환을 통한 선언적 환경변수 바인딩 지원 (v0.4.55).
 
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
-- **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 호출 스택 기반 호출자/클래스명(`%(caller)s`, `%(className)s`) 자동 분리 추출 및 프로그램 로거 이름(`%(name)s`) 통일 지원 (v0.4.36)
+- **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 로거 팩토리 기반 호출자/클래스명(`%(caller)s`, `%(className)s`) 자동 결합 및 프로그램 로거 이름(`%(name)s`) 통일 지원 (v0.4.86)
 - **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 실행 로그 레벨별 디렉터리 자동 분기(`{log_level}` 기반 `log_file` 단일화) 및 서드파티 노이즈 억제
 - **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog.md)**: `config.yml`의 `logging.language` (`KO` 또는 `EN`) 설정에 따라 한국어/영문 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환, `default_str` 표준 매개변수 기반 기본 템플릿 치환 보증 (v0.4.73)
 - **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계
@@ -43,6 +43,7 @@
 - **3.3. [BigQuery 배치 및 스트리밍 적재 클라이언트 (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/03_bigquery_batch_and_streaming_load.md)**: 연결 및 테이블 스키마 사전 캐싱(`get_table`), JSON 배치 로드 Job(`load_table_from_json_data`) 및 중첩 에러(`errors`, `location`, `reason`) 상세 분해, 실시간 스트리밍 인서트(`insert_rows_json_data`), 범용 동기 SQL 쿼리(`query`), 중복 전송 방지용 기존 키 집합 추출(`get_existing_keys`), WHERE 조건식 기반 안전 일괄 삭제 DML(`delete_rows` - v0.4.80)
 - **3.4. [BigQuery 고성능 인라인 MERGE (Upsert) 쿼리 엔진 (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/04_bigquery_inline_merge_upsert.md)**: 스테이징 임시 테이블 생성 없이 직접 `UNNEST(JSON_QUERY_ARRAY(@json_payload))` 기반 인라인 MERGE INTO 수행, 기본키(PK) 기준 자동 UPDATE/INSERT 분기, 생성일시 등 최초 값 보존(`preserve_columns_list`), 컬럼 데이터 타입 자동 추론 및 명시적 캐스팅(`column_types_dict`), 한글/특수문자/예약어 백틱(`` ` ``) 완벽 보호, HTTP 413 페이로드 초과 방지 기본 100건 청크 자동 분할, 후속 연쇄 쿼리(`post_queries_list`) 지원
 - **3.5. [BigQuery 타임존 오프셋 변환 및 테이블 타임존 모드 검증·동기화 (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync.md)**: ISO 8601, 공백 구분, 14자리/8자리 숫자 등 다양한 원천 날짜 문자열의 BigQuery 표준 타임스탬프 정규화, 타임존 오프셋 우선순위(`timezone_offset_str` - v0.4.71), 한국 시각 숫자 보존 모드(`kst_as_utc_timestamp_bool`), 테이블 메타데이터(라벨 `timestamp_mode`, 테이블 및 컬럼 Description) 자동 동기화 및 기존 데이터 존재 시 불일치 차단(Fail-Fast)
+- **3.6. [BigQuery 표준 DATETIME 변환 (`convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync.md)**: BigQuery `DATETIME` 스키마 적재 규격에 맞추어 타임존 오프셋을 배제한 순수 벽시계 시각(`YYYY-MM-DD HH:MM:SS`)으로 변환 및 명시적 타임존 포함 원천 데이터의 KST 정규화 변환 지원 (v0.4.88)
 
 #### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
 - **4.1. [이원화된 Tool 디렉터리 계층 탐색 및 동적 로딩 (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/01_dual_tool_hierarchy_discovery.md)**:
@@ -54,9 +55,9 @@
   - 동적 도구 함수 호출: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`
   - 파이프(`|`) 우선순위 폴백 및 기본값: `"{meta.title|json.title|'기본제목'}"`
   - `inspect.signature` 기반 유연한 파라미터 매핑 및 `ctx` 컨텍스트 자동 주입
-- **4.3. [안전한 네임스페이스 탐색 (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/03_safe_namespace_navigation.md)**:
-  - 점(`.`) 및 인덱스(`[]`) 접근 통합, 대소문자 무관(Case-insensitive) 유연한 탐색
-  - 누락된 필드에 대해 KeyError 없이 안전하게 빈 문자열(`""`) 반환 및 중첩 딕셔너리/리스트 재귀적 래핑
+- **4.3. [안전한 네임스페이스 탐색 및 점 표기법 지원 (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/03_safe_namespace_navigation.md)**:
+  - `dict` 상속 매핑 및 점(`.`) 속성 접근 통합, `eval()` 로컬 변수 사전(Locals) 및 중첩 딕셔너리/리스트 재귀적 래핑
+  - 대소문자 변형 및 침묵 방어 코드를 배제하고 필드 누락 시 Fail-Fast (`AttributeError`/`KeyError`) 보증 (v0.4.84)
 - **4.4. [내장 공통 일시 도구 (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/04_builtin_datetime_utils.md)**:
   - 테이블 규칙 및 템플릿 평가 전용 날짜/시간 도구, 코어 타임존 해석은 `TimeUtils`에 위임하여 역할 분담 (v0.4.69 / v0.4.74)
   - `parse_datetime(dt_input_any, default_tz_obj)`: 다양한 형식(datetime, ISO 문자열)의 일시를 timezone-aware datetime으로 정규화 변환 (v0.4.74)
@@ -66,7 +67,7 @@
   - `get_today_yyyymmdd(tz_obj)`: `YYYYMMDD` 형식 8자리 일자 반환 (새벽 배치 날짜 역전 방지, 예: `20260824`)
 
 #### 5. 진행률 트래커, 테이블 포매터 및 시간 유틸리티 (`agent_common.time_utils`, `agent_common.progress_tracker`, `agent_common.table_formatter`)
-- **5.1. [호스트 시스템 타임존 감지, 전 세계 표준시 해석 및 일시 정규화 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/01_time_utils_and_timezone_resolution.md)**: 호스트 시스템(배치 KST vs 파드 UTC) 타임존 동적 자동 감지, 전 세계 30여 개 주요 표준 타임존(UTC, KST, JST, EST, CET 등) 해석, ISO 8601 오프셋 계산, 일시 객체/문자열을 timezone-aware datetime으로 정규화하는 `parse_datetime` 지원 코어 시간 인프라 유틸리티 (v0.4.69 / v0.4.74)
+- **5.1. [호스트 시스템 타임존 감지, 전 세계 표준시 해석 및 일시 정규화 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/01_time_utils_and_timezone_resolution.md)**: 호스트 시스템(배치 KST vs 파드 UTC) 타임존 동적 자동 감지, 전 세계 30여 개 주요 표준 타임존(UTC, KST, JST, EST, CET 등) 해석, ISO 8601 오프셋 계산, 일시 객체/문자열을 timezone-aware datetime으로 정규화하는 `parse_datetime`, 소요시간을 가독성 높은 문자열로 변환하는 `format_elapsed_time` 지원 코어 시간 인프라 유틸리티 (v0.4.69 / v0.4.74 / v0.4.85)
 - **5.2. [멀티스레드 실시간 진행률 추적 및 마일스톤 경고 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/02_progress_tracker_and_milestones.md)**: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도(건/s, MB/s) 및 남은 시간(ETA) 예측, 일반 진행 `INFO` vs 10% 단위 마일스톤 `WARNING` 승격 로깅
 - **5.3. [유니코드 전각 문자 폭 계산 및 마크다운/콘솔 테이블 칼맞춤 포매터 (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/03_unicode_table_formatter.md)**: 유니코드 동아시아 문자 폭(`unicodedata.east_asian_width`) 정밀 계산 기반 한글/한자(2칸) vs 영문(1칸) 모노스페이스 콘솔 및 마크다운 테이블 세로줄 자동 맞춤 포매터 (v0.4.63)
 

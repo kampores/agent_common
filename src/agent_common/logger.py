@@ -34,7 +34,7 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
         "format_str": "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller)s] %(message)s",
         "datefmt_str": "%Y-%m-%d %H:%M:%S",
         "file_logging_bool": True,
-        "log_file_str": "logs/link/out/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log",
+        "log_file_str": "logs/load/out/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log",
         "progress_interval_percent_int": 1,
         "print_deleted_pks_bool": False,
     }
@@ -42,23 +42,28 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
 
 
 
-class SingleLineFlattenFormatter(logging.Formatter):
-    """
-    로그 레코드 및 예외 추적(Traceback) 데이터를 포맷팅하는 공용 커스텀 로깅 포매터 클래스.
-    (여러 줄 읽기를 지원하는 로그 수집기 환경에 맞춰 멀티라인 포맷팅을 지원합니다.)
-    """
+# ------------------------------------------------------------------------------
+# LogRecord Factory 안전 래퍼: record.caller 및 record.className 출처 추출 및 기본값 보장
+# ------------------------------------------------------------------------------
+_original_log_record_factory = logging.getLogRecordFactory()
 
-    def flatten_to_single_line(self, text: str) -> str:
-        """텍스트 내부의 개행 문자(\n, \r)를 공백으로 변환합니다 (하위 호환성 유지용)."""
-        return text.replace("\n", " ").replace("\r", " ")
 
-    def format(self, record: logging.LogRecord) -> str:
-        # 0. 로거 이름(name) 통일: ProjectLogger에 등록된 애플리케이션 이름이 있으면 우선 적용
-        if ProjectLogger._app_name_str:
-            record.name = ProjectLogger._app_name_str
+def _safe_log_record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
+    record: logging.LogRecord = _original_log_record_factory(*args, **kwargs)
 
-        # 1. 호출 스택 프레임(Stack Frame) 탐색을 통한 클래스명(className) 및 caller 자동 추출
-        class_name_str: str = ""
+    # 1. 이미 caller 및 className이 확정된 경우 유지
+    if hasattr(record, "caller") and hasattr(record, "className"):
+        return record
+
+    class_name_str: str = ""
+    # 2. record의 extra(fallback_class_name 또는 className) 우선 활용
+    if hasattr(record, "className") and record.className:
+        class_name_str = str(record.className)
+    elif hasattr(record, "fallback_class_name") and record.fallback_class_name:
+        class_name_str = str(record.fallback_class_name)
+
+    # 3. 미발견 시 호출 스택 프레임(Stack Frame) 탐색을 통한 클래스명(className) 추출
+    if not class_name_str:
         try:
             import sys
             frame = sys._getframe()
@@ -83,17 +88,30 @@ class SingleLineFlattenFormatter(logging.Formatter):
         except Exception:
             pass
 
-        # 스택에서 미발견 시 fallback 활용
-        if not class_name_str:
-            if hasattr(record, "className") and record.className:
-                class_name_str = str(record.className)
-            elif hasattr(record, "fallback_class_name") and record.fallback_class_name:
-                class_name_str = str(record.fallback_class_name)
+    record.className = class_name_str
+    record.caller = f"{class_name_str}.{record.funcName}()" if class_name_str else f"{record.funcName}()"
+    return record
 
-        record.className = class_name_str
-        record.caller = f"{class_name_str}.{record.funcName}()" if class_name_str else f"{record.funcName}()"
 
-        # 2. 예외(Traceback) 발생 원천 지점 정보([Origin: filename:Llineno in funcName()]) 추출
+logging.setLogRecordFactory(_safe_log_record_factory)
+
+
+class SingleLineFlattenFormatter(logging.Formatter):
+    """
+    로그 레코드 및 예외 추적(Traceback) 데이터를 포맷팅하는 공용 커스텀 로깅 포매터 클래스.
+    (여러 줄 읽기를 지원하는 로그 수집기 환경에 맞춰 멀티라인 포맷팅을 지원합니다.)
+    """
+
+    def flatten_to_single_line(self, text: str) -> str:
+        """텍스트 내부의 개행 문자(\n, \r)를 공백으로 변환합니다 (하위 호환성 유지용)."""
+        return text.replace("\n", " ").replace("\r", " ")
+
+    def format(self, record: logging.LogRecord) -> str:
+        # 0. 로거 이름(name) 통일: ProjectLogger에 등록된 애플리케이션 이름이 있으면 우선 적용
+        if ProjectLogger._app_name_str:
+            record.name = ProjectLogger._app_name_str
+
+        # 1. 예외(Traceback) 발생 원천 지점 정보([Origin: filename:Llineno in funcName()]) 추출
         origin_prefix = ""
         if record.exc_info and len(record.exc_info) >= 3 and record.exc_info[2]:
             try:
@@ -106,10 +124,10 @@ class SingleLineFlattenFormatter(logging.Formatter):
             except Exception:
                 pass
 
-        # 3. 부모 클래스의 기본 포맷팅 수행 (다중 행 로그 및 Traceback 원형 보존)
+        # 2. 부모 클래스의 기본 포맷팅 수행 (다중 행 로그 및 Traceback 원형 보존)
         s = super().format(record)
 
-        # 4. Origin 원천 지점 정보가 있으면 메인 로그 메시지 서두/줄말에 결합
+        # 3. Origin 원천 지점 정보가 있으면 메인 로그 메시지 서두/줄말에 결합
         if origin_prefix:
             if "\nTraceback" in s:
                 head, tail = s.split("\nTraceback", 1)
