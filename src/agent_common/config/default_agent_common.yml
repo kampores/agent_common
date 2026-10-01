@@ -42,3 +42,7 @@ templates:
     # ==============================================================================
 
   config_repair_inline_comment_str: "# [자동 추가: {now_dt_str}]"
+
+config_loader:
+  max_recursion_depth_int: 20  # 재귀 호출 최대 탐색 깊이 제한 (스택 오버플로우 및 무한 루프 방지)
+

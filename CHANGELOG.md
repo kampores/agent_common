@@ -2,6 +2,12 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.89 (2026-10-01)
+
+- **설정 로더 및 래퍼 재귀 함수 자원 과다 사용(CWE-674) 방어 조치 (규칙 1.3, 1.4, 4.2 준수)**:
+  - Sparrow(스패로우) 정적 분석 도구의 '종료되지 않는 반복문 또는 재귀 함수' 취약점 지적에 대응하여 `ReadOnlyConfig.register_schema`, `ReadOnlyConfig.apply_cli_overrides`에 최대 깊이 제한(`max_depth_int=10`) 및 명시적 기저 조건 탈출 반환문(Early Return) 완비.
+  - `ConfigLoader._deep_merge` 및 `ConfigLoader._interpolate_env_vars` 내부 재귀 로직에 최대 탐색 깊이 제한(`max_depth_int=20`) 및 타입 불일치/깊이 초과 시 즉시 탈출하는 가드 절을 적용하여 스택 오버플로우 및 무한 루프 위험 원천 차단.
+
 ### v0.4.88 (2026-10-01)
 
 - **`BigQueryClient.convert_to_bigquery_datetime` 메서드 신규 구현 (규칙 1.4, 4.2 준수)**:

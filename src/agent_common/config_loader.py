@@ -22,6 +22,9 @@ from agent_common.error_handler import ErrorHandler
 # 설정 로더 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
 # ==============================================================================
 APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
+    "config_loader": {
+        "max_recursion_depth_int": 20,  # 재귀 호출 최대 탐색 깊이 제한 (스택 오버플로우 및 무한 루프 방지)
+    },
     "templates": {
         "config_notice_header_str": (
             "# ==============================================================================\n"
@@ -253,13 +256,102 @@ class ReadOnlyConfig:
         """내부 원본 딕셔너리를 반환합니다."""
         return self._get_data()
 
-    def apply_cli_overrides(self, overrides_dict: dict[str, Any]) -> None:
-        """커스텀 딕셔너리 형태의 오버라이드 설정을 전역 설정에 즉시 최우선순위로 반영합니다."""
+    def apply_cli_overrides(
+        self,
+        overrides_dict: dict[str, Any],
+        max_depth_int: Optional[int] = None,
+        current_depth_int: int = 0,
+    ) -> None:
+        """
+        커스텀 딕셔너리 형태의 오버라이드 설정을 전역 설정에 즉시 최우선순위로 반영합니다.
+        재귀 호출 시 자원 과다 사용을 방지하기 위해 최대 깊이 제한(max_depth_int) 및 탈출 조건을 적용합니다.
+
+        :param overrides_dict: 반영할 CLI 오버라이드 딕셔너리
+        :param max_depth_int: 재귀 탐색 최대 깊이 제한 (None 시 config_loader.max_recursion_depth_int 참조)
+        :param current_depth_int: 현재 재귀 깊이 추적 카운터 (기본값: 0)
+        :return: None
+        """
+        if not isinstance(overrides_dict, dict) or not overrides_dict:
+            return
+
+        effective_max_depth_int: int = max_depth_int if max_depth_int is not None else ConfigLoader.get_max_recursion_depth()
+
+        if current_depth_int >= effective_max_depth_int:
+            return
+
         src: Any = object.__getattribute__(self, "_source")
+        if src is self or src is None:
+            return
+
+        if isinstance(src, ReadOnlyConfig):
+            src.apply_cli_overrides(
+                overrides_dict=overrides_dict,
+                max_depth_int=effective_max_depth_int,
+                current_depth_int=current_depth_int + 1,
+            )
+            return
+
         if hasattr(src, "apply_cli_overrides") and callable(src.apply_cli_overrides):
             src.apply_cli_overrides(overrides_dict)
+            return
         elif isinstance(src, dict):
             ConfigLoader.apply_cli_overrides_to_loader(src, overrides_dict)
+            return
+
+    def register_schema(
+        self,
+        schema_dict: dict[str, Any],
+        max_depth_int: Optional[int] = None,
+        current_depth_int: int = 0,
+    ) -> None:
+        """
+        내부 ConfigLoader 및 전역 스키마 레지스트리에 도메인 스키마를 등록합니다.
+        재귀 호출 시 자원 과다 사용(스택 오버플로우) 위험을 원천 차단하기 위해
+        재귀 리밋(max_depth_int) 및 탈출 반환문(Early Return)을 적용합니다.
+
+        :param schema_dict: 등록할 도메인 기본 설정 스키마 딕셔너리
+        :param max_depth_int: 재귀 탐색 최대 깊이 제한 (None 시 config_loader.max_recursion_depth_int 참조)
+        :param current_depth_int: 현재 재귀 깊이 추적 카운터 (기본값: 0)
+        :return: None
+        """
+        # 1. 탈출 조건: 빈 딕셔너리 또는 올바르지 않은 타입 유입 시 즉시 탈출
+        if not isinstance(schema_dict, dict) or not schema_dict:
+            return
+
+        effective_max_depth_int: int = max_depth_int if max_depth_int is not None else ConfigLoader.get_max_recursion_depth()
+
+        # 2. 탈출 조건: 재귀 리밋 도달 시 전역 스키마 등록 후 즉시 탈출
+        if current_depth_int >= effective_max_depth_int:
+            ConfigLoader.register_schema_globally(schema_dict)
+            return
+
+        # 3. 탈출 조건: 내부 소스(_source) 획득 및 자기 참조 순환 루프 탈출
+        src: Any = object.__getattribute__(self, "_source")
+        if src is self or src is None:
+            ConfigLoader.register_schema_globally(schema_dict)
+            return
+
+        # 4. 재귀 제어: 중첩된 ReadOnlyConfig인 경우 깊이 카운터를 증가시키며 안전하게 재귀 위임 후 반환
+        if isinstance(src, ReadOnlyConfig):
+            src.register_schema(
+                schema_dict=schema_dict,
+                max_depth_int=effective_max_depth_int,
+                current_depth_int=current_depth_int + 1,
+            )
+            return
+
+        # 5. 소스가 ConfigLoader 인스턴스인 경우: 해당 인스턴스의 스키마 등록 수행 및 캐시 초기화 후 탈출
+        if hasattr(src, "register_schema") and callable(src.register_schema):
+            src.register_schema(schema_dict)
+            if hasattr(src, "_cached_settings"):
+                src._cached_settings = None
+            return
+
+        # 6. 기저 조건: 전역 ConfigLoader에 스키마 등록 후 종료
+        ConfigLoader.register_schema_globally(schema_dict)
+        if hasattr(src, "_cached_settings"):
+            src._cached_settings = None
+        return
 
     def __repr__(self) -> str:
         """객체 문자열 표현을 반환합니다."""
@@ -354,6 +446,19 @@ class ConfigLoader:
         """
         clean_lang_str: str = str(lang_str).strip().upper()
         cls._global_language_override_str = "EN" if clean_lang_str == "EN" else "KO"
+
+    @classmethod
+    def get_max_recursion_depth(cls) -> int:
+        """설정(config_loader.max_recursion_depth_int)으로부터 전역 재귀 제한 깊이를 조회합니다.
+
+        설정 파일 또는 등록된 스키마에 정의되지 않은 경우 모듈 기본 스키마(APP_DEFAULT_SCHEMA_DICT)의 값을 반환합니다.
+
+        :return: 설정된 양수 정수 형태의 최대 재귀 제한 깊이
+        """
+        val_any = cls._global_registered_schemas_dict.get("config_loader", {}).get("max_recursion_depth_int")
+        if isinstance(val_any, int) and val_any > 0:
+            return val_any
+        return APP_DEFAULT_SCHEMA_DICT["config_loader"]["max_recursion_depth_int"]
 
     @property
     def language(self) -> str:
@@ -671,18 +776,44 @@ class ConfigLoader:
                 os.environ["NO_PROXY"] = str(no_proxy_value)
 
     @staticmethod
-    def _interpolate_env_vars(data_any: Any) -> Any:
+    def _interpolate_env_vars(
+        data_any: Any,
+        max_depth_int: Optional[int] = None,
+        current_depth_int: int = 0,
+    ) -> Any:
         """
         설정 데이터 내 문자열에 포함된 ${VAR_NAME} 및 ${VAR_NAME:-default} 형식의
         환경변수 템플릿을 실제 OS 환경변수 값으로 재귀 치환합니다.
+        자원 과다 사용을 방지하기 위해 최대 깊이 제한(max_depth_int) 및 탈출 조건을 적용합니다.
 
         :param data_any: 치환 대상 설정 데이터 (dict, list, str 또는 기타 타입)
+        :param max_depth_int: 재귀 탐색 최대 깊이 제한 (None 시 config_loader.max_recursion_depth_int 참조)
+        :param current_depth_int: 현재 재귀 깊이 추적 카운터 (기본값: 0)
         :return: 환경변수가 치환된 설정 데이터
         """
+        effective_max_depth_int: int = max_depth_int if max_depth_int is not None else ConfigLoader.get_max_recursion_depth()
+
+        if current_depth_int >= effective_max_depth_int:
+            return data_any
+
         if isinstance(data_any, dict):
-            return {k: ConfigLoader._interpolate_env_vars(v) for k, v in data_any.items()}
+            return {
+                k: ConfigLoader._interpolate_env_vars(
+                    v,
+                    max_depth_int=effective_max_depth_int,
+                    current_depth_int=current_depth_int + 1,
+                )
+                for k, v in data_any.items()
+            }
         if isinstance(data_any, list):
-            return [ConfigLoader._interpolate_env_vars(item) for item in data_any]
+            return [
+                ConfigLoader._interpolate_env_vars(
+                    item,
+                    max_depth_int=effective_max_depth_int,
+                    current_depth_int=current_depth_int + 1,
+                )
+                for item in data_any
+            ]
         if isinstance(data_any, str):
             return _ENV_VAR_PATTERN.sub(_replace_env_match, data_any)
         return data_any
@@ -826,16 +957,39 @@ class ConfigLoader:
         return ConfigLoader._interpolate_env_vars(settings)
 
     @staticmethod
-    def _deep_merge(target: dict[str, Any], incoming: dict[str, Any]) -> None:
+    def _deep_merge(
+        target: dict[str, Any],
+        incoming: dict[str, Any],
+        max_depth_int: Optional[int] = None,
+        current_depth_int: int = 0,
+    ) -> None:
         """
-        두 딕셔너리를 재귀적으로 병합하며 중복 키는 덮어씁니다 (Deep Merge).
+        두 딕셔너리를 재귀적으로 계층 병합(Deep Merge)합니다.
+        순환 참조 및 비정상 중첩으로 인한 자원 과다 사용을 방지하기 위해 최대 깊이 제한(max_depth_int) 및 탈출 조건을 적용합니다.
 
         :param target: 병합 대상 기준 딕셔너리 (인플레이스 수정됨)
         :param incoming: 덮어쓸 신규 딕셔너리
+        :param max_depth_int: 재귀 탐색 최대 깊이 제한 (None 시 config_loader.max_recursion_depth_int 참조)
+        :param current_depth_int: 현재 재귀 깊이 추적 카운터 (기본값: 0)
+        :return: None
         """
+        if not isinstance(target, dict) or not isinstance(incoming, dict):
+            return
+
+        effective_max_depth_int: int = max_depth_int if max_depth_int is not None else ConfigLoader.get_max_recursion_depth()
+
+        if current_depth_int >= effective_max_depth_int:
+            target.update(incoming)
+            return
+
         for key, value in incoming.items():
             if isinstance(value, dict) and isinstance(target.get(key), dict):
-                ConfigLoader._deep_merge(target[key], value)
+                ConfigLoader._deep_merge(
+                    target=target[key],
+                    incoming=value,
+                    max_depth_int=effective_max_depth_int,
+                    current_depth_int=current_depth_int + 1,
+                )
             else:
                 target[key] = value
 
