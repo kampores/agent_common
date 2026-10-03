@@ -46,7 +46,6 @@ flowchart TD
     I1 --> K
     J --> K
     I2 --> K
-    K --> L["서드파티 잡음 로거 레벨 강제 억제 (metricflow, urllib3, httpx 등 -> WARNING)"]
 ```
 
 ---
@@ -122,9 +121,6 @@ logs/pipeline/2026/09/08/warning/data_extractor_out_20260908T183000.log
 
 ### 3.4. 무중단 예외 완화 (Graceful Degradation)
 Docker 컨테이너 마운트 볼륨의 권한 문제(`PermissionError`)나 디스크 I/O 오류(`OSError`)가 발생하더라도 프로세스를 종료하지 않고, `sys.stderr`로 경고 메시지를 남긴 뒤 **콘솔 출력 모드로 안전하게 폴백(Fallback)**합니다.
-
-### 3.5. 서드파티 라이브러리 노이즈 차단
-기동 시 대량의 로그를 유발하는 `urllib3`, `httpx`, `metricflow` 등의 외부 패키지 로거 레벨을 강제로 `WARNING`으로 고정하여 핵심 비즈니스 로그의 가독성을 보장합니다.
 
 ---
 

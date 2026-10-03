@@ -46,7 +46,6 @@ flowchart TD
     I1 --> K
     J --> K
     I2 --> K
-    K --> L["Suppress Third-Party Loggers (metricflow, urllib3, httpx -> WARNING)"]
 ```
 
 ---
@@ -122,9 +121,6 @@ logs/pipeline/2026/09/08/warning/data_extractor_out_20260908T183000.log
 
 ### 3.4. Graceful Degradation on Permission/OS Errors
 If directory creation fails due to `PermissionError` or `OSError` in containerized environments, `ProjectLogger` logs a warning to `sys.stderr` and falls back to console logging without crashing the process.
-
-### 3.5. Noise Suppression for Third-Party Libraries
-Automatically mutes verbose libraries (`metricflow`, `urllib3`, `httpx`) to `WARNING` level.
 
 ---
 

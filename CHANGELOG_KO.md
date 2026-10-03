@@ -2,6 +2,23 @@
 
 > [ 🇺🇸 English Version (영문 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md)
 
+### v0.4.91 (2026-10-03)
+
+- **로깅 표준 규격 정비, 래퍼 함수 제거 및 모듈 동기화 (규칙 1.3.1, 1.4.6, 1.5.3, 1.6.1, 4.2 준수)**:
+  - `logging.format_str`: 파이썬 표준 `LogRecord` 내장 속격(`%(asctime)s`, `%(levelname)s`, `%(name)s`, `%(filename)s:%(lineno)d`, `%(message)s`)과 유일한 커스텀 주입 속성인 `%(caller_str)s` 체계로 확정.
+  - `SingleLineFlattenFormatter`: 불필요하게 파이썬 표준 속성을 중복 복제하던 껍데기 메서드 `formatMessage`를 완전 영구 삭제 (규칙 1.4.6 준수).
+  - `logging.log_file_str`: 경로 템플릿 인자를 정규 타입 접미사 `{app_name_str}`, `{log_level_str}`로 확정하고, 불필요한 대소문자/약칭 방어 파라미터(`APP_NAME`, `LOG_LEVEL`, `app_name`, `log_level`) 및 임시 변수 완전 제거.
+  - `_safe_log_record_factory` 및 로거 레코드 속성에서 비표준/레거시 별칭(`record.className`, `record.caller`, `fallback_class_name`)을 전면 삭제하고 `record.class_name_str`, `record.caller_str`, `fallback_class_name_str`로 단일화.
+  - `ProjectLogger.configure`: 극초기 레거시 서드파티 로거(`metricflow`, `metricflow_semantics`, `urllib3`, `httpx`) 강제 레벨 억제 하드코딩 완전 삭제.
+  - `load_util.py` 내의 `SingleLineFlattenFormatter` 및 `ProjectLogger.configure`를 `agent_common/logger.py`와 100% 동일하게 일치시키고 하드코딩된 폴백 코드 상수(Fail-Fast 규칙 1.3.1 위반) 완전 척결.
+
+### v0.4.90 (2026-10-01)
+
+- **`BigQueryClient.get_existing_records_metadata` 메서드 신규 구현 (규칙 1.4, 1.5, 4.2 준수)**:
+  - BigQuery 테이블에서 주어진 PK 목록에 해당하는 레코드들의 메타데이터(상태코드 `asstStusCd`, 수정일시 `orignAmndHms` 등)를 고속으로 일괄 조회하여 `{pk_str: {컬럼명: 값}}` 딕셔너리로 반환하는 메서드 신설.
+  - BigQuery API 요청 크기 한도(HTTP 413) 방지를 위해 `UNNEST(@pk_list)` 기반 5,000건 청크 분할 쿼리 실행 구조 적용.
+  - 사전 정의된 로깅 메시지(`db_existing_records_loaded`, `existing_records_metadata_fetch_failed`)와 100% 일치시켜 조회 성공 및 예외 발생 시 표준 로그 출력 완비.
+
 ### v0.4.89 (2026-10-01)
 
 - **설정 로더 및 래퍼 재귀 함수 자원 과다 사용(CWE-674) 방어 조치 (규칙 1.3, 1.4, 4.2 준수)**:

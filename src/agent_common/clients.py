@@ -1010,6 +1010,93 @@ class BigQueryClient:
             self.logger.exception("existing_keys_fetch_failed", service_name_str="BigQuery", error_str=str(fetch_exc))
             return set()
 
+    def get_existing_records_metadata(
+        self,
+        pk_list: list[str],
+        pk_column_name_str: str = "asstId",
+        status_column_name_str: str = "asstStusCd",
+        amendment_time_column_name_str: str = "orignAmndHms",
+        chunk_size_int: int = 5000,
+        timeout_int: int | None = None,
+    ) -> dict[str, dict[str, Any]]:
+        """
+        BigQuery 테이블에서 주어진 PK 목록에 해당하는 레코드들의 메타데이터(상태코드, 수정일시 등)를
+        UNNEST 파라미터 바인딩 및 청크 분할 방식으로 조회하여 딕셔너리로 반환합니다.
+
+        :param pk_list: 조회 대상 PK 목록 문자열 리스트
+        :param pk_column_name_str: 기본키(PK) 컬럼명 (기본값: 'asstId')
+        :param status_column_name_str: 상태코드 컬럼명 (기본값: 'asstStusCd')
+        :param amendment_time_column_name_str: 수정일시 컬럼명 (기본값: 'orignAmndHms')
+        :param chunk_size_int: 쿼리 파라미터 크기 제한을 고려한 청크 분할 단위 (기본값: 5000)
+        :param timeout_int: 쿼리 실행 타임아웃 제한 시간(초)
+        :return: {pk_str: {컬럼명: 값}} 매핑 딕셔너리 (조회 실패 또는 대상 없을 시 빈 딕셔너리 반환)
+        """
+        if not pk_list:
+            return {}
+
+        effective_timeout_int: int = timeout_int if timeout_int is not None else self.timeout_seconds_int
+        table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
+        bigquery_module, _ = _get_bigquery()
+
+        # 중복 제거 및 빈 값 배제
+        unique_pk_list: list[str] = [str(pk_item_str).strip() for pk_item_str in set(pk_list) if str(pk_item_str).strip()]
+        if not unique_pk_list:
+            return {}
+
+        query_str: str = f"""
+SELECT DISTINCT
+  `{pk_column_name_str}`,
+  `{status_column_name_str}`,
+  `{amendment_time_column_name_str}`
+FROM `{table_ref_str}`
+WHERE `{pk_column_name_str}` IN UNNEST(@pk_list)
+"""
+
+        records_metadata_dict: dict[str, dict[str, Any]] = {}
+        total_pks_int: int = len(unique_pk_list)
+        total_chunks_int: int = (total_pks_int + chunk_size_int - 1) // chunk_size_int
+
+        try:
+            for chunk_idx_int in range(total_chunks_int):
+                start_pos_int: int = chunk_idx_int * chunk_size_int
+                end_pos_int: int = min(start_pos_int + chunk_size_int, total_pks_int)
+                chunk_slice_list: list[str] = unique_pk_list[start_pos_int:end_pos_int]
+
+                job_config_obj: Any = bigquery_module.QueryJobConfig(
+                    query_parameters=[
+                        bigquery_module.ArrayQueryParameter("pk_list", "STRING", chunk_slice_list)
+                    ]
+                )
+                query_job_obj: Any = self.client.query(
+                    query_str,
+                    job_config=job_config_obj,
+                    timeout=effective_timeout_int,
+                )
+                query_results_obj: Any = query_job_obj.result(timeout=effective_timeout_int)
+
+                for row_obj in query_results_obj:
+                    row_dict: dict[str, Any] = dict(row_obj.items())
+                    pk_val_str: str = str(row_dict.get(pk_column_name_str) or "").strip()
+                    if pk_val_str:
+                        records_metadata_dict[pk_val_str] = {
+                            status_column_name_str: row_dict.get(status_column_name_str),
+                            amendment_time_column_name_str: row_dict.get(amendment_time_column_name_str),
+                        }
+
+            self.logger.info(
+                "db_existing_records_loaded",
+                service_name_str="BigQuery",
+                total_count_int=len(records_metadata_dict),
+            )
+            return records_metadata_dict
+        except Exception as fetch_exc:
+            self.logger.warning(
+                "existing_records_metadata_fetch_failed",
+                service_name_str="BigQuery",
+                error_str=str(fetch_exc),
+            )
+            return {}
+
     def delete_rows(self, where_clause_str: str, timeout_int: int | None = None) -> int:
         """
         지정된 조건(WHERE 절)에 해당하는 행들을 BigQuery 대상 테이블에서 DELETE DML로 삭제하고,

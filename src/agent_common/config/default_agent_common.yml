@@ -4,11 +4,11 @@
 
 logging:
   level_str: "INFO"
-  format_str: "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller)s] %(message)s"
+  format_str: "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller_str)s] %(message)s"
   datefmt_str: "%Y-%m-%d %H:%M:%S"
   language_str: "KO"  # 로그 메시지 언어 (KO: 한국어 [기본값], EN: 영어)
   file_logging_bool: true
-  log_file_str: "logs/%Y/%m/%d/{log_level}/{app_name}_%Y%m%dT%H%M%S.log"
+  log_file_str: "logs/%Y/%m/%d/{log_level_str}/{app_name_str}_%Y%m%dT%H%M%S.log"
 
 transfer:
   timeout_seconds_int: 120

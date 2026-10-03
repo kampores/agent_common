@@ -1,6 +1,23 @@
 # Version History (Changelog)
 
-> [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG.md)
+> [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_KO.md)
+
+### v0.4.91 (2026-10-03)
+
+- **Logging Standardization, Shell Function Elimination & Module Synchronization (Rules 1.3.1, 1.4.6, 1.5.3, 1.6.1, 4.2)**:
+  - `logging.format_str`: Standardized on Python native `LogRecord` attributes (`%(asctime)s`, `%(levelname)s`, `%(name)s`, `%(filename)s:%(lineno)d`, `%(message)s`) and the single injected custom attribute `%(caller_str)s`.
+  - `SingleLineFlattenFormatter`: Completely and permanently eliminated superficial pass-through method `formatMessage` (Rule 1.4.6).
+  - `logging.log_file_str`: Consolidated template parameters to canonical `{app_name_str}` and `{log_level_str}`, eliminating defensive case/casing variants (`APP_NAME`, `LOG_LEVEL`, `app_name`, `log_level`) and intermediate variables.
+  - Eliminated non-standard legacy aliases (`record.className`, `record.caller`, `fallback_class_name`) in `_safe_log_record_factory`, standardizing exclusively on `record.class_name_str`, `record.caller_str`, and `fallback_class_name_str`.
+  - `ProjectLogger.configure`: Fully removed early legacy hardcoded log-level suppressions (`metricflow`, `metricflow_semantics`, `urllib3`, `httpx`).
+  - Fully synchronized `load_util.py` logging implementation with `agent_common/logger.py` and eliminated illegal code-constant fallbacks (Fail-Fast Rule 1.3.1).
+
+### v0.4.90 (2026-10-01)
+
+- **`BigQueryClient.get_existing_records_metadata` Method Implementation (Rules 1.4, 1.5, 4.2)**:
+  - Added new method to batch query record metadata (status code `asstStusCd`, amendment time `orignAmndHms`) for a given list of PKs in BigQuery, returning a `{pk_str: {column_name: value}}` dictionary.
+  - Implemented `UNNEST(@pk_list)` parameter binding with 5,000-row chunking to prevent BigQuery API payload limits (HTTP 413).
+  - Wired to pre-registered logging templates (`db_existing_records_loaded`, `existing_records_metadata_fetch_failed`).
 
 ### v0.4.82 (2026-09-28)
 

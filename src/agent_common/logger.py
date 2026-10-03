@@ -31,10 +31,10 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
     "logging": {
         "language_str": "KO",
         "level_str": "INFO",
-        "format_str": "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller)s] %(message)s",
+        "format_str": "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller_str)s] %(message)s",
         "datefmt_str": "%Y-%m-%d %H:%M:%S",
         "file_logging_bool": True,
-        "log_file_str": "logs/load/out/%Y/%m/%d/{log_level}/{app_name}_out_%Y%m%dT%H%M%S.log",
+        "log_file_str": "logs/load/out/%Y/%m/%d/{log_level_str}/{app_name_str}_out_%Y%m%dT%H%M%S.log",
         "progress_interval_percent_int": 1,
         "print_deleted_pks_bool": False,
     }
@@ -49,47 +49,57 @@ _original_log_record_factory = logging.getLogRecordFactory()
 
 
 def _safe_log_record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
+    """파이썬 표준 LogRecord 객체를 생성하고 호출자 정보(caller_str, class_name_str)를 안전하게 추출 및 보장하는 커스텀 레코드 팩토리 함수입니다.
+
+    레코드의 extra 딕셔너리 또는 호출 스택 프레임(Stack Frame)을 역추적하여
+    로그를 호출한 대상 클래스명(class_name_str)과 호출 함수/메서드 시그니처(caller_str)를
+    자동으로 레코드 속성에 바인딩함으로써 포맷터에서 일관되게 출력할 수 있도록 지원합니다.
+
+    :param args: 표준 LogRecord 생성을 위해 전달되는 가변 위치 인자
+    :param kwargs: 표준 LogRecord 생성을 위해 전달되는 가변 키워드 인자
+    :return: 호출자 정보(caller_str, class_name_str)가 주입 완료된 LogRecord 인스턴스
+    """
     record: logging.LogRecord = _original_log_record_factory(*args, **kwargs)
 
-    # 1. 이미 caller 및 className이 확정된 경우 유지
-    if hasattr(record, "caller") and hasattr(record, "className"):
+    # 1. 이미 caller_str 및 class_name_str이 확정된 경우 유지
+    if hasattr(record, "caller_str") and hasattr(record, "class_name_str"):
         return record
 
     class_name_str: str = ""
-    # 2. record의 extra(fallback_class_name 또는 className) 우선 활용
-    if hasattr(record, "className") and record.className:
-        class_name_str = str(record.className)
-    elif hasattr(record, "fallback_class_name") and record.fallback_class_name:
-        class_name_str = str(record.fallback_class_name)
+    # 2. record의 extra(fallback_class_name_str 또는 class_name_str) 우선 활용
+    if hasattr(record, "class_name_str") and record.class_name_str:
+        class_name_str = str(record.class_name_str)
+    elif hasattr(record, "fallback_class_name_str") and record.fallback_class_name_str:
+        class_name_str = str(record.fallback_class_name_str)
 
     # 3. 미발견 시 호출 스택 프레임(Stack Frame) 탐색을 통한 클래스명(className) 추출
     if not class_name_str:
         try:
             import sys
-            frame = sys._getframe()
-            best_match_frame = None
-            while frame:
-                if frame.f_code.co_filename == record.pathname:
-                    if frame.f_lineno == record.lineno:
-                        best_match_frame = frame
+            frame_obj = sys._getframe()
+            best_match_frame_obj = None
+            while frame_obj:
+                if frame_obj.f_code.co_filename == record.pathname:
+                    if frame_obj.f_lineno == record.lineno:
+                        best_match_frame_obj = frame_obj
                         break
-                    elif frame.f_code.co_name == record.funcName and best_match_frame is None:
-                        best_match_frame = frame
-                frame = frame.f_back
+                    elif frame_obj.f_code.co_name == record.funcName and best_match_frame_obj is None:
+                        best_match_frame_obj = frame_obj
+                frame_obj = frame_obj.f_back
 
-            if best_match_frame is not None:
-                self_obj = best_match_frame.f_locals.get("self")
+            if best_match_frame_obj is not None:
+                self_obj = best_match_frame_obj.f_locals.get("self")
                 if self_obj is not None:
                     class_name_str = self_obj.__class__.__name__
                 else:
-                    cls_obj = best_match_frame.f_locals.get("cls")
+                    cls_obj = best_match_frame_obj.f_locals.get("cls")
                     if cls_obj is not None and hasattr(cls_obj, "__name__"):
                         class_name_str = cls_obj.__name__
         except Exception:
             pass
 
-    record.className = class_name_str
-    record.caller = f"{class_name_str}.{record.funcName}()" if class_name_str else f"{record.funcName}()"
+    record.class_name_str = class_name_str
+    record.caller_str = f"{class_name_str}.{record.funcName}()" if class_name_str else f"{record.funcName}()"
     return record
 
 
@@ -102,9 +112,9 @@ class SingleLineFlattenFormatter(logging.Formatter):
     (여러 줄 읽기를 지원하는 로그 수집기 환경에 맞춰 멀티라인 포맷팅을 지원합니다.)
     """
 
-    def flatten_to_single_line(self, text: str) -> str:
+    def flatten_to_single_line(self, text_str: str) -> str:
         """텍스트 내부의 개행 문자(\n, \r)를 공백으로 변환합니다 (하위 호환성 유지용)."""
-        return text.replace("\n", " ").replace("\r", " ")
+        return text_str.replace("\n", " ").replace("\r", " ")
 
     def format(self, record: logging.LogRecord) -> str:
         # 0. 로거 이름(name) 통일: ProjectLogger에 등록된 애플리케이션 이름이 있으면 우선 적용
@@ -112,33 +122,33 @@ class SingleLineFlattenFormatter(logging.Formatter):
             record.name = ProjectLogger._app_name_str
 
         # 1. 예외(Traceback) 발생 원천 지점 정보([Origin: filename:Llineno in funcName()]) 추출
-        origin_prefix = ""
+        origin_prefix_str: str = ""
         if record.exc_info and len(record.exc_info) >= 3 and record.exc_info[2]:
             try:
                 import traceback
-                tb_list = traceback.extract_tb(record.exc_info[2])
-                if tb_list:
-                    last_frame = tb_list[-1]
-                    origin_file = Path(last_frame.filename).name
-                    origin_prefix = f"[Origin: {origin_file}:L{last_frame.lineno} in {last_frame.name}()] "
+                tb_frames_list = traceback.extract_tb(record.exc_info[2])
+                if tb_frames_list:
+                    last_frame_obj = tb_frames_list[-1]
+                    origin_file_str: str = Path(last_frame_obj.filename).name
+                    origin_prefix_str = f"[Origin: {origin_file_str}:L{last_frame_obj.lineno} in {last_frame_obj.name}()] "
             except Exception:
                 pass
 
         # 2. 부모 클래스의 기본 포맷팅 수행 (다중 행 로그 및 Traceback 원형 보존)
-        s = super().format(record)
+        formatted_log_str: str = super().format(record)
 
         # 3. Origin 원천 지점 정보가 있으면 메인 로그 메시지 서두/줄말에 결합
-        if origin_prefix:
-            if "\nTraceback" in s:
-                head, tail = s.split("\nTraceback", 1)
-                s = f"{head} {origin_prefix}\nTraceback{tail}"
-            elif "\n" in s:
-                head, tail = s.split("\n", 1)
-                s = f"{head} {origin_prefix}\n{tail}"
+        if origin_prefix_str:
+            if "\nTraceback" in formatted_log_str:
+                head_str, tail_str = formatted_log_str.split("\nTraceback", 1)
+                formatted_log_str = f"{head_str} {origin_prefix_str}\nTraceback{tail_str}"
+            elif "\n" in formatted_log_str:
+                head_str, tail_str = formatted_log_str.split("\n", 1)
+                formatted_log_str = f"{head_str} {origin_prefix_str}\n{tail_str}"
             else:
-                s = f"{s} {origin_prefix}"
+                formatted_log_str = f"{formatted_log_str} {origin_prefix_str}"
 
-        return s
+        return formatted_log_str
 
 
 class ProjectLogger:
@@ -154,21 +164,26 @@ class ProjectLogger:
     _error_counts_dict: dict[str, int] = {}
     _excluded_counts_dict: dict[str, int] = {}
 
-    def __init__(self, name: str | logging.Logger | None = None, config_dir: str | Path | None = None):
+    def __init__(self, logger_name_str: str | logging.Logger | None = None, config_dir_path: str | Path | None = None):
+        """프로젝트 로거 어댑터 인스턴스를 생성하고 대상 로거 명칭을 바인딩합니다.
+
+        :param logger_name_str: 생성/바인딩할 로거 식별 명칭 문자열 또는 래핑할 표준 logging.Logger 객체
+        :param config_dir_path: 커스텀 설정 디렉터리 경로 (선택)
+        """
         self._config_loader: ConfigLoader | None = None
         self.success_count_int: int = 0
         self.failure_count_int: int = 0
         self.excluded_count_int: int = 0
         self.error_counts_dict: dict[str, int] = {}
         self.excluded_counts_dict: dict[str, int] = {}
-        if config_dir:
-            self.config_loader.config_dir_set(config_dir)
+        if config_dir_path:
+            self.config_loader.config_dir_set(config_dir_path)
 
-        if isinstance(name, logging.Logger):
-            self.logger: logging.Logger = name
-            self._assigned_name_str: str = getattr(name, "name", "")
+        if isinstance(logger_name_str, logging.Logger):
+            self.logger: logging.Logger = logger_name_str
+            self._assigned_name_str: str = getattr(logger_name_str, "name", "")
         else:
-            self._assigned_name_str: str = name or ""
+            self._assigned_name_str: str = logger_name_str or ""
             eff_logger_name_str: str = (
                 ProjectLogger._app_name_str
                 if ProjectLogger._app_name_str
@@ -177,17 +192,17 @@ class ProjectLogger:
             if not ProjectLogger._configured:
                 logging.basicConfig(level=logging.INFO)
                 ProjectLogger._configured = True
-            self.logger: logging.Logger = logging.getLogger(eff_logger_name_str)
+            self.logger: logging.Logger = logging.getLogger(name=eff_logger_name_str)
 
     def _inject_fallback_extra(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         """스택 추적 실패 시 보완을 위해 인스턴스 생성 시 전달된 클래스명을 extra에 안전하게 주입합니다."""
         if self._assigned_name_str:
-            extra_val = kwargs.get("extra")
-            if isinstance(extra_val, dict):
-                if "fallback_class_name" not in extra_val:
-                    extra_val["fallback_class_name"] = self._assigned_name_str
+            extra_val_any: Any = kwargs.get("extra")
+            if isinstance(extra_val_any, dict):
+                if "fallback_class_name_str" not in extra_val_any:
+                    extra_val_any["fallback_class_name_str"] = self._assigned_name_str
             else:
-                kwargs["extra"] = {"fallback_class_name": self._assigned_name_str}
+                kwargs["extra"] = {"fallback_class_name_str": self._assigned_name_str}
         return kwargs
 
     @property
@@ -201,16 +216,16 @@ class ProjectLogger:
     @classmethod
     def configure(
         cls,
-        config_dir: str | Path | None = None,
+        config_dir_path: str | Path | None = None,
         default_log_file_str: str = "logs/app.log",
         app_name_str: str | None = None,
         file_logging_bool: bool | None = None,
     ) -> None:
         """설정 파일(logging.yml, config.yml 등)을 기반으로 전체 로깅 환경을 일괄 초기화합니다.
 
-        :param config_dir: 커스텀 설정 디렉토리 경로 (선택)
+        :param config_dir_path: 커스텀 설정 디렉토리 경로 (선택)
         :param default_log_file_str: 기본 로그 파일 경로 (선택, 기본값: 'logs/app.log')
-        :param app_name_str: 애플리케이션 명칭 (로그 파일명 {app_name} 치환용)
+        :param app_name_str: 애플리케이션 명칭 (로그 파일명 {app_name_str} 치환용)
         :param file_logging_bool: 로그 파일 생성 활성화 여부 (True: 파일 저장, False: 콘솔만 출력, None: config.yml logging.file_logging 설정 준용)
         """
         import sys
@@ -221,56 +236,53 @@ class ProjectLogger:
 
         cls._app_name_str = app_name_str
 
-        loader = ConfigLoader(config_dir=config_dir)
-        level_dict: dict[str, str] | None = loader.setting("logging.level_dict")
+        loader_obj: ConfigLoader = ConfigLoader(config_dir=config_dir_path)
+        level_dict: dict[str, str] | None = loader_obj.setting("logging.level_dict")
         if level_dict:
             app_key_str: str = f"{app_name_str}_str"
             log_level_str: str = level_dict.get(app_key_str) or level_dict.get(app_name_str) or level_dict.get("default", "INFO")
         else:
-            log_level_str = loader.setting("logging.level_str") or "INFO"
+            log_level_str = loader_obj.setting("logging.level_str") or "INFO"
 
-        log_format_str: str = loader.setting("logging.format_str")
-        datefmt_str: str = loader.setting("logging.datefmt_str")
+        log_format_str: str = loader_obj.setting("logging.format_str")
+        datefmt_str: str = loader_obj.setting("logging.datefmt_str")
 
-        level = getattr(logging, log_level_str.upper(), logging.INFO)
+        log_level_int: int = getattr(logging, log_level_str.upper(), logging.INFO)
 
-        formatter = SingleLineFlattenFormatter(log_format_str, datefmt=datefmt_str)
+        formatter_obj: SingleLineFlattenFormatter = SingleLineFlattenFormatter(log_format_str, datefmt=datefmt_str)
 
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        handlers: list[logging.Handler] = [console_handler]
+        console_handler_obj: logging.StreamHandler = logging.StreamHandler()
+        console_handler_obj.setFormatter(formatter_obj)
+        handlers_list: list[logging.Handler] = [console_handler_obj]
 
         # 로그 파일 생성 활성화 여부 결정 (CLI 파라미터 우선 -> config.yml logging.file_logging_bool)
-        cfg_file_logging_bool: bool | None = loader.setting("logging.file_logging_bool")
+        cfg_file_logging_bool: bool | None = loader_obj.setting("logging.file_logging_bool")
         final_file_logging_bool: bool = (
             file_logging_bool
             if file_logging_bool is not None
             else (cfg_file_logging_bool if cfg_file_logging_bool is not None else True)
         )
 
-        level_name_str: str = logging.getLevelName(level).lower()
+        log_level_str: str = logging.getLevelName(log_level_int).lower()
 
         # 로그 파일 저장 경로 템플릿 결정 (단일 표준 log_file_str 우선 -> 미설정 시 기본값)
-        target_log_file_path_str: str = loader.setting("logging.log_file_str") or default_log_file_str
+        target_log_file_path_str: str = loader_obj.setting("logging.log_file_str") or default_log_file_str
 
         if final_file_logging_bool and target_log_file_path_str:
             from datetime import datetime
 
             today_dt: datetime = datetime.now()
-            target_log_template_str: str = target_log_file_path_str
-            # {app_name}, {log_level} (소문자), {LOG_LEVEL} (대문자) 동적 치환
-            target_log_formatted_str: str = target_log_template_str.format(
-                app_name=app_name_str,
-                log_level=level_name_str,
-                LOG_LEVEL=level_name_str.upper(),
+            target_log_formatted_str: str = target_log_file_path_str.format(
+                app_name_str=app_name_str,
+                log_level_str=log_level_str,
             )
             dynamic_log_file_path: Path = Path(today_dt.strftime(target_log_formatted_str))
-            log_file_path: Path = loader.project_path(dynamic_log_file_path)
+            log_file_path: Path = loader_obj.project_path(dynamic_log_file_path)
             try:
                 log_file_path.parent.mkdir(parents=True, exist_ok=True)
                 file_handler_obj = logging.FileHandler(log_file_path, encoding="utf-8")
-                file_handler_obj.setFormatter(formatter)
-                handlers.append(file_handler_obj)
+                file_handler_obj.setFormatter(formatter_obj)
+                handlers_list.append(file_handler_obj)
             except PermissionError as perm_err:
                 sys.stderr.write(
                     f"[경고] 로그 파일 저장 디렉터리({log_file_path.parent})에 대한 접근/생성 권한이 없어 "
@@ -288,15 +300,11 @@ class ProjectLogger:
                 )
 
         logging.basicConfig(
-            level=level,
+            level=log_level_int,
             format=log_format_str,
-            handlers=handlers,
+            handlers=handlers_list,
             force=True,
         )
-        logging.getLogger("metricflow").setLevel(logging.WARNING)
-        logging.getLogger("metricflow_semantics").setLevel(logging.WARNING)
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
-        logging.getLogger("httpx").setLevel(logging.WARNING)
 
         ProjectLogger._configured = True
 
@@ -321,20 +329,20 @@ class ProjectLogger:
         """현재 적용 중인 로그 메시지 언어 코드를 반환합니다 (Getter)."""
         return self.config_loader.language
 
-    def _search_template_in_level(self, target_lvl_str: str, target_code_str: str) -> str | None:
+    def _search_template_in_level(self, target_level_str: str, target_code_str: str) -> str | None:
         """
         지정된 로그 레벨 섹션 또는 하위 카테고리에서 메시지 코드 템플릿을 탐색합니다.
 
-        :param target_lvl_str: 탐색 대상 로그 레벨 문자열 (INFO, WARNING, ERROR 등)
+        :param target_level_str: 탐색 대상 로그 레벨 문자열 (INFO, WARNING, ERROR 등)
         :param target_code_str: 탐색할 메시지 식별 코드 문자열
         :return: 발견된 메시지 템플릿 문자열 (미발견 시 None)
         """
-        direct_template_str: Any = self.config_loader.setting(f"logging_messages.{target_lvl_str}.{target_code_str}")
+        direct_template_str: Any = self.config_loader.setting(f"logging_messages.{target_level_str}.{target_code_str}")
         if direct_template_str and isinstance(direct_template_str, str):
             return direct_template_str
-        lvl_dict: Any = self.config_loader.setting(f"logging_messages.{target_lvl_str}")
-        if isinstance(lvl_dict, dict):
-            for _, sub_val in lvl_dict.items():
+        level_dict: Any = self.config_loader.setting(f"logging_messages.{target_level_str}")
+        if isinstance(level_dict, dict):
+            for _, sub_val in level_dict.items():
                 if isinstance(sub_val, dict) and target_code_str in sub_val:
                     candidate_str: Any = sub_val[target_code_str]
                     if isinstance(candidate_str, str):
@@ -358,11 +366,11 @@ class ProjectLogger:
         if not template_str:
             all_msgs_dict: Any = self.config_loader.setting("logging_messages")
             if isinstance(all_msgs_dict, dict):
-                for other_lvl_str in all_msgs_dict.keys():
-                    if str(other_lvl_str).upper() != target_level_str:
-                        cand_str: str | None = self._search_template_in_level(str(other_lvl_str).upper(), target_code_str)
-                        if cand_str:
-                            template_str = cand_str
+                for other_level_str in all_msgs_dict.keys():
+                    if str(other_level_str).upper() != target_level_str:
+                        candidate_str: str | None = self._search_template_in_level(str(other_level_str).upper(), target_code_str)
+                        if candidate_str:
+                            template_str = candidate_str
                             break
 
         if not template_str or not isinstance(template_str, str):
@@ -549,10 +557,10 @@ class ProjectLogger:
         if not template_val:
             all_msgs_dict = self.config_loader.setting("logging_messages")
             if isinstance(all_msgs_dict, dict):
-                for lvl_str in all_msgs_dict.keys():
-                    cand_str: str | None = self._search_template_in_level(str(lvl_str).upper(), target_code_str)
-                    if cand_str:
-                        template_val = cand_str
+                for level_str in all_msgs_dict.keys():
+                    candidate_str: str | None = self._search_template_in_level(str(level_str).upper(), target_code_str)
+                    if candidate_str:
+                        template_val = candidate_str
                         break
 
         if not template_val or not isinstance(template_val, str) or template_val == target_code_str:
@@ -609,97 +617,97 @@ class ProjectLogger:
         :param kwargs: 추가 포매팅 인자
         :return: 기록된 완성 메시지 문자열
         """
-        lvl_name_str: str = str(level_str).strip().upper()
-        if lvl_name_str in ("ERROR", "CRITICAL"):
+        level_name_str: str = str(level_str).strip().upper()
+        if level_name_str in ("ERROR", "CRITICAL"):
             self.record_error(msg_code_str)
         stacklevel_int: int = kwargs.pop("stacklevel", 2)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
         msg_str: str = self.get_log_msg(level_str, msg_code_str, default_str=default_str, **kwargs)
-        lvl_num_int: int = getattr(logging, lvl_name_str, logging.INFO)
-        self.logger.log(lvl_num_int, msg_str, stacklevel=stacklevel_int, extra=extra_dict)
+        level_number_int: int = getattr(logging, level_name_str, logging.INFO)
+        self.logger.log(level_number_int, msg_str, stacklevel=stacklevel_int, extra=extra_dict)
         return msg_str
 
-    def info(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
-        """INFO 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
-        stacklevel = kwargs.pop("stacklevel", 2)
+    def info(self, msg_or_log_id_any: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
+        """INFO 레벨로 일반 메시지(str), 로그 ID(str) 또는 객체를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel_int: int = kwargs.pop("stacklevel", 2)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
-        if isinstance(msg_or_code, str):
-            msg = self.get_log_msg("INFO", msg_or_code, default_str=default_str, **kwargs)
-            self.logger.info(msg, *args, stacklevel=stacklevel, extra=extra_dict)
-            return msg
-        self.logger.info(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
-        return str(msg_or_code)
+        if isinstance(msg_or_log_id_any, str):
+            msg_str: str = self.get_log_msg("INFO", msg_or_log_id_any, default_str=default_str, **kwargs)
+            self.logger.info(msg_str, *args, stacklevel=stacklevel_int, extra=extra_dict)
+            return msg_str
+        self.logger.info(msg_or_log_id_any, *args, stacklevel=stacklevel_int, extra=extra_dict, **kwargs)
+        return str(msg_or_log_id_any)
 
-    def warning(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
-        """WARNING 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
-        stacklevel = kwargs.pop("stacklevel", 2)
+    def warning(self, msg_or_log_id_any: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
+        """WARNING 레벨로 일반 메시지(str), 로그 ID(str) 또는 객체를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel_int: int = kwargs.pop("stacklevel", 2)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
-        if isinstance(msg_or_code, str):
-            msg = self.get_log_msg("WARNING", msg_or_code, default_str=default_str, **kwargs)
-            self.logger.warning(msg, *args, stacklevel=stacklevel, extra=extra_dict)
-            return msg
-        self.logger.warning(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
-        return str(msg_or_code)
+        if isinstance(msg_or_log_id_any, str):
+            msg_str: str = self.get_log_msg("WARNING", msg_or_log_id_any, default_str=default_str, **kwargs)
+            self.logger.warning(msg_str, *args, stacklevel=stacklevel_int, extra=extra_dict)
+            return msg_str
+        self.logger.warning(msg_or_log_id_any, *args, stacklevel=stacklevel_int, extra=extra_dict, **kwargs)
+        return str(msg_or_log_id_any)
 
-    def error(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
-        """ERROR 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
-        stacklevel = kwargs.pop("stacklevel", 2)
+    def error(self, msg_or_log_id_any: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
+        """ERROR 레벨로 일반 메시지(str), 로그 ID(str) 또는 객체를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel_int: int = kwargs.pop("stacklevel", 2)
         self.record_failure(1)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
-        if isinstance(msg_or_code, str):
-            self.record_error(msg_or_code)
-            msg = self.get_log_msg("ERROR", msg_or_code, default_str=default_str, **kwargs)
-            self.logger.error(msg, *args, stacklevel=stacklevel, extra=extra_dict)
-            return msg
-        self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
-        self.logger.error(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
-        return str(msg_or_code)
+        if isinstance(msg_or_log_id_any, str):
+            self.record_error(msg_or_log_id_any)
+            msg_str: str = self.get_log_msg("ERROR", msg_or_log_id_any, default_str=default_str, **kwargs)
+            self.logger.error(msg_str, *args, stacklevel=stacklevel_int, extra=extra_dict)
+            return msg_str
+        self.record_error(msg_or_log_id_any.__class__.__name__ if hasattr(msg_or_log_id_any, "__class__") else "UnknownError")
+        self.logger.error(msg_or_log_id_any, *args, stacklevel=stacklevel_int, extra=extra_dict, **kwargs)
+        return str(msg_or_log_id_any)
 
-    def critical(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
-        """CRITICAL 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
-        stacklevel = kwargs.pop("stacklevel", 2)
+    def critical(self, msg_or_log_id_any: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
+        """CRITICAL 레벨로 일반 메시지(str), 로그 ID(str) 또는 객체를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel_int: int = kwargs.pop("stacklevel", 2)
         self.record_failure(1)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
-        if isinstance(msg_or_code, str):
-            self.record_error(msg_or_code)
-            msg = self.get_log_msg("CRITICAL", msg_or_code, default_str=default_str, **kwargs)
-            self.logger.critical(msg, *args, stacklevel=stacklevel, extra=extra_dict)
-            return msg
-        self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
-        self.logger.critical(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
-        return str(msg_or_code)
+        if isinstance(msg_or_log_id_any, str):
+            self.record_error(msg_or_log_id_any)
+            msg_str: str = self.get_log_msg("CRITICAL", msg_or_log_id_any, default_str=default_str, **kwargs)
+            self.logger.critical(msg_str, *args, stacklevel=stacklevel_int, extra=extra_dict)
+            return msg_str
+        self.record_error(msg_or_log_id_any.__class__.__name__ if hasattr(msg_or_log_id_any, "__class__") else "UnknownError")
+        self.logger.critical(msg_or_log_id_any, *args, stacklevel=stacklevel_int, extra=extra_dict, **kwargs)
+        return str(msg_or_log_id_any)
 
-    def debug(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
-        """DEBUG 레벨로 로그 및 일반 메시지를 기록하고, 포매팅된 메시지를 반환합니다."""
-        stacklevel = kwargs.pop("stacklevel", 2)
+    def debug(self, msg_or_log_id_any: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
+        """DEBUG 레벨로 일반 메시지(str), 로그 ID(str) 또는 객체를 기록하고, 포매팅된 메시지를 반환합니다."""
+        stacklevel_int: int = kwargs.pop("stacklevel", 2)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
-        if isinstance(msg_or_code, str):
-            msg = self.get_log_msg("DEBUG", msg_or_code, default_str=default_str, **kwargs)
-            self.logger.debug(msg, *args, stacklevel=stacklevel, extra=extra_dict)
-            return msg
-        self.logger.debug(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
-        return str(msg_or_code)
+        if isinstance(msg_or_log_id_any, str):
+            msg_str: str = self.get_log_msg("DEBUG", msg_or_log_id_any, default_str=default_str, **kwargs)
+            self.logger.debug(msg_str, *args, stacklevel=stacklevel_int, extra=extra_dict)
+            return msg_str
+        self.logger.debug(msg_or_log_id_any, *args, stacklevel=stacklevel_int, extra=extra_dict, **kwargs)
+        return str(msg_or_log_id_any)
 
-    def exception(self, msg_or_code: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
+    def exception(self, msg_or_log_id_any: Any, *args: Any, default_str: str = "", **kwargs: Any) -> str:
         """예외 Traceback 정보와 함께 ERROR 레벨로 로그를 기록하고, 포매팅된 메시지를 반환합니다."""
-        stacklevel = kwargs.pop("stacklevel", 2)
+        stacklevel_int: int = kwargs.pop("stacklevel", 2)
         self.record_failure(1)
         kwargs = self._inject_fallback_extra(kwargs)
         extra_dict = kwargs.pop("extra", None)
-        if isinstance(msg_or_code, str):
-            self.record_error(msg_or_code)
-            msg = self.get_log_msg("ERROR", msg_or_code, default_str=default_str, **kwargs)
-            self.logger.exception(msg, *args, stacklevel=stacklevel, extra=extra_dict)
-            return msg
-        self.record_error(msg_or_code.__class__.__name__ if hasattr(msg_or_code, "__class__") else "UnknownError")
-        self.logger.exception(msg_or_code, *args, stacklevel=stacklevel, extra=extra_dict, **kwargs)
-        return str(msg_or_code)
+        if isinstance(msg_or_log_id_any, str):
+            self.record_error(msg_or_log_id_any)
+            msg_str: str = self.get_log_msg("ERROR", msg_or_log_id_any, default_str=default_str, **kwargs)
+            self.logger.exception(msg_str, *args, stacklevel=stacklevel_int, extra=extra_dict)
+            return msg_str
+        self.record_error(msg_or_log_id_any.__class__.__name__ if hasattr(msg_or_log_id_any, "__class__") else "UnknownError")
+        self.logger.exception(msg_or_log_id_any, *args, stacklevel=stacklevel_int, extra=extra_dict, **kwargs)
+        return str(msg_or_log_id_any)
 
     def log_summary(
         self,
@@ -847,32 +855,32 @@ class ProjectLogger:
 
     @staticmethod
     def log_request_result(
-        logger: ProjectLogger | logging.Logger,
-        method: str,
-        path: str,
-        start_time: float,
-        status_code: int | None = None,
-        exc: Exception | None = None,
+        logger_obj: ProjectLogger | logging.Logger,
+        method_str: str,
+        path_str: str,
+        start_time_float: float,
+        status_code_int: int | None = None,
+        exc_obj: Exception | None = None,
     ) -> None:
         """HTTP 요청 처리 시간과 성공/실패 여부를 포맷하여 로그에 기록합니다."""
         from time import perf_counter
 
-        elapsed_ms = (perf_counter() - start_time) * 1000
-        if exc is not None:
-            logger.exception(
+        elapsed_ms_float: float = (perf_counter() - start_time_float) * 1000
+        if exc_obj is not None:
+            logger_obj.exception(
                 "request_error method=%s path=%s elapsed_ms=%.2f",
-                method,
-                path,
-                elapsed_ms,
+                method_str,
+                path_str,
+                elapsed_ms_float,
                 stacklevel=2,
             )
         else:
-            logger.info(
+            logger_obj.info(
                 "request_end method=%s path=%s status_code=%s elapsed_ms=%.2f",
-                method,
-                path,
-                status_code,
-                elapsed_ms,
+                method_str,
+                path_str,
+                status_code_int,
+                elapsed_ms_float,
                 stacklevel=2,
             )
 
