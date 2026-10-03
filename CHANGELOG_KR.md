@@ -2,6 +2,13 @@
 
 > [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
 
+### v0.4.94 (2026-10-04)
+
+- **PyPI README 언어 이동 앵커 링크 수정 (규칙 4.2 준수)**:
+  - PyPI 렌더러가 HTML `<a id="...">` 태그의 `id` 속성을 제거하여 v0.4.93의 `#kr`, `#en`, `#zh`, `#jp` 링크가 동작하지 않던 문제 수정.
+  - 기존 KR/EN에서 정상 동작하던 방식과 동일하게 마크다운 헤더 자동 슬러그(`#-agent_common-패키지-한국어`, `#-agent_common-package-english`, `#-agent_common-软件包-中文`, `#-agent_common-パッケージ-日本語`)로 4개 국어 링크 통일.
+  - 불필요해진 `<a id>` 태그 제거.
+
 ### v0.4.93 (2026-10-04)
 
 - **PyPI 패키지 단일 설명(Project Description) 지원을 위한 4개 국어 통합 README 구축 (규칙 4.2 준수)**:

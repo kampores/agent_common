@@ -2,6 +2,13 @@
 
 > [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
 
+### v0.4.94 (2026-10-04)
+
+- **Fixed PyPI README Language Navigation Anchors (Rule 4.2)**:
+  - Fixed broken `#kr`, `#en`, `#zh`, `#jp` links from v0.4.93, caused by the PyPI renderer stripping the `id` attribute from HTML `<a id="...">` tags.
+  - Unified all 4 language links on auto-generated Markdown heading slugs (`#-agent_common-패키지-한국어`, `#-agent_common-package-english`, `#-agent_common-软件包-中文`, `#-agent_common-パッケージ-日本語`), matching the approach that already worked for KR/EN.
+  - Removed the now-unneeded `<a id>` tags.
+
 ### v0.4.93 (2026-10-04)
 
 - **Unified 4-Language README for Complete PyPI Project Description (Rule 4.2)**:

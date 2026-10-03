@@ -2,11 +2,10 @@
 
 **[📦 PyPI 패키지](https://pypi.org/project/agent-common/) · [💻 GitHub 소스 및 매뉴얼](https://github.com/kampores/agent_common)**
 
-> [ 🇰🇷 한국어 ](#kr) | [ 🇺🇸 English ](#en) | [ 🇨🇳 中文 ](#zh) | [ 🇯🇵 日本語 ](#jp)
+> [ 🇰🇷 한국어 ](#-agent_common-패키지-한국어) | [ 🇺🇸 English ](#-agent_common-package-english) | [ 🇨🇳 中文 ](#-agent_common-软件包-中文) | [ 🇯🇵 日本語 ](#-agent_common-パッケージ-日本語)
 
 ---
 
-<a id="kr"></a>
 ## 🇰🇷 agent_common 패키지 (한국어)
 
 중앙 에이전트 및 데이터 이관/생성 서비스를 위한 공통 로깅, 설정 로더, 인프라 클라이언트, 동적 도구(Tool) 파서 및 에러 처리 라이브러리 패키지입니다.
@@ -233,7 +232,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.93-py3-none-any.whl
+pip install dist/agent_common-0.4.94-py3-none-any.whl
 ```
 
 #### 🌐 PyPI 공식 배포 (관리자 전용)
@@ -248,7 +247,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.93*
+python -m twine upload dist/agent_common-0.4.94*
 ```
 
 ---
@@ -259,7 +258,6 @@ python -m twine upload dist/agent_common-0.4.93*
 
 ---
 
-<a id="en"></a>
 ## 🇺🇸 agent_common Package (English)
 
 A comprehensive Python common library providing unified logging, hierarchical configuration loaders, cloud and database infrastructure clients, dynamic tool parsers, and centralized error handling for enterprise agent services and data migration pipelines.
@@ -472,7 +470,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.93-py3-none-any.whl
+pip install dist/agent_common-0.4.94-py3-none-any.whl
 ```
 
 #### 🌐 Official PyPI Distribution (Maintainers Only)
@@ -487,7 +485,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.93*
+python -m twine upload dist/agent_common-0.4.94*
 ```
 
 ---
@@ -498,7 +496,6 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
 
 ---
 
-<a id="zh"></a>
 ## 🇨🇳 agent_common 软件包 (中文)
 
 面向企业级智能体（Agent）服务与数据迁移/生成管道的通用 Python 核心库，提供统一日志记录、分层配置加载、云端与数据库基础设施客户端、动态工具解析器及集中异常处理。
@@ -711,7 +708,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 生产环境 (安装 Wheel 包)
-pip install dist/agent_common-0.4.93-py3-none-any.whl
+pip install dist/agent_common-0.4.94-py3-none-any.whl
 ```
 
 #### 🌐 官方 PyPI 镜像分发（仅限维护者）
@@ -726,7 +723,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. 上传至 PyPI
-python -m twine upload dist/agent_common-0.4.93*
+python -m twine upload dist/agent_common-0.4.94*
 ```
 
 ---
@@ -737,7 +734,6 @@ python -m twine upload dist/agent_common-0.4.93*
 
 ---
 
-<a id="jp"></a>
 ## 🇯🇵 agent_common パッケージ (日本語)
 
 エンタープライズ AI エージェントサービスおよびデータ移行・生成パイプラインのための共通 Python コアライブラリです。統合ロギング、階層型設定ローダー、クラウドおよびデータベースインフラクライアント、動的ツールパーサー、集中エラー処理を提供します。
@@ -950,7 +946,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 本番環境（Wheel パッケージのインストール）
-pip install dist/agent_common-0.4.93-py3-none-any.whl
+pip install dist/agent_common-0.4.94-py3-none-any.whl
 ```
 
 #### 🌐 公式 PyPI 配布（管理者専用）
@@ -965,7 +961,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI アップロード
-python -m twine upload dist/agent_common-0.4.93*
+python -m twine upload dist/agent_common-0.4.94*
 ```
 
 ---

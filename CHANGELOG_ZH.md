@@ -2,6 +2,13 @@
 
 > [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
 
+### v0.4.94 (2026-10-04)
+
+- **修复 PyPI README 语言跳转锚点链接 (遵循规则 4.2)**:
+  - 修复 v0.4.93 中 `#kr`、`#en`、`#zh`、`#jp` 链接失效的问题（原因: PyPI 渲染器会移除 HTML `<a id="...">` 标签的 `id` 属性）。
+  - 沿用原先 KR/EN 已正常工作的方式，将 4 国语言链接统一为 Markdown 标题自动生成的锚点 (`#-agent_common-패키지-한국어`, `#-agent_common-package-english`, `#-agent_common-软件包-中文`, `#-agent_common-パッケージ-日本語`)。
+  - 删除不再需要的 `<a id>` 标签。
+
 ### v0.4.93 (2026-10-04)
 
 - **构建支持 PyPI 页面全览的 4 国语言一体化 README (遵循规则 4.2)**:
