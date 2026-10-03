@@ -2,6 +2,15 @@
 
 > [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
 
+### v0.4.93 (2026-10-04)
+
+- **PyPI ページでの全閲覧に対応する 4 カ国語統合 README の構築 (ルール 4.2 準拠)**:
+  - 単一 README のみをレンダリングする PyPI のプラットフォーム特性に対応し、韓国語 (KR)、英語 (EN)、中国語 (ZH)、日本語 (JP) の 4 カ国語ドキュメントを `README.md` 1 ファイルへ完全統合 (順序: `kr` -> `en` -> `zh` -> `jp`)。
+  - 上部にダイレクトアンカーナビゲーション (`#kr`, `#en`, `#zh`, `#jp`) を配置し、GitHub / PyPI の双方で完全動作する絶対 URL マニュアルリンク体系を構築。
+  - 重複していた `README_*.md` 分割ファイルを完全整理・削除。
+- **`pyproject.toml` 多言語プロジェクトリンク (`project.urls`) の 4 カ国語への拡充**:
+  - PyPI サイドバーリンクに韓国語・英語に加え、中国語 (ZH) および日本語 (JP) の変更履歴 (`Changelog`) と詳細マニュアル (`Manual`) リンクを公式登録。
+
 ### v0.4.92 (2026-10-04)
 
 - **言語ローカライズモジュール (`Localizer`) の導入および単一責任原則 (SRP) に基づく言語・ログ設定の分離 (ルール 1.4.1, 1.5.1, 4.2 準拠)**:

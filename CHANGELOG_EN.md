@@ -2,6 +2,15 @@
 
 > [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
 
+### v0.4.93 (2026-10-04)
+
+- **Unified 4-Language README for Complete PyPI Project Description (Rule 4.2)**:
+  - Consolidated documentation across 4 languages (Korean, English, Chinese, Japanese) into a single `README.md` file (order: `kr` -> `en` -> `zh` -> `jp`) to provide full native documentation on PyPI.
+  - Added direct language anchor navigation (`#kr`, `#en`, `#zh`, `#jp`) and PyPI/GitHub compatible absolute URL links for all manual topics.
+  - Eliminated redundant partitioned `README_*.md` files.
+- **Expanded `pyproject.toml` Project Links (`project.urls`) across 4 Languages**:
+  - Registered official Changelog and Manual URLs for Chinese (`ZH`) and Japanese (`JP`) alongside Korean and English in the PyPI project sidebar links.
+
 ### v0.4.92 (2026-10-04)
 
 - **Language Localization (`Localizer`) Introduction & Single Responsibility Principle (SRP) Decoupling (Rules 1.4.1, 1.5.1, 4.2)**:
