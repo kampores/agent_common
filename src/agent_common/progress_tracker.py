@@ -1,7 +1,6 @@
 # 작성일: 2026-08-16
-# 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자: 김유상
+# 설계자 이메일: bakkus@daum.net
 
 """
 배치 작업의 실시간 진행률(Progress) 추적, 남은 시간(ETA) 및 속도 계산,

@@ -2,7 +2,7 @@
 
 **[📦 PyPI 패키지](https://pypi.org/project/agent-common/) · [💻 GitHub 소스 및 매뉴얼](https://github.com/kampores/agent_common)**
 
-> [ 🇰🇷 한국어 설명 ](#-agent_common-패키지-한국어) | [ 🇺🇸 English Description ](#-agent_common-package-english) | [ 📖 매뉴얼 (Manuals) ](#-상세-기능-매뉴얼-user-manuals)
+> [ 🇰🇷 한국어 (README_KR.md) ](README_KR.md) | [ 🇺🇸 English (README_EN.md) ](README_EN.md) | [ 🇨🇳 中文 (README_ZH.md) ](README_ZH.md) | [ 🇯🇵 日本語 (README_JP.md) ](README_JP.md)
 
 ---
 
@@ -315,7 +315,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.78*
+python -m twine upload dist/agent_common-0.4.92*
 ```
 
 ---
@@ -360,15 +360,8 @@ python -m twine upload dist/agent_common-0.4.78*
 
 ### 📋 버전 변경 이력 (Changelog)
 
-#### v0.4.78 (2026-09-21)
+전체 상세 버전 변경 이력은 [CHANGELOG_KR.md](CHANGELOG_KR.md) 파일을 참고하세요.
 
-- AI에게 요구사항·패키지 링크·기능 번호를 전달하는 방법과 최소 기능부터 단계적으로 확장하는 가이드를 추가했습니다.
-- 통합 LLM 클라이언트의 한국어·영어 매뉴얼을 추가하고, 모델 설정·외부 API·로컬 GGUF·환경변수·예외 처리를 설명했습니다.
-- Groq 감독관 AI와 Antigravity Stop 훅의 `AGENTS.md` 검사 사례 및 실제 검사 범위·생략 조건을 정리했습니다.
-- LLM `auto` 모드의 조건부 전환 설명을 실제 구현에 맞추고, 개발 중인 에러 핸들러 소개는 제외했습니다.
-- 패키지 버전을 `0.4.78`로 올렸습니다. 런타임 동작 변경은 없습니다.
-
-자세한 버전 변경 이력은 [GitHub CHANGELOG_KO.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG_KO.md) 파일을 참고하세요.
 
 ---
 
@@ -636,7 +629,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.78*
+python -m twine upload dist/agent_common-0.4.92*
 ```
 
 ---
@@ -681,18 +674,5 @@ For comprehensive architecture details and practical code examples for each modu
 
 ### 📋 Version History (Changelog)
 
-#### v0.4.81 (2026-09-28)
+For detailed version history, please refer to [CHANGELOG_EN.md](CHANGELOG_EN.md).
 
-- Added universal logging templates for table `WRITE_TRUNCATE` countdown and split batch loading (`logging_messages_en.yml`, `logging_messages_ko.yml`).
-- Promoted data loss prevention countdown alerts and chunked bulk batch load tracking templates from project layer to universal framework.
-- Bumped the package version to `0.4.81`.
-
-#### v0.4.78 (2026-09-21)
-
-- Added AI request examples using requirements, package links, and feature numbers, with incremental implementation guidance.
-- Added Korean/English LLM manuals covering configuration, external APIs, local GGUF, environment overrides, and failure handling.
-- Documented the Groq supervisor and Antigravity Stop hook example, including review scope and skipped-review conditions.
-- Corrected conditional fallback documentation and omitted the unfinished error-handler introduction.
-- Bumped the package version to `0.4.78` with no runtime behavior changes.
-
-For detailed version history, please refer to [GitHub CHANGELOG_EN.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG_EN.md).

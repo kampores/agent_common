@@ -11,6 +11,7 @@ from logging import Logger
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
+from agent_common.localizer import Localizer
 
 if TYPE_CHECKING:
     from agent_common.config_loader import ConfigLoader
@@ -29,7 +30,7 @@ __all__ = [
 # ==============================================================================
 APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
     "logging": {
-        "language_str": "KO",
+        "language_str": "KR",
         "level_str": "INFO",
         "format_str": "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller_str)s] %(message)s",
         "datefmt_str": "%Y-%m-%d %H:%M:%S",
@@ -310,17 +311,17 @@ class ProjectLogger:
 
     @classmethod
     def set_language(cls, lang_str: str) -> None:
-        """전역 로그 메시지 언어를 'KO' 또는 'EN'으로 설정합니다.
+        """전역 로그 메시지 언어를 설정합니다.
 
-        :param lang_str: 설정할 언어 코드 ('KO' 또는 'EN', 대소문자 무관)
+        :param lang_str: 설정할 언어 코드 ('KR', 'EN', 'ZH', 'JP', 대소문자 무관)
         """
         from agent_common.config_loader import ConfigLoader
         ConfigLoader.set_language(lang_str)
 
     def language_set(self, lang_str: str) -> None:
-        """로그 메시지 언어를 'KO' 또는 'EN'으로 설정합니다 (Setter).
+        """로그 메시지 언어를 설정합니다 (Setter).
 
-        :param lang_str: 설정할 언어 코드 ('KO' 또는 'EN', 대소문자 무관)
+        :param lang_str: 설정할 언어 코드 ('KR', 'EN', 'ZH', 'JP', 대소문자 무관)
         """
         self.set_language(lang_str)
 
@@ -350,7 +351,7 @@ class ProjectLogger:
         return None
 
     def get_log_msg(self, level_str: str, msg_code_str: str, default_str: str = "", **kwargs: Any) -> str:
-        """logging_messages_ko.yml 또는 logging_messages_en.yml에 정의된 로그 레벨(level_str)과 메시지 코드(msg_code_str) 템플릿을 포매팅하여 반환합니다.
+        """logging_messages 템플릿 사전에서 로그 레벨과 메시지 코드를 탐색하여 포매팅한 문자열을 반환합니다.
 
         :param level_str: 로그 레벨 문자열 (INFO, WARNING, ERROR 등)
         :param msg_code_str: 메시지 식별 코드
@@ -375,16 +376,22 @@ class ProjectLogger:
 
         if not template_str or not isinstance(template_str, str):
             template_str = default_str or target_code_str
+
         if kwargs:
             try:
                 safe_kwargs_dict: dict[str, Any] = {
                     k: str(v).replace("{", "{{").replace("}", "}}") if isinstance(v, str) else v
                     for k, v in kwargs.items()
+                    if v is not None
                 }
                 return template_str.format(**safe_kwargs_dict)
             except Exception:
                 kwargs_detail_str: str = " ".join(f"{k}={v}" for k, v in kwargs.items())
-                return f"{template_str} [{kwargs_detail_str}]" if template_str != target_code_str else f"[FATAL][Fail-Fast] {target_code_str}: {kwargs_detail_str}"
+                return (
+                    f"{template_str} [{kwargs_detail_str}]"
+                    if template_str != target_code_str
+                    else f"[FATAL][Fail-Fast] {target_code_str}: {kwargs_detail_str}"
+                )
         return str(template_str)
 
     def record_error(self, error_type_str: str, count_int: int = 1) -> None:
@@ -543,7 +550,7 @@ class ProjectLogger:
 
     def get_log_id_description(self, log_id_str: str) -> str:
         """
-        로그 ID(메시지 코드)에 대응하는 직관적인 설명 문자열을 logging_messages 설정(KO/EN)으로부터 동적으로 조회하고 정제하여 반환합니다.
+        로그 ID(메시지 코드)에 대응하는 직관적인 설명 문자열을 logging_messages 설정으로부터 동적으로 조회하고 정제하여 반환합니다.
 
         :param log_id_str: 로그 메시지 식별 코드
         :return: 정제된 설명 문자열 (미매핑 시 빈 문자열)
@@ -566,32 +573,16 @@ class ProjectLogger:
         if not template_val or not isinstance(template_val, str) or template_val == target_code_str:
             return ""
 
-        # 상세 파라미터 구분자(:, [ 등) 이전의 핵심 요약문 추출
         import re
         title_str: str = template_val.split(":")[0].strip()
         if "[" in title_str:
             if title_str.startswith("[") and "]" in title_str:
                 closing_bracket_idx_int: int = title_str.find("]")
-                after_tag_str: str = title_str[closing_bracket_idx_int + 1:]
+                after_tag_str: str = title_str[closing_bracket_idx_int + 1 :]
                 if "[" in after_tag_str:
-                    title_str = title_str[:closing_bracket_idx_int + 1] + after_tag_str.split("[")[0]
+                    title_str = title_str[: closing_bracket_idx_int + 1] + after_tag_str.split("[")[0]
             else:
                 title_str = title_str.split("[")[0].strip()
-
-        # 기본 서비스/스토리지 컨텍스트 치환 (설정 파일 기반 감지)
-        try:
-            settings_dict = self.config_loader.get_settings()
-            if "bigquery" in settings_dict and settings_dict.get("bigquery"):
-                title_str = title_str.replace("{service_name_str}", "BigQuery").replace("{client_name_str}", "BigQuery")
-            elif "db" in settings_dict and settings_dict.get("db"):
-                title_str = title_str.replace("{service_name_str}", "데이터베이스").replace("{client_name_str}", "데이터베이스")
-
-            if "gcs" in settings_dict and settings_dict.get("gcs"):
-                title_str = title_str.replace("{storage_type_str}", "GCS")
-            elif "ecs" in settings_dict and settings_dict.get("ecs"):
-                title_str = title_str.replace("{storage_type_str}", "ECS")
-        except Exception:
-            pass
 
         # 미치환 템플릿 변수({stage}, {ecs_key} 등) 제거
         cleaned_str: str = re.sub(r"\{[^}]*\}", "", title_str)

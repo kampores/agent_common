@@ -1,0 +1,444 @@
+# 创建日期: 2026-10-04
+# 设计者: 金裕尙
+# 设计者邮箱: bakkus@daum.net
+
+# 系统全局标准通用中文日志消息模板字典 (agent_common 通用)
+# Standard Universal Chinese Log Message Template Dictionary for agent_common
+# 
+# [Python 源代码内使用指南]
+#   from agent_common.logger import ProjectLogger, get_log_msg
+#   logger = ProjectLogger.get_logger("MyProgramName")
+#   logger.info(get_log_msg("INFO", "program_started", program_name="MyProgram", folder_msg="", date_msg=""))
+#
+
+logging_messages:
+  DEBUG:
+    # --- [存储调试探索] ---
+    storage:
+      # 示例: logger.debug("targets_detected", target_type_str="全量存储", total_files_int=10, max_workers_int=4)
+      targets_detected: "{target_type_str} 目标检测: 共 {total_files_int} 个文件 [MaxWorkers={max_workers_int}]"
+
+  INFO:
+    # --- [程序运行与同步生命周期] ---
+    lifecycle:
+      # 示例: logger.info("program_started", program_name_str="文件迁移", folder_msg_str=" [Folder=PAK]", date_msg_str=" [Date=20260804]")
+      program_started: "启动 {program_name_str} 程序。{folder_msg_str}{date_msg_str}"
+
+      # 示例: logger.info("client_initialized", client_name_str="Google Cloud BigQuery")
+      client_initialized: "{client_name_str} 客户端已成功初始化。"
+
+      # 示例: logger.info("program_finished", program_name_str="文件迁移")
+      program_finished: "{program_name_str} 程序执行完毕。"
+
+      # 示例: logger.info("sync_started", sync_type_str="数据库", src_type_str="存储", src_name_str="my-bucket", dst_type_str="表", dst_name_str="proj.ds.tbl", context_str="[Mode=Realtime]")
+      sync_started: "{sync_type_str} 同步任务启动: {src_type_str} '{src_name_str}' -> {dst_type_str} '{dst_name_str}' {context_str}"
+
+      # 示例: logger.info("sync_completed", sync_type_str="数据库", success_count_int=100, failure_count_int=0, total_files_int=100)
+      sync_completed: "{sync_type_str} 同步任务完成: 成功(或跳过) {success_count_int} 个, 失败 {failure_count_int} 个 / 共 {total_files_int} 个"
+
+      # 示例: logger.info("transfer_limit_applied", max_limit_int=100, total_extracted_int=1500)
+      transfer_limit_applied: "文件复制数量限制(Limit)已生效: [最大限制数={max_limit_int}个 / 提取总数={total_extracted_int}个]"
+
+      # 示例: logger.info("run_started", lodin_dstlc_cd_str="01", target_date_str="20260804", target_folder_str="data")
+      run_started: "传输任务启动: 区分代码={lodin_dstlc_cd_str}, 目标日期={target_date_str}, 目标目录={target_folder_str}"
+
+      # 示例: logger.info("run_finished", total_count_int=100, success_count_int=98, skip_count_int=2, fail_count_int=0, total_elapsed_float=12.34)
+      run_finished: "传输任务完成: 总处理={total_count_int}条, 成功={success_count_int}条, 跳过={skip_count_int}条, 失败={fail_count_int}条, 总耗时={total_elapsed_float:.2f}秒"
+
+      # 示例: logger.info("operation_cancelled_by_user", reason_str="用户取消 WRITE_TRUNCATE")
+      operation_cancelled_by_user: "任务已被用户取消: {reason_str}"
+
+      # 示例: logger.info("progress_update", message_str="[任务进度] 370 / 1,000 条 (37.0%) ...")
+      progress_update: "{message_str}"
+
+      # 示例: logger.info("thread_runner_no_targets", task_name_str="并行任务")
+      thread_runner_no_targets: "{task_name_str}: 没有需要处理的目标数据。"
+
+      # 示例: logger.info("thread_runner_execution_started", task_name_str="并行任务", total_items_int=100, max_workers_int=4, batch_chunk_size_int=1000)
+      thread_runner_execution_started: "{task_name_str} 启动: 共 {total_items_int} 个目标 [并发Worker={max_workers_int} / 批次大小={batch_chunk_size_int}]"
+
+      # 示例: logger.info("thread_runner_execution_completed", task_name_str="并行任务", total_items_int=100, success_count_int=100, failure_count_int=0, total_flushed_rows_int=100, total_batches_int=1, failed_batches_int=0, elapsed_time_str="1.23s")
+      thread_runner_execution_completed: "{task_name_str} 完成: 共 {total_items_int} 个目标 (成功 {success_count_int} 个, 失败 {failure_count_int} 个, 累计写入 {total_flushed_rows_int} 行 / 共 {total_batches_int} 批次 [失败 {failed_batches_int} 批], 耗时={elapsed_time_str})"
+
+    # --- [数据库及数据表装载通用] ---
+    db:
+      # 示例: logger.info("db_inline_merge_started", service_name_str="BigQuery", target_table_str="proj.ds.tbl", total_rows_int=100, chunk_size_int=500, total_chunks_int=1, pk_key_str="id")
+      db_inline_merge_started: "{service_name_str} 内联合并(MERGE)写入启动: 目标表={target_table_str}, 共 {total_rows_int} 行 [分块大小={chunk_size_int} / 总分块数={total_chunks_int} / PK={pk_key_str}]"
+
+      # 示例: logger.info("db_inline_merge_chunk_completed", service_name_str="BigQuery", chunk_index_str="1/1", processed_rows_int=100, elapsed_time_str="1.20s")
+      db_inline_merge_chunk_completed: "{service_name_str} 内联合并(MERGE)分块处理完成: [分块={chunk_index_str}, 处理条数={processed_rows_int}行, 耗时={elapsed_time_str}]"
+
+      # 示例: logger.info("db_inline_merge_all_completed", service_name_str="BigQuery", target_table_str="proj.ds.tbl", total_rows_int=100)
+      db_inline_merge_all_completed: "{service_name_str} 内联合并(MERGE)全量完成: 目标表={target_table_str}, 共 {total_rows_int} 行"
+
+      # 示例: logger.info("db_existing_keys_loaded", service_name_str="BigQuery", total_count_int=1000)
+      db_existing_keys_loaded: "{service_name_str} 已有装载键查询完成: 共缓存 {total_count_int} 个键"
+
+      # 示例: logger.info("db_existing_records_loaded", service_name_str="BigQuery", total_count_int=1000)
+      db_existing_records_loaded: "{service_name_str} 已有装载记录元数据查询完成: 共缓存 {total_count_int} 条"
+
+      # 示例: logger.info("db_load_completed", service_name_str="BigQuery", total_rows_int=100, elapsed_time_str="1.20s", mode_str="INLINE_MERGE")
+      db_load_completed: "{service_name_str} 装载完成 [Mode={mode_str}]: 共 {total_rows_int} 行, 耗时={elapsed_time_str}"
+
+      # 示例: logger.info("db_transfer_skipped", service_name_str="BigQuery", target_key_str="sample.json", context_info_str="[Table=tbl]")
+      db_transfer_skipped: "数据已存在于 {service_name_str}。跳过写入 (Skip): {target_key_str} {context_info_str}"
+
+      # 示例: logger.info("db_bulk_load_started", service_name_str="BigQuery", total_rows_int=100, write_disposition_str="WRITE_TRUNCATE", lodin_dstlc_cd_str="01")
+      db_bulk_load_started: "{service_name_str} 批量(Bulk)装载启动: 共 {total_rows_int} 行 [选项={write_disposition_str} / 任务类别={lodin_dstlc_cd_str}]"
+
+      # 示例: logger.info("db_bulk_load_batch_started", service_name_str="BigQuery", batch_index_int=1, batch_rows_int=500, write_disposition_str="WRITE_APPEND")
+      db_bulk_load_batch_started: "{service_name_str} 分批装载(第 {batch_index_int} 次)启动: 目标行数={batch_rows_int} 行 [模式={write_disposition_str}]"
+
+      # 示例: logger.info("db_bulk_load_completed", service_name_str="BigQuery", total_rows_int=100, elapsed_time_str="1.20s")
+      db_bulk_load_completed: "{service_name_str} 批量(Bulk)装载完成: 共 {total_rows_int} 行 [耗时={elapsed_time_str}]"
+
+      # 示例: logger.info("table_truncate_countdown_completed", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_countdown_completed: "{service_name_str} 目标表({table_name_str}) WRITE_TRUNCATE 倒计时等待结束: 开始清理数据并执行新装载。"
+
+      # 示例: logger.info("db_bulk_streaming_fallback_success", service_name_str="BigQuery", total_rows_int=100)
+      db_bulk_streaming_fallback_success: "{service_name_str} 批量装载失败后流式回退(Fallback)装载成功: 共 {total_rows_int} 行"
+
+      # 示例: logger.info("db_delete_started", service_name_str="BigQuery", target_table_str="proj.ds.tbl", where_clause_str="jobBaseDd = '20260804'")
+      db_delete_started: "{service_name_str} 表数据清理(DELETE)启动: [Target={target_table_str}, 条件='{where_clause_str}']"
+
+      # 示例: logger.info("db_delete_completed", service_name_str="BigQuery", target_table_str="proj.ds.tbl", deleted_rows_int=100)
+      db_delete_completed: "{service_name_str} 表数据清理完成: [Target={target_table_str}, 删除条数={deleted_rows_int} 条]"
+
+    # --- [存储探索及文件传输通用] ---
+    storage:
+      # 示例: logger.info("folder_search_started", search_prefix_str="folder/")
+      folder_search_started: "目标目录搜索启动: {search_prefix_str}"
+
+      # 示例: logger.info("folder_search_completed", search_prefix_str="folder/", count_int=50)
+      folder_search_completed: "目标目录搜索完成: {search_prefix_str}, 发现文件数: {count_int} 个"
+
+      # 示例: logger.info("folder_searching", storage_type_str="存储", target_info_str="", search_prefix_str="folder/")
+      folder_searching: "正在搜索 {storage_type_str} 目录{target_info_str}: {search_prefix_str}"
+
+      # 示例: logger.info("no_target_files", target_type_str="装载目标")
+      no_target_files: "未找到 {target_type_str} 目标文件。"
+
+      # 示例: logger.info("targets_detected", target_type_str="装载", total_files_int=50, max_workers_int=4)
+      targets_detected: "{target_type_str} 目标检测: 共 {total_files_int} 个文件 [MaxWorkers={max_workers_int}]"
+
+      # 示例: logger.info("transfer_completed", file_name_str="sample.pdf", size_bytes_int=102400)
+      transfer_completed: "文件传输完成: {file_name_str}, 大小: {size_bytes_int} 字节"
+
+      # 示例: logger.info("transfer_skipped", file_name_str="sample.pdf", dst_type_str="存储")
+      transfer_skipped: "相同文件已存在于 {dst_type_str}，跳过复制: {file_name_str}"
+
+      # 示例: logger.info("storage_clean_started", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/")
+      storage_clean_started: "{storage_type_str} 目标数据清理(删除)启动: [Prefix={prefix_str}]"
+
+      # 示例: logger.info("storage_clean_prefix_completed", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", deleted_count_int=12)
+      storage_clean_prefix_completed: "{storage_type_str} 目录清理完成: [Prefix={prefix_str}, 删除数量={deleted_count_int} 个]"
+
+      # 示例: logger.info("storage_clean_completed", storage_type_str="GCS", total_deleted_count_int=12, total_prefixes_int=1)
+      storage_clean_completed: "{storage_type_str} 数据清理全部完成: 共删除 {total_deleted_count_int} 条 (目标前缀 {total_prefixes_int} 个)"
+
+      # 示例: logger.info("storage_date_folder_clean", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/")
+      storage_date_folder_clean: "{storage_type_str} 执行特定日期目录清理: [Prefix={prefix_str}]"
+
+      # 示例: logger.info("storage_direct_upload_completed", storage_type_str="GCS", key_str="data/sample.pdf", target_path_str="data/sample.pdf", size_bytes_int=1024)
+      storage_direct_upload_completed: "{storage_type_str} 直连流式上传完成: [Key={key_str}, Target={target_path_str}, 大小={size_bytes_int} 字节]"
+
+    # --- [性能与任务耗时联动] ---
+    performance:
+      # 示例: logger.info("elapsed_time", action_name_str="文件传输", details_str="[TotalElapsed=1.20s]", context_info_str="[Key=...]")
+      elapsed_time: "任务耗时 [{action_name_str}]: {details_str} {context_info_str}"
+
+    # --- [外部服务及 HTTP API 联动] ---
+    service:
+      # 示例: logger.info("api_call_started", service_name_str="外部 API", purpose_str="processor", model_name_str="gpt4")
+      api_call_started: "{service_name_str} 调用启动 [Purpose={purpose_str}, Model={model_name_str}]"
+
+      # 示例: logger.info("api_call_success", service_name_str="外部 API", detail_str="OK")
+      api_call_success: "{service_name_str} 响应采集成功: {detail_str}"
+
+    # --- [配置文件管理与自动修复] ---
+    config:
+      # 示例: logger.info("config_file_auto_created", file_path_str="config/config.yml")
+      config_file_auto_created: "配置文件不存在，已自动创建默认模板: {file_path_str}"
+
+      # 示例: logger.info("config_file_auto_repaired", file_path_str="config/config.yml", repaired_keys_str="...")
+      config_file_auto_repaired: "配置文件内缺失项已自动自愈修复 (Self-healing): {file_path_str} [修复项={repaired_keys_str}]"
+
+    # --- [规则评估与模板处理] ---
+    rule:
+      # 示例: logger.info("rule_eval_success", col_name_str="field", folder_val_str="common", tmpl_str="{seq}", res_str="123", json_info_str="")
+      rule_eval_success: "模板评估成功{json_info_str}: [Col={col_name_str} Folder={folder_val_str} Tmpl='{tmpl_str}' Result='{res_str}']"
+
+  WARNING:
+    # --- [程序生命周期与摘要报表] ---
+    lifecycle:
+      # 示例: logger.warning("progress_milestone", message_str="[任务进度] 400 / 1,000 条 (40.0%) ...")
+      progress_milestone: "{message_str}"
+
+      # 示例: logger.warning("execution_summary_report", summary_str="\n================...")
+      execution_summary_report: "{summary_str}"
+
+      # 示例: logger.warning("extension_matrix_summary_report", summary_str="\n================...")
+      extension_matrix_summary_report: "{summary_str}"
+
+    # --- [存储管理与清理警告] ---
+    storage:
+      # 示例: logger.warning("storage_clean_empty_targets", storage_type_str="GCS", prefix_str="未生成")
+      storage_clean_empty_targets: "{storage_type_str} 删除目标前缀未匹配到任何文件: [Prefix={prefix_str}]"
+
+      # 示例: logger.warning("storage_date_folder_purged", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", deleted_count_int=10)
+      storage_date_folder_purged: "{storage_type_str} 特定日期残留目录清理(删除)完成: [Prefix={prefix_str}, 删除条数={deleted_count_int} 条]"
+
+    # --- [配置文件管理警告] ---
+    config:
+      # 示例: logger.warning("config_auto_create_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_create_failed: "自动创建配置文件时发生错误: {file_path_str}, 错误: {error_str}"
+
+      # 示例: logger.warning("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_repair_failed: "自动修复配置文件时发生错误: {file_path_str}, 错误: {error_str}"
+
+      # 示例: logger.warning("config_default_fallback", key_str="timeout_seconds", default_val_any=30)
+      config_default_fallback: "配置项 (key: '{key_str}') 不存在，回退采用系统默认值 ({default_val_any}) 启动。"
+
+    # --- [回退(Fallback)与恢复处理] ---
+    fallback:
+      # 示例: logger.warning("fallback_applied", target_name_str="候选文件", fallback_key_str="default.pdf", key_str="sample.json")
+      fallback_applied: "未找到 {target_name_str}，已回退应用默认键 ({fallback_key_str})。[Key={key_str}]"
+
+    # --- [规则评估与模板处理警告] ---
+    rule:
+      # 示例: logger.warning("rule_eval_failed", col_name_str="field", folder_val_str="common", tmpl_str="{seq}", res_str="{seq}", default_fallback_str="", context_keys_str="...", json_info_str="")
+      rule_eval_failed: "模板评估失败或返回未替换占位符{json_info_str}: [Col={col_name_str} Folder={folder_val_str} Tmpl='{tmpl_str}' Res='{res_str}' Fallback='{default_fallback_str}' ContextKeys={context_keys_str}]"
+
+      # 示例: logger.warning("rule_not_found", col_name_str="field", target_rule_str="RULES", rules_filepath_str="config/rules.yml", loaded_keys_str="...")
+      rule_not_found: "规则配置中未找到条目定义: [Col={col_name_str} TargetRule={target_rule_str} FilePath={rules_filepath_str} LoadedKeys={loaded_keys_str}]"
+
+      # 示例: logger.warning("tool_load_failed", func_name_str="func", module_str="module", error_str="...")
+      tool_load_failed: "动态规则工具模块/函数 ({func_name_str}) 加载失败 (模块: {module_str}): {error_str}"
+
+    # --- [权限与访问旁路警告] ---
+    permission:
+      # 示例: logger.warning("permission_fallback_applied", service_name_str="DB", action_name_str="批量写入", fallback_mode_str="仅流式模式")
+      permission_fallback_applied: "因缺乏 {service_name_str} {action_name_str} 权限，切换至 {fallback_mode_str} 模式。"
+
+    # --- [外部服务及 HTTP API 警告] ---
+    service:
+      # 示例: logger.warning("api_disabled", service_name_str="外部 API")
+      api_disabled: "{service_name_str} 服务当前处于禁用状态。"
+
+      # 示例: logger.warning("api_key_missing", service_name_str="外部 API", api_key_env_str="API_KEY")
+      api_key_missing: "{service_name_str} API Key 未配置 [KeyEnv={api_key_env_str}]"
+
+    # --- [数据库元数据及装载警告] ---
+    db:
+      # 示例: logger.warning("table_fetch_failed", service_name_str="Database", fallback_ref_str="TB_SAMPLE", error_str="Table not found")
+      table_fetch_failed: "获取 {service_name_str} 表对象失败，回退使用默认字符串引用 ({fallback_ref_str}): {error_str}"
+
+      # 示例: logger.warning("existing_keys_fetch_failed", service_name_str="Database", error_str="Column not found")
+      existing_keys_fetch_failed: "获取 {service_name_str} 已有键时发生错误: {error_str}"
+
+      # 示例: logger.warning("existing_records_metadata_fetch_failed", service_name_str="BigQuery", error_str="...")
+      existing_records_metadata_fetch_failed: "获取 {service_name_str} 已有记录元数据时发生错误 (将回退采用键列表查询): {error_str}"
+
+      # 示例: logger.warning("db_load_skipped_no_data", service_name_str="BigQuery", reason_str="无装载目标")
+      db_load_skipped_no_data: "跳过 {service_name_str} 装载: {reason_str}"
+
+      # 示例: logger.warning("db_load_retry", service_name_str="BigQuery", attempt_int=1, max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_retry: "{service_name_str} 批次装载重试中 (第 {attempt_int}/{max_retries_int} 次): [Key={target_key_str}] 错误: {error_str}"
+
+      # 示例: logger.warning("db_load_max_retries_exceeded_fallback", service_name_str="BigQuery", max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_max_retries_exceeded_fallback: "{service_name_str} 批次装载重试超限 ({max_retries_int}次)，尝试回退流式装载: [Key={target_key_str}] 原因: {error_str}"
+
+      # 示例: logger.warning("db_bulk_load_retry", service_name_str="BigQuery", attempt_int=1, max_retries_int=3, error_str="Connection reset")
+      db_bulk_load_retry: "{service_name_str} 批量(Bulk)装载重试中 (第 {attempt_int}/{max_retries_int} 次): 错误: {error_str}"
+
+      # 示例: logger.warning("db_bulk_load_max_retries_exceeded_fallback", service_name_str="BigQuery", max_retries_int=3, error_str="Connection reset")
+      db_bulk_load_max_retries_exceeded_fallback: "{service_name_str} 批量(Bulk)装载重试超限 ({max_retries_int}次)，尝试回退流式装载: 原因: {error_str}"
+
+      # 示例: logger.warning("db_bulk_load_skipped_no_data", service_name_str="BigQuery", reason_str="无装载目标")
+      db_bulk_load_skipped_no_data: "跳过 {service_name_str} 批量(Bulk)装载: {reason_str}"
+
+      # 示例: logger.warning("db_bulk_load_batch_completed", service_name_str="BigQuery", batch_index_int=1, total_inserted_rows_str="500", elapsed_time_str="1.20s")
+      db_bulk_load_batch_completed: "{service_name_str} 分割批次(第 {batch_index_int} 次)装载完成: 累计装载={total_inserted_rows_str} 行 (耗时={elapsed_time_str})"
+
+      # 示例: logger.warning("table_truncate_countdown", service_name_str="BigQuery", table_name_str="TB_SAMPLE", countdown_seconds_int=10)
+      table_truncate_countdown: "{service_name_str} 目标表({table_name_str})已指定 WRITE_TRUNCATE 模式。{countdown_seconds_int} 秒后将清除既有全部数据并执行新装载。"
+
+      # 示例: logger.warning("table_truncate_tick", remaining_sec_int=5, service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_tick: "\r[倒计时] {remaining_sec_int} 秒后将启动 {service_name_str} 表({table_name_str}) WRITE_TRUNCATE 装载 (取消: Ctrl+C)... "
+
+      # 示例: logger.warning("table_truncate_warning", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_warning: "{service_name_str} 表({table_name_str})的既有全部数据将被彻底清除 (TRUNCATE)。请务必保持谨慎。"
+
+      # 示例: logger.warning("table_timestamp_mode_legacy_warning", table_name_str="TB_SAMPLE", mode_str="utc", num_rows_int=100)
+      table_timestamp_mode_legacy_warning: "BigQuery 目标表({table_name_str})存在未标注时区模式标签的历史数据。当前已应用配置 '{mode_str}'，但请特别关注数据一致性。[行数={num_rows_int}]"
+
+      # 示例: logger.warning("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
+      query_execution_failed: "{service_name_str} 查询执行失败: [错误={error_str}] 查询语句: {query_str}"
+
+      # 示例: logger.warning("db_deleted_status_skipped", service_name_str="BigQuery", asst_id_str="DOC001", status_cd_str="09", ecs_key_str="data/sample.json")
+      db_deleted_status_skipped: "因属于删除状态码({status_cd_str})，主动从 {service_name_str} 装载对象中排除 (Skip): [识别ID={asst_id_str}] [Key={ecs_key_str}]"
+
+      # 示例: logger.warning("db_all_rows_deleted_status_skipped", service_name_str="BigQuery", ecs_key_str="data/sample.json", context_info_str="...")
+      db_all_rows_deleted_status_skipped: "所有行均判定为删除状态码，排除 {service_name_str} 装载 (Skip): [Key={ecs_key_str}] {context_info_str}"
+
+      # 示例: logger.warning("db_duplicate_pk_skipped", service_name_str="BigQuery", asst_id_str="DOC001", ecs_key_str="data/sample.json", context_info_str="...")
+      db_duplicate_pk_skipped: "因主键已存在或重复(PK={asst_id_str})，从 {service_name_str} 装载对象中排除 (Skip): [Key={ecs_key_str}] {context_info_str}"
+
+      # 示例: logger.warning("sql_fallback_applied", context_str="SQL 处理", error_str=str(e), sql_str="SELECT ...")
+      sql_fallback_applied: "{context_str} 过程中发生异常，回退返回原始 SQL。错误详情: {error_str}。原始 SQL:\n{sql_str}"
+
+  ERROR:
+    # --- [配置与正则表达式错误] ---
+    config:
+      # 示例: logger.error("regex_compile_error", path_regex_str=".*\\.json", error_str="bad character range")
+      regex_compile_error: "路径匹配正则表达式编译失败: {path_regex_str}, 错误: {error_str}"
+
+      # 示例: logger.error("missing_required_config", key_str="storage.bucket_name")
+      missing_required_config: "必需配置项缺失: {key_str}"
+
+      # 示例: logger.error("config_file_not_found", path_str="config/config.yml")
+      config_file_not_found: "未找到配置文件: {path_str}"
+
+      # 示例: logger.error("config_load_failed", error_str="YAML syntax error at line 5")
+      config_load_failed: "加载配置文件失败: {error_str}"
+
+      # 示例: logger.exception("config_type_coercion_failed", key_str="timeout_int", expected_type_str="整数型(int)", guide_msg_str="请输入整数值。", val_any="'abc'", current_type_str="str")
+      config_type_coercion_failed: "[配置类型校验错误] '{key_str}' 配置项应为 {expected_type_str} 类型。{guide_msg_str} (输入值: {val_any}, 实际类型: {current_type_str})"
+
+      # 示例: logger.exception("config_auto_create_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_create_failed: "自动创建配置文件失败 [文件={file_path_str}], 错误: {error_str}"
+
+      # 示例: logger.exception("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_repair_failed: "自动修复配置文件失败 [文件={file_path_str}], 错误: {error_str}"
+
+    # --- [输入参数与日期校验错误] ---
+    validation:
+      # 示例: logger.error("invalid_date_format", key_str="date", val_str="2026-99-99", message_str="必须为 YYYYMMDD 格式。")
+      invalid_date_format: "输入日期格式错误 [Key={key_str}, Val={val_str}]: {message_str}"
+
+      # 示例: logger.error("invalid_date_range", start_date_str="20261231", end_date_str="20260101", message_str="起始日期不能晚于结束日期。")
+      invalid_date_range: "输入日期范围错误 [起始={start_date_str}, 结束={end_date_str}]: {message_str}"
+
+    # --- [规则与模式定义加载错误] ---
+    rule:
+      # 示例: logger.exception("tool_import_failed", tool_name_str="code.date_check", error_str="Module not found")
+      tool_import_failed: "动态规则工具模块/函数 ({tool_name_str}) 加载失败: {error_str}"
+
+      # 示例: logger.exception("schema_load_failed", namespace_str="sys", path_str="schemas/sys/sys.json", error_str="JSONDecodeError")
+      schema_load_failed: "架构规范({namespace_str})文件({path_str})加载失败: {error_str}"
+
+      # 示例: logger.exception("tool_eval_error", func_name_str="code.date_check", error_str="TypeError")
+      tool_eval_error: "动态规则工具函数评估失败 [Tool={func_name_str}], 错误: {error_str}"
+
+      # 示例: logger.exception("tool_execution_failed", func_name_str="code.date_check", error_str="RuntimeError")
+      tool_execution_failed: "动态规则工具函数执行失败 [Tool={func_name_str}], 错误: {error_str}"
+
+    # --- [数据库装载错误] ---
+    db:
+      # 示例: logger.exception("table_get_failed", table_name_str="TB_SAMPLE", error_str="Table not found")
+      table_get_failed: "查询 BigQuery 表({table_name_str})信息失败: {error_str}"
+
+      # 示例: logger.exception("table_metadata_update_failed", table_name_str="TB_SAMPLE", error_str="Permission denied")
+      table_metadata_update_failed: "更新 BigQuery 表({table_name_str})元数据失败: {error_str}"
+
+      # 示例: logger.error("table_timestamp_mode_mismatch", table_name_str="TB_SAMPLE", recorded_mode_str="kst_as_utc", configured_mode_str="standard_utc")
+      table_timestamp_mode_mismatch: "BigQuery 目标表 '{table_name_str}' 时间戳模式不匹配 (已记录模式: {recorded_mode_str}, 当前配置: {configured_mode_str})"
+
+      # 示例: logger.error("insert_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      insert_failed: "{service_name_str} 数据写入失败: {target_name_str}, 错误: {error_str}"
+
+      # 示例: logger.exception("load_table_from_json_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      load_table_from_json_failed: "{service_name_str} 表装载失败: {target_name_str}, 错误: {error_str}"
+
+      # 示例: logger.exception("db_table_merge_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      db_table_merge_failed: "{service_name_str} 表({target_name_str}) MERGE 写入失败: {error_str}"
+
+      # 示例: logger.exception("db_merge_load_failed", service_name_str="BigQuery", total_rows_int=100, error_str="Invalid schema")
+      db_merge_load_failed: "{service_name_str} 合并(MERGE)写入最终失败: 共 {total_rows_int} 行, 错误: {error_str}"
+
+      # 示例: logger.exception("db_load_max_retries_exceeded", service_name_str="BigQuery", max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_max_retries_exceeded: "{service_name_str} 批次写入超过最大重试次数 ({max_retries_int}次) 最终失败: [Key={target_key_str}] 错误: {error_str}"
+
+      # 示例: logger.exception("db_streaming_fallback_failed", service_name_str="BigQuery", target_key_str="sample.json", error_str="Permission denied")
+      db_streaming_fallback_failed: "{service_name_str} 流式装载回退(Fallback)最终失败: [Key={target_key_str}] 错误: {error_str}"
+
+      # 示例: logger.exception("db_bulk_load_failed", service_name_str="BigQuery", total_rows_int=100, error_str="Invalid schema")
+      db_bulk_load_failed: "{service_name_str} 批量(Bulk)写入最终失败: 共 {total_rows_int} 行, 错误: {error_str}"
+
+      # 示例: logger.exception("db_bulk_streaming_fallback_failed", service_name_str="BigQuery", error_str="Permission denied")
+      db_bulk_streaming_fallback_failed: "{service_name_str} 批量流式回退装载最终失败: 错误: {error_str}"
+
+      # 示例: logger.exception("db_delete_failed", service_name_str="BigQuery", target_name_str="tbl", where_clause_str="...", error_str="Permission denied")
+      db_delete_failed: "{service_name_str} 表({target_name_str}) 数据清理(DELETE)失败: [条件='{where_clause_str}'], 错误: {error_str}"
+
+      # 示例: logger.error("db_file_lock_failed", db_path_str="data/app.db", error_str="database is locked")
+      db_file_lock_failed: "数据库连接失败 (路径: {db_path_str})。服务器进程或其它会话可能正在独占锁定该数据库文件，请关闭相关进程后重试: {error_str}"
+
+      # 示例: logger.error("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
+      query_execution_failed: "{service_name_str} 查询执行失败: [错误={error_str}] 查询语句: {query_str}"
+
+    # --- [存储连接、元数据及文件传输错误] ---
+    storage:
+      # 示例: logger.exception("storage_client_init_failed", storage_type_str="GCS", error_str="Bucket not found")
+      storage_client_init_failed: "{storage_type_str} 客户端初始化失败: {error_str}"
+
+      # 示例: logger.error("connection_failed", service_name_str="Storage", error_str="Connection timed out")
+      connection_failed: "{service_name_str} 连接失败: {error_str}"
+
+      # 示例: logger.error("list_failed", storage_type_str="Storage", error_str="Access Denied")
+      list_failed: "查询 {storage_type_str} 对象列表失败: {error_str}"
+
+      # 示例: logger.error("bucket_not_found", storage_type_str="Storage", bucket_name_str="my-bucket", error_str="Bucket not found")
+      bucket_not_found: "未找到 {storage_type_str} 存储桶或无访问权限: {bucket_name_str}, 错误: {error_str}"
+
+      # 示例: logger.error("storage_meta_error", storage_type_str="Storage", target_name_str="path/file.pdf", error_str="404 Not Found")
+      storage_meta_error: "获取 {storage_type_str} 元数据时发生错误 ({target_name_str}): {error_str}"
+
+      # 示例: logger.error("transfer_failed", file_name_str="sample.pdf", error_str="Network dropped")
+      transfer_failed: "文件传输失败: {file_name_str}, 错误: {error_str}"
+
+      # 示例: logger.exception("storage_extract_failed", target_file_str="sample.json", error_str="KeyError")
+      storage_extract_failed: "提取并转换存储文件({target_file_str})数据失败: {error_str}"
+
+      # 示例: logger.exception("folder_search_error", search_prefix_str="folder/", error_str="Access Denied")
+      folder_search_error: "搜索存储目录 '{search_prefix_str}' 时发生错误: {error_str}"
+
+      # 示例: logger.error("json_process_error", stage_str="解码/解析", json_key_str="folder/123.json", error_str="JSONDecodeError")
+      json_process_error: "元数据 {stage_str} 失败: [Key={json_key_str}], 错误: {error_str}"
+
+      # 示例: logger.error("source_size_error", source_key_str="sample.pdf", json_key_str="sample.json", error_str="404 Not Found")
+      source_size_error: "获取源文件大小失败: [Source_Key={source_key_str} JSON_Key={json_key_str}], 错误: {error_str}"
+
+      # 示例: logger.exception("storage_clean_failed", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", error_str="Access Denied")
+      storage_clean_failed: "{storage_type_str} 数据清理(删除)失败: [Prefix={prefix_str}], 错误: {error_str}"
+
+      # 示例: logger.exception("storage_date_folder_purge_error", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", error_str="Access Denied")
+      storage_date_folder_purge_error: "{storage_type_str} 特定日期残留目录清理(删除)失败: [Prefix={prefix_str}], 错误: {error_str}"
+
+    # --- [外部服务及 HTTP API 联动错误] ---
+    service:
+      # 示例: logger.error("api_http_error", service_name_str="外部 API", code_int=500, detail_str="Internal Server Error")
+      api_http_error: "{service_name_str} 服务端错误 HTTP {code_int}: {detail_str}"
+
+      # 示例: logger.error("api_connection_error", service_name_str="外部联动 API", detail_str="Port unreachable")
+      api_connection_error: "{service_name_str} 连接失败 (服务未启动或网络故障): {detail_str}"
+
+      # 示例: logger.error("api_unexpected_error", service_name_str="Agent", detail_str="KeyError")
+      api_unexpected_error: "{service_name_str} 联动过程中发生意外错误: {detail_str}"
+
+      # 示例: logger.error("api_missing_field", service_name_str="Generator", field_name_str="result")
+      api_missing_field: "{service_name_str} 响应中缺少 '{field_name_str}' 字段。"
+
+    # --- [权限拒绝错误] ---
+    permission:
+      # 示例: logger.error("permission_denied", resource_type_str="表", resource_name_str="proj.ds.tbl", error_str="Access Denied")
+      permission_denied: "由于缺乏 {resource_type_str} 访问/执行权限，操作被拒绝: {resource_name_str}, 错误: {error_str}"
+
+  CRITICAL:
+    # --- [系统严重错误] ---
+    system:
+      # 示例: logger.critical("client_init_failed", client_name_str="Storage", error_str="Connection refused")
+      client_init_failed: "{client_name_str} 客户端初始化发生致命错误，程序即将退出: {error_str}"
+
+      # 示例: logger.critical("fail_fast_config_missing", path_str="storage.bucket_name", desc_info_str=" (存储桶名)", config_file_str="config.yml")
+      fail_fast_config_missing: "[FATAL][Fail-Fast] 必需配置项缺失，程序立即终止: '{path_str}'{desc_info_str}。请务必在配置文件({config_file_str})中定义该配置项。"

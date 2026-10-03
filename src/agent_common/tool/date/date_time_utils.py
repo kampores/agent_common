@@ -1,7 +1,6 @@
 # 작성일: 2026-08-21
-# 설계자: 김유상 수석
-# 설계자 소속: 경포씨엔씨
-# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+# 설계자: 김유상
+# 설계자 이메일: bakkus@daum.net
 
 """
 테이블 변환 룰(table_rules.yml) 및 템플릿 구문 치환({DateTimeUtils.get_today_yyyymmdd}, {DateTimeUtils.get_now_compact})에서

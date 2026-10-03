@@ -36,6 +36,7 @@ logging_messages:
       # Example: logger.info("sync_completed", sync_type_str="Database", success_count_int=100, failure_count_int=0, total_files_int=100)
       sync_completed: "{sync_type_str} sync completed: {success_count_int} succeeded (or skipped), {failure_count_int} failed / {total_files_int} total"
 
+      # Example: logger.info("transfer_limit_applied", max_limit_int=100, total_extracted_int=1500)
       transfer_limit_applied: "File copy limit applied: [Max limit={max_limit_int} / Total extracted={total_extracted_int}]"
 
       # Example: logger.info("run_started", lodin_dstlc_cd_str="01", target_date_str="20260804", target_folder_str="data")

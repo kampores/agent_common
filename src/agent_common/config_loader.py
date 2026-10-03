@@ -16,6 +16,7 @@ from typing import Any, Optional
 
 import yaml
 from agent_common.error_handler import ErrorHandler
+from agent_common.localizer import Localizer
 
 
 # ==============================================================================
@@ -422,7 +423,7 @@ class ConfigLoader:
     # agent_common 패키지 자체의 루트 디렉토리 경로를 계산합니다.
     PACKAGE_DIR: Path = Path(__file__).resolve().parent
 
-    # 전역 런타임 언어 강제 설정값 ('KO' 또는 'EN')
+    # 전역 런타임 언어 강제 설정값 ('KR', 'EN', 'ZH', 'JP')
     _global_language_override_str: Optional[str] = None
     _global_cli_overrides_dict: dict[str, Any] = {}
     _global_registered_schemas_dict: dict[str, Any] = {}
@@ -440,12 +441,13 @@ class ConfigLoader:
 
     @classmethod
     def set_language(cls, lang_str: str) -> None:
-        """전역 로그 메시지 언어를 'KO' 또는 'EN'으로 설정합니다.
+        """전역 로그 메시지 언어 설정을 지정합니다.
 
-        :param lang_str: 설정할 언어 코드 ('KO' 또는 'EN', 대소문자 무관)
+        :param lang_str: 설정할 언어 코드 ('KR', 'EN', 'ZH', 'JP', 대소문자 무관)
         """
-        clean_lang_str: str = str(lang_str).strip().upper()
-        cls._global_language_override_str = "EN" if clean_lang_str == "EN" else "KO"
+        clean_lang_str: str = Localizer.normalize_language(lang_str)
+        cls._global_language_override_str = clean_lang_str
+        Localizer.set_global_language(clean_lang_str)
 
     @classmethod
     def get_max_recursion_depth(cls) -> int:
@@ -462,15 +464,16 @@ class ConfigLoader:
 
     @property
     def language(self) -> str:
-        """현재 적용 중인 로그 메시지 언어 코드 ('KO' 또는 'EN')를 반환합니다 (Getter)."""
+        """현재 적용 중인 로그 메시지 언어 코드 ('KR', 'EN', 'ZH', 'JP')를 반환합니다 (Getter)."""
         settings_dict: dict[str, Any] = self.get_settings()
-        return str(settings_dict.get("logging", {}).get("language", "KO")).upper()
+        cfg_lang_str: Any = settings_dict.get("logging", {}).get("language_str") or settings_dict.get("logging", {}).get("language", "KR")
+        return Localizer.normalize_language(str(cfg_lang_str))
 
     @language.setter
     def language(self, lang_str: str) -> None:
         """로그 메시지 언어 코드를 동적으로 설정합니다 (Setter).
 
-        :param lang_str: 설정할 언어 코드 ('KO' 또는 'EN', 대소문자 무관)
+        :param lang_str: 설정할 언어 코드 ('KR', 'EN', 'ZH', 'JP', 대소문자 무관)
         """
         self.set_language(lang_str)
         self._cached_settings = None
@@ -627,61 +630,68 @@ class ConfigLoader:
         self._cached_settings = None
         return target_path
 
-    def _resolve_language(self, settings_dict: dict[str, Any]) -> str:
-        """설정 또는 환경 변수로부터 로그 메시지 언어('KO' 또는 'EN')를 결정합니다.
+    def _resolve_logging_language(self, settings_dict: dict[str, Any]) -> str:
+        """설정 또는 환경 변수로부터 로그 메시지 언어를 결정합니다.
+
+        로깅 전용 환경변수(AGENT_LOG_LANGUAGE, LOGGING_LANGUAGE, AGENT_LANGUAGE) 및
+        logging 설정 섹션을 우선순위에 따라 해석하며, 언어 코드 정규화는 Localizer에 위임합니다.
 
         :param settings_dict: 현재 로드된 설정 딕셔너리
-        :return: 정규화된 언어 코드 ('KO' 또는 'EN')
+        :return: 정규화된 언어 코드 ('KR', 'EN', 'ZH', 'JP')
         """
         if self._global_language_override_str:
-            return self._global_language_override_str
-        env_lang_str: Optional[str] = os.environ.get("AGENT_LOG_LANGUAGE") or os.environ.get("LOGGING_LANGUAGE")
-        if env_lang_str:
-            return "EN" if env_lang_str.strip().upper() == "EN" else "KO"
-        logging_sec = settings_dict.get("logging")
-        if isinstance(logging_sec, dict):
-            cfg_lang_str = logging_sec.get("language") or logging_sec.get("lang")
-            if cfg_lang_str:
-                return "EN" if str(cfg_lang_str).strip().upper() == "EN" else "KO"
-        return "KO"
+            return Localizer.normalize_language(self._global_language_override_str)
+        global_lang_str: Optional[str] = Localizer.get_global_language()
+        if global_lang_str:
+            return global_lang_str
+
+        for env_key_str in ("AGENT_LOG_LANGUAGE", "LOGGING_LANGUAGE", "AGENT_LANGUAGE"):
+            env_val_str: Optional[str] = os.environ.get(env_key_str)
+            if env_val_str:
+                return Localizer.normalize_language(env_val_str)
+
+        if isinstance(settings_dict, dict):
+            logging_sec_dict: Any = settings_dict.get("logging")
+            if isinstance(logging_sec_dict, dict):
+                cfg_lang_str: Any = logging_sec_dict.get("language_str") or logging_sec_dict.get("language") or logging_sec_dict.get("lang")
+                if cfg_lang_str:
+                    return Localizer.normalize_language(str(cfg_lang_str))
+
+        return Localizer.DEFAULT_LANGUAGE_STR
+
+    def _resolve_language(self, settings_dict: dict[str, Any]) -> str:
+        """(하위 호환) _resolve_logging_language로 위임합니다.
+
+        :param settings_dict: 현재 로드된 설정 딕셔너리
+        :return: 정규화된 언어 코드 ('KR', 'EN', 'ZH', 'JP')
+        """
+        return self._resolve_logging_language(settings_dict)
 
     def _resolve_logging_messages_file(self, config_dir_path: Path, lang_str: str) -> Optional[Path]:
         """지정된 디렉토리에서 언어에 부합하는 logging_messages_*.yml 파일을 탐색합니다.
 
         :param config_dir_path: 탐색할 디렉토리 Path 객체
-        :param lang_str: 언어 코드 ('KO' 또는 'EN')
+        :param lang_str: 언어 코드 문자열
         :return: 발견된 템플릿 파일 Path 객체 (미발견 시 None)
         """
-        suffix_str: str = lang_str.lower()
-        target_path: Path = config_dir_path / f"logging_messages_{suffix_str}.yml"
-        if target_path.exists():
-            return target_path
-        target_yaml_path: Path = config_dir_path / f"logging_messages_{suffix_str}.yaml"
-        if target_yaml_path.exists():
-            return target_yaml_path
-        fallback_path: Path = config_dir_path / "logging_messages.yml"
-        if fallback_path.exists():
-            return fallback_path
-        fallback_yaml_path: Path = config_dir_path / "logging_messages.yaml"
-        if fallback_yaml_path.exists():
-            return fallback_yaml_path
-        return None
+        return Localizer.resolve_localized_file(
+            dir_path=config_dir_path,
+            prefix_str="logging_messages",
+            language_str=lang_str,
+        )
 
     def _resolve_project_logging_messages_file(self, project_files_list: list[Path], lang_str: str) -> Optional[Path]:
         """프로젝트의 logging_messages 파일 목록에서 언어에 부합하는 파일을 선택합니다.
 
         :param project_files_list: 프로젝트 config 디렉토리 내 logging_messages 관련 파일 리스트
-        :param lang_str: 언어 코드 ('KO' 또는 'EN')
+        :param lang_str: 언어 코드 문자열
         :return: 선택된 파일 Path 객체 (미발견 시 None)
         """
-        suffix_str: str = lang_str.lower()
-        for p in project_files_list:
-            if p.name.lower() in (f"logging_messages_{suffix_str}.yml", f"logging_messages_{suffix_str}.yaml"):
-                return p
-        for p in project_files_list:
-            if p.name.lower() in ("logging_messages.yml", "logging_messages.yaml"):
-                return p
-        return None
+        return Localizer.resolve_localized_path_from_list(
+            file_paths_list=project_files_list,
+            prefix_str="logging_messages",
+            language_str=lang_str,
+        )
 
     def get_settings(self) -> dict[str, Any]:
         """설정 디렉토리 하위의 모든 YAML 설정 파일을 알파벳 순서로 병합하여 반환한다.
@@ -689,10 +699,10 @@ class ConfigLoader:
         1차: agent_common 패키지 내부 기본 설정 (agent_common/config)
         2차: 등록된 도메인 스키마 기본값 (register_schema)
         3차: 개별 프로젝트 config 디렉토리의 YAML 파일들 (Deep Merge Override)
-        4차: 언어(KO/EN)에 대응하는 logging_messages 템플릿 사전 병합
+        4차: 언어(KR/EN/ZH/JP)에 대응하는 logging_messages 템플릿 사전 병합
         """
         if getattr(self, "_cached_settings", None) is not None:
-            expected_lang_str: str = self._resolve_language(self._cached_settings)  # type: ignore
+            expected_lang_str: str = self._resolve_logging_language(self._cached_settings)  # type: ignore
             if getattr(self, "_cached_lang_str", None) == expected_lang_str:
                 return self._cached_settings  # type: ignore
 
@@ -725,11 +735,12 @@ class ConfigLoader:
                 loaded_files.append(f"{path.name}:{list(mapping.keys())}")
                 self._deep_merge(settings, mapping)
 
-        # 4. 언어 판별 (KO 또는 EN, 기본값: KO)
-        selected_lang_str: str = self._resolve_language(settings)
+        # 4. 언어 판별 (KR, EN, ZH, JP, 기본값: KR)
+        selected_lang_str: str = self._resolve_logging_language(settings)
         if "logging" not in settings or not isinstance(settings["logging"], dict):
             settings["logging"] = {}
         settings["logging"]["language"] = selected_lang_str
+        settings["logging"]["language_str"] = selected_lang_str
 
         # 5. 선택된 언어에 부합하는 logging_messages 템플릿 사전 병합
         # 5-1. agent_common 패키지 기본 템플릿 로드

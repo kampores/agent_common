@@ -1,0 +1,444 @@
+# 作成日: 2026-10-04
+# 設計者: 金裕尙
+# 設計者メール: bakkus@daum.net
+
+# システム全体標準汎用日本語ログメッセージテンプレート辞書 (agent_common 汎用)
+# Standard Universal Japanese Log Message Template Dictionary for agent_common
+# 
+# [Python ソースコード内での使用ガイド]
+#   from agent_common.logger import ProjectLogger, get_log_msg
+#   logger = ProjectLogger.get_logger("MyProgramName")
+#   logger.info(get_log_msg("INFO", "program_started", program_name="MyProgram", folder_msg="", date_msg=""))
+#
+
+logging_messages:
+  DEBUG:
+    # --- [ストレージデバッグ探索] ---
+    storage:
+      # 例: logger.debug("targets_detected", target_type_str="全ストレージ", total_files_int=10, max_workers_int=4)
+      targets_detected: "{target_type_str} 対象検出: 合計 {total_files_int} ファイル [MaxWorkers={max_workers_int}]"
+
+  INFO:
+    # --- [プログラム実行および同期ライフサイクル] ---
+    lifecycle:
+      # 例: logger.info("program_started", program_name_str="ファイル移行", folder_msg_str=" [Folder=PAK]", date_msg_str=" [Date=20260804]")
+      program_started: "{program_name_str} プログラムを開始します。{folder_msg_str}{date_msg_str}"
+
+      # 例: logger.info("client_initialized", client_name_str="Google Cloud BigQuery")
+      client_initialized: "{client_name_str} クライアントが正常に初期化されました。"
+
+      # 例: logger.info("program_finished", program_name_str="ファイル移行")
+      program_finished: "{program_name_str} プログラムの実行が完了しました。"
+
+      # 例: logger.info("sync_started", sync_type_str="データベース", src_type_str="ストレージ", src_name_str="my-bucket", dst_type_str="テーブル", dst_name_str="proj.ds.tbl", context_str="[Mode=Realtime]")
+      sync_started: "{sync_type_str} 同期タスク開始: {src_type_str} '{src_name_str}' -> {dst_type_str} '{dst_name_str}' {context_str}"
+
+      # 例: logger.info("sync_completed", sync_type_str="データベース", success_count_int=100, failure_count_int=0, total_files_int=100)
+      sync_completed: "{sync_type_str} 同期タスク完了: 成功(またはスキップ) {success_count_int} 件, 失敗 {failure_count_int} 件 / 合計 {total_files_int} 件"
+
+      # 例: logger.info("transfer_limit_applied", max_limit_int=100, total_extracted_int=1500)
+      transfer_limit_applied: "ファイルコピー制限件数(Limit)が適用されました: [最大制限={max_limit_int}件 / 抽出総数={total_extracted_int}件]"
+
+      # 例: logger.info("run_started", lodin_dstlc_cd_str="01", target_date_str="20260804", target_folder_str="data")
+      run_started: "転送タスク開始: 区分コード={lodin_dstlc_cd_str}, 対象日付={target_date_str}, 対象フォルダ={target_folder_str}"
+
+      # 例: logger.info("run_finished", total_count_int=100, success_count_int=98, skip_count_int=2, fail_count_int=0, total_elapsed_float=12.34)
+      run_finished: "転送タスク完了: 処理総数={total_count_int}件, 成功={success_count_int}件, スキップ={skip_count_int}件, 失敗={fail_count_int}件, 総所要時間={total_elapsed_float:.2f}秒"
+
+      # 例: logger.info("operation_cancelled_by_user", reason_str="ユーザー操作により WRITE_TRUNCATE キャンセル")
+      operation_cancelled_by_user: "ユーザー操作により処理がキャンセルされました: {reason_str}"
+
+      # 例: logger.info("progress_update", message_str="[タスク進行状況] 370 / 1,000 件 (37.0%) ...")
+      progress_update: "{message_str}"
+
+      # 例: logger.info("thread_runner_no_targets", task_name_str="並行タスク")
+      thread_runner_no_targets: "{task_name_str}: 処理対象のデータがありません。"
+
+      # 例: logger.info("thread_runner_execution_started", task_name_str="並行タスク", total_items_int=100, max_workers_int=4, batch_chunk_size_int=1000)
+      thread_runner_execution_started: "{task_name_str} 開始: 合計 {total_items_int} 対象 [並行ワーカー={max_workers_int} / バッチ単位={batch_chunk_size_int}]"
+
+      # 例: logger.info("thread_runner_execution_completed", task_name_str="並行タスク", total_items_int=100, success_count_int=100, failure_count_int=0, total_flushed_rows_int=100, total_batches_int=1, failed_batches_int=0, elapsed_time_str="1.23s")
+      thread_runner_execution_completed: "{task_name_str} 完了: 合計 {total_items_int} 対象 (成功 {success_count_int} 件, 失敗 {failure_count_int} 件, 累積出力 {total_flushed_rows_int} 行 / 合計 {total_batches_int} バッチ [失敗 {failed_batches_int} 件], 所要時間={elapsed_time_str})"
+
+    # --- [データベースおよびテーブルロード汎用] ---
+    db:
+      # 例: logger.info("db_inline_merge_started", service_name_str="BigQuery", target_table_str="proj.ds.tbl", total_rows_int=100, chunk_size_int=500, total_chunks_int=1, pk_key_str="id")
+      db_inline_merge_started: "{service_name_str} インラインマージ(MERGE)書き込み開始: 対象テーブル={target_table_str}, 合計 {total_rows_int} 行 [チャンクサイズ={chunk_size_int} / 総チャンク数={total_chunks_int} / PK={pk_key_str}]"
+
+      # 例: logger.info("db_inline_merge_chunk_completed", service_name_str="BigQuery", chunk_index_str="1/1", processed_rows_int=100, elapsed_time_str="1.20s")
+      db_inline_merge_chunk_completed: "{service_name_str} インラインマージ(MERGE)チャンク処理完了: [チャンク={chunk_index_str}, 処理件数={processed_rows_int}行, 所要時間={elapsed_time_str}]"
+
+      # 例: logger.info("db_inline_merge_all_completed", service_name_str="BigQuery", target_table_str="proj.ds.tbl", total_rows_int=100)
+      db_inline_merge_all_completed: "{service_name_str} インラインマージ(MERGE)全件完了: 対象テーブル={target_table_str}, 合計 {total_rows_int} 行"
+
+      # 例: logger.info("db_existing_keys_loaded", service_name_str="BigQuery", total_count_int=1000)
+      db_existing_keys_loaded: "{service_name_str} 既存ロードキー照会完了: 合計 {total_count_int} 件キャッシュ"
+
+      # 例: logger.info("db_existing_records_loaded", service_name_str="BigQuery", total_count_int=1000)
+      db_existing_records_loaded: "{service_name_str} 既存ロードレコードメタデータ照会完了: 合計 {total_count_int} 件キャッシュ"
+
+      # 例: logger.info("db_load_completed", service_name_str="BigQuery", total_rows_int=100, elapsed_time_str="1.20s", mode_str="INLINE_MERGE")
+      db_load_completed: "{service_name_str} ロード完了 [Mode={mode_str}]: 合計 {total_rows_int} 行, 所要時間={elapsed_time_str}"
+
+      # 例: logger.info("db_transfer_skipped", service_name_str="BigQuery", target_key_str="sample.json", context_info_str="[Table=tbl]")
+      db_transfer_skipped: "既に {service_name_str} にロード済みのデータです。ロードをスキップします (Skip): {target_key_str} {context_info_str}"
+
+      # 例: logger.info("db_bulk_load_started", service_name_str="BigQuery", total_rows_int=100, write_disposition_str="WRITE_TRUNCATE", lodin_dstlc_cd_str="01")
+      db_bulk_load_started: "{service_name_str} 一括(Bulk)ロード開始: 合計 {total_rows_int} 行 [オプション={write_disposition_str} / 区分={lodin_dstlc_cd_str}]"
+
+      # 例: logger.info("db_bulk_load_batch_started", service_name_str="BigQuery", batch_index_int=1, batch_rows_int=500, write_disposition_str="WRITE_APPEND")
+      db_bulk_load_batch_started: "{service_name_str} 分割バッチ(第 {batch_index_int} 回)ロード開始: 対象行={batch_rows_int} 行 [モード={write_disposition_str}]"
+
+      # 例: logger.info("db_bulk_load_completed", service_name_str="BigQuery", total_rows_int=100, elapsed_time_str="1.20s")
+      db_bulk_load_completed: "{service_name_str} 一括(Bulk)ロード完了: 合計 {total_rows_int} 行 [所要時間={elapsed_time_str}]"
+
+      # 例: logger.info("table_truncate_countdown_completed", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_countdown_completed: "{service_name_str} 対象テーブル({table_name_str}) WRITE_TRUNCATE カウントダウン待機完了: データ削除および新規ロードを開始します。"
+
+      # 例: logger.info("db_bulk_streaming_fallback_success", service_name_str="BigQuery", total_rows_int=100)
+      db_bulk_streaming_fallback_success: "{service_name_str} 一括ロード失敗後のストリーミングフォールバック(Fallback)ロード成功: 合計 {total_rows_int} 行"
+
+      # 例: logger.info("db_delete_started", service_name_str="BigQuery", target_table_str="proj.ds.tbl", where_clause_str="jobBaseDd = '20260804'")
+      db_delete_started: "{service_name_str} テーブルデータ整理(DELETE)開始: [Target={target_table_str}, 条件='{where_clause_str}']"
+
+      # 例: logger.info("db_delete_completed", service_name_str="BigQuery", target_table_str="proj.ds.tbl", deleted_rows_int=100)
+      db_delete_completed: "{service_name_str} テーブルデータ整理完了: [Target={target_table_str}, 削除件数={deleted_rows_int} 件]"
+
+    # --- [ストレージ検索およびファイル転送汎用] ---
+    storage:
+      # 例: logger.info("folder_search_started", search_prefix_str="folder/")
+      folder_search_started: "対象フォルダ検索開始: {search_prefix_str}"
+
+      # 例: logger.info("folder_search_completed", search_prefix_str="folder/", count_int=50)
+      folder_search_completed: "対象フォルダ検索完了: {search_prefix_str}, 検出ファイル数: {count_int} 件"
+
+      # 例: logger.info("folder_searching", storage_type_str="ストレージ", target_info_str="", search_prefix_str="folder/")
+      folder_searching: "{storage_type_str} フォルダ検索中{target_info_str}: {search_prefix_str}"
+
+      # 例: logger.info("no_target_files", target_type_str="ロード対象")
+      no_target_files: "{target_type_str} 対象ファイルが存在しません。"
+
+      # 例: logger.info("targets_detected", target_type_str="ロード", total_files_int=50, max_workers_int=4)
+      targets_detected: "{target_type_str} 対象検出: 合計 {total_files_int} ファイル [MaxWorkers={max_workers_int}]"
+
+      # 例: logger.info("transfer_completed", file_name_str="sample.pdf", size_bytes_int=102400)
+      transfer_completed: "ファイル転送完了: {file_name_str}, サイズ: {size_bytes_int} バイト"
+
+      # 例: logger.info("transfer_skipped", file_name_str="sample.pdf", dst_type_str="ストレージ")
+      transfer_skipped: "同一ファイルが {dst_type_str} に存在するためコピーをスキップします: {file_name_str}"
+
+      # 例: logger.info("storage_clean_started", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/")
+      storage_clean_started: "{storage_type_str} 対象データ整理(削除)開始: [Prefix={prefix_str}]"
+
+      # 例: logger.info("storage_clean_prefix_completed", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", deleted_count_int=12)
+      storage_clean_prefix_completed: "{storage_type_str} フォルダ整理完了: [Prefix={prefix_str}, 削除件数={deleted_count_int} 件]"
+
+      # 例: logger.info("storage_clean_completed", storage_type_str="GCS", total_deleted_count_int=12, total_prefixes_int=1)
+      storage_clean_completed: "{storage_type_str} データ整理全件完了: 合計 {total_deleted_count_int} 件削除 (対象プレフィックス {total_prefixes_int} 個)"
+
+      # 例: logger.info("storage_date_folder_clean", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/")
+      storage_date_folder_clean: "{storage_type_str} 特定日付フォルダ整理実行: [Prefix={prefix_str}]"
+
+      # 例: logger.info("storage_direct_upload_completed", storage_type_str="GCS", key_str="data/sample.pdf", target_path_str="data/sample.pdf", size_bytes_int=1024)
+      storage_direct_upload_completed: "{storage_type_str} 直接ストリーミングアップロード完了: [Key={key_str}, Target={target_path_str}, サイズ={size_bytes_int} バイト]"
+
+    # --- [パフォーマンスおよび所要時間連携] ---
+    performance:
+      # 例: logger.info("elapsed_time", action_name_str="ファイル転送", details_str="[TotalElapsed=1.20s]", context_info_str="[Key=...]")
+      elapsed_time: "処理所要時間 [{action_name_str}]: {details_str} {context_info_str}"
+
+    # --- [外部サービスおよび HTTP API 連携] ---
+    service:
+      # 例: logger.info("api_call_started", service_name_str="外部 API", purpose_str="processor", model_name_str="gpt4")
+      api_call_started: "{service_name_str} 呼び出し開始 [Purpose={purpose_str}, Model={model_name_str}]"
+
+      # 例: logger.info("api_call_success", service_name_str="外部 API", detail_str="OK")
+      api_call_success: "{service_name_str} 応答取得成功: {detail_str}"
+
+    # --- [設定ファイル管理および自動修復] ---
+    config:
+      # 例: logger.info("config_file_auto_created", file_path_str="config/config.yml")
+      config_file_auto_created: "設定ファイルが存在しないため、デフォルトテンプレートで自動生成されました: {file_path_str}"
+
+      # 例: logger.info("config_file_auto_repaired", file_path_str="config/config.yml", repaired_keys_str="...")
+      config_file_auto_repaired: "設定ファイル内の欠落項目が自動修復(Self-healing)されました: {file_path_str} [修復項目={repaired_keys_str}]"
+
+    # --- [ルール評価およびテンプレート処理] ---
+    rule:
+      # 例: logger.info("rule_eval_success", col_name_str="field", folder_val_str="common", tmpl_str="{seq}", res_str="123", json_info_str="")
+      rule_eval_success: "テンプレート評価成功{json_info_str}: [Col={col_name_str} Folder={folder_val_str} Tmpl='{tmpl_str}' Result='{res_str}']"
+
+  WARNING:
+    # --- [プログラムライフサイクルおよびサマリーレポート] ---
+    lifecycle:
+      # 例: logger.warning("progress_milestone", message_str="[タスク進行状況] 400 / 1,000 件 (40.0%) ...")
+      progress_milestone: "{message_str}"
+
+      # 例: logger.warning("execution_summary_report", summary_str="\n================...")
+      execution_summary_report: "{summary_str}"
+
+      # 例: logger.warning("extension_matrix_summary_report", summary_str="\n================...")
+      extension_matrix_summary_report: "{summary_str}"
+
+    # --- [ストレージ管理および整理警告] ---
+    storage:
+      # 例: logger.warning("storage_clean_empty_targets", storage_type_str="GCS", prefix_str="未生成")
+      storage_clean_empty_targets: "{storage_type_str} 削除対象プレフィックスに一致するファイルが存在しません: [Prefix={prefix_str}]"
+
+      # 例: logger.warning("storage_date_folder_purged", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", deleted_count_int=10)
+      storage_date_folder_purged: "{storage_type_str} 特定日付残余フォルダ整理(削除)完了: [Prefix={prefix_str}, 削除件数={deleted_count_int} 件]"
+
+    # --- [設定ファイル管理警告] ---
+    config:
+      # 例: logger.warning("config_auto_create_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_create_failed: "設定ファイルの自動生成中にエラーが発生しました: {file_path_str}, エラー: {error_str}"
+
+      # 例: logger.warning("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_repair_failed: "設定ファイルの自動修復中にエラーが発生しました: {file_path_str}, エラー: {error_str}"
+
+      # 例: logger.warning("config_default_fallback", key_str="timeout_seconds", default_val_any=30)
+      config_default_fallback: "設定項目 (key: '{key_str}') が存在しません。システムデフォルト値 ({default_val_any}) で代替して起動します。"
+
+    # --- [フォールバック(Fallback)および復旧処理] ---
+    fallback:
+      # 例: logger.warning("fallback_applied", target_name_str="候補ファイル", fallback_key_str="default.pdf", key_str="sample.json")
+      fallback_applied: "{target_name_str} が見つからないため、デフォルトキー ({fallback_key_str}) にフォールバック適用します。[Key={key_str}]"
+
+    # --- [ルール評価およびテンプレート処理警告] ---
+    rule:
+      # 例: logger.warning("rule_eval_failed", col_name_str="field", folder_val_str="common", tmpl_str="{seq}", res_str="{seq}", default_fallback_str="", context_keys_str="...", json_info_str="")
+      rule_eval_failed: "テンプレート評価失敗または未置換プレースホルダ返却{json_info_str}: [Col={col_name_str} Folder={folder_val_str} Tmpl='{tmpl_str}' Res='{res_str}' Fallback='{default_fallback_str}' ContextKeys={context_keys_str}]"
+
+      # 例: logger.warning("rule_not_found", col_name_str="field", target_rule_str="RULES", rules_filepath_str="config/rules.yml", loaded_keys_str="...")
+      rule_not_found: "ルール設定内に項目定義が見つかりません: [Col={col_name_str} TargetRule={target_rule_str} FilePath={rules_filepath_str} LoadedKeys={loaded_keys_str}]"
+
+      # 例: logger.warning("tool_load_failed", func_name_str="func", module_str="module", error_str="...")
+      tool_load_failed: "動的ルールユーティリティモジュール/関数 ({func_name_str}) のロードに失敗しました (モジュール: {module_str}): {error_str}"
+
+    # --- [権限およびアクセス迂回警告] ---
+    permission:
+      # 例: logger.warning("permission_fallback_applied", service_name_str="DB", action_name_str="バッチ書き込み", fallback_mode_str="ストリーミング専用")
+      permission_fallback_applied: "{service_name_str} {action_name_str} の権限不足により、{fallback_mode_str} モードへ切り替えます。"
+
+    # --- [外部サービスおよび HTTP API 警告] ---
+    service:
+      # 例: logger.warning("api_disabled", service_name_str="外部 API")
+      api_disabled: "{service_name_str} サービスは現在無効化されています。"
+
+      # 例: logger.warning("api_key_missing", service_name_str="外部 API", api_key_env_str="API_KEY")
+      api_key_missing: "{service_name_str} APIキーが設定されていません [KeyEnv={api_key_env_str}]"
+
+    # --- [データベースメタデータおよびロード警告] ---
+    db:
+      # 例: logger.warning("table_fetch_failed", service_name_str="Database", fallback_ref_str="TB_SAMPLE", error_str="Table not found")
+      table_fetch_failed: "{service_name_str} テーブルオブジェクトの取得に失敗したため、デフォルト文字列参照 ({fallback_ref_str}) で代替します: {error_str}"
+
+      # 例: logger.warning("existing_keys_fetch_failed", service_name_str="Database", error_str="Column not found")
+      existing_keys_fetch_failed: "{service_name_str} 既存ロードキーの照会中にエラーが発生しました: {error_str}"
+
+      # 例: logger.warning("existing_records_metadata_fetch_failed", service_name_str="BigQuery", error_str="...")
+      existing_records_metadata_fetch_failed: "{service_name_str} 既存ロードレコードのメタデータ照会中にエラーが発生しました (キーリスト照会で代替します): {error_str}"
+
+      # 例: logger.warning("db_load_skipped_no_data", service_name_str="BigQuery", reason_str="ロード対象なし")
+      db_load_skipped_no_data: "{service_name_str} ロードをスキップします: {reason_str}"
+
+      # 例: logger.warning("db_load_retry", service_name_str="BigQuery", attempt_int=1, max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_retry: "{service_name_str} バッチロード再試行実行中 ({attempt_int}/{max_retries_int} 回): [Key={target_key_str}] エラー: {error_str}"
+
+      # 例: logger.warning("db_load_max_retries_exceeded_fallback", service_name_str="BigQuery", max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_max_retries_exceeded_fallback: "{service_name_str} バッチロード再試行上限 ({max_retries_int}回) 超過のためストリーミングロードへのフォールバックを試行します: [Key={target_key_str}] 原因: {error_str}"
+
+      # 例: logger.warning("db_bulk_load_retry", service_name_str="BigQuery", attempt_int=1, max_retries_int=3, error_str="Connection reset")
+      db_bulk_load_retry: "{service_name_str} 一括(Bulk)ロード再試行実行中 ({attempt_int}/{max_retries_int} 回): エラー: {error_str}"
+
+      # 例: logger.warning("db_bulk_load_max_retries_exceeded_fallback", service_name_str="BigQuery", max_retries_int=3, error_str="Connection reset")
+      db_bulk_load_max_retries_exceeded_fallback: "{service_name_str} 一括(Bulk)ロード再試行上限 ({max_retries_int}回) 超過のためストリーミングフォールバックを試行します: 原因: {error_str}"
+
+      # 例: logger.warning("db_bulk_load_skipped_no_data", service_name_str="BigQuery", reason_str="ロード対象なし")
+      db_bulk_load_skipped_no_data: "{service_name_str} 一括(Bulk)ロードをスキップします: {reason_str}"
+
+      # 例: logger.warning("db_bulk_load_batch_completed", service_name_str="BigQuery", batch_index_int=1, total_inserted_rows_str="500", elapsed_time_str="1.20s")
+      db_bulk_load_batch_completed: "{service_name_str} 分割バッチ(第 {batch_index_int} 回)ロード完了: 累積ロード={total_inserted_rows_str} 行 (所要時間={elapsed_time_str})"
+
+      # 例: logger.warning("table_truncate_countdown", service_name_str="BigQuery", table_name_str="TB_SAMPLE", countdown_seconds_int=10)
+      table_truncate_countdown: "{service_name_str} 対象テーブル({table_name_str})に WRITE_TRUNCATE モードが指定されました。{countdown_seconds_int} 秒後に既存の全データを削除し新規ロードを開始します。"
+
+      # 例: logger.warning("table_truncate_tick", remaining_sec_int=5, service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_tick: "\r[カウントダウン] {remaining_sec_int} 秒後に {service_name_str} テーブル({table_name_str}) WRITE_TRUNCATE ロードを開始します (キャンセル: Ctrl+C)... "
+
+      # 例: logger.warning("table_truncate_warning", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
+      table_truncate_warning: "{service_name_str} テーブル({table_name_str})の既存全データが削除(TRUNCATE)されます。注意が必要です。"
+
+      # 例: logger.warning("table_timestamp_mode_legacy_warning", table_name_str="TB_SAMPLE", mode_str="utc", num_rows_int=100)
+      table_timestamp_mode_legacy_warning: "BigQuery 対象テーブル({table_name_str})にタイムゾーンモードラベルが未登録の既存データが存在します。現在の設定 '{mode_str}' を適用しますが、データ整合性にご注意ください。[行数={num_rows_int}]"
+
+      # 例: logger.warning("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
+      query_execution_failed: "{service_name_str} クエリ実行失敗: [エラー={error_str}] クエリ: {query_str}"
+
+      # 例: logger.warning("db_deleted_status_skipped", service_name_str="BigQuery", asst_id_str="DOC001", status_cd_str="09", ecs_key_str="data/sample.json")
+      db_deleted_status_skipped: "削除ステータスコード({status_cd_str})のため、{service_name_str} ロード対象から能動的に除外(Skip)します: [識別ID={asst_id_str}] [Key={ecs_key_str}]"
+
+      # 例: logger.warning("db_all_rows_deleted_status_skipped", service_name_str="BigQuery", ecs_key_str="data/sample.json", context_info_str="...")
+      db_all_rows_deleted_status_skipped: "全行が削除ステータスコードと判定されたため、{service_name_str} ロードを除外(Skip)します: [Key={ecs_key_str}] {context_info_str}"
+
+      # 例: logger.warning("db_duplicate_pk_skipped", service_name_str="BigQuery", asst_id_str="DOC001", ecs_key_str="data/sample.json", context_info_str="...")
+      db_duplicate_pk_skipped: "{service_name_str} に既に存在するか重複した主キー(PK={asst_id_str})のため、ロード対象から除外(Skip)します: [Key={ecs_key_str}] {context_info_str}"
+
+      # 例: logger.warning("sql_fallback_applied", context_str="SQL 処理", error_str=str(e), sql_str="SELECT ...")
+      sql_fallback_applied: "{context_str} 処理中に例外が発生したため、元のSQLをフォールバック返却します。エラー詳細: {error_str}。元のSQL:\n{sql_str}"
+
+  ERROR:
+    # --- [設定および正規表現エラー] ---
+    config:
+      # 例: logger.error("regex_compile_error", path_regex_str=".*\\.json", error_str="bad character range")
+      regex_compile_error: "パスマッチング正規表現のコンパイルに失敗しました: {path_regex_str}, エラー: {error_str}"
+
+      # 例: logger.error("missing_required_config", key_str="storage.bucket_name")
+      missing_required_config: "必須設定項目が欠落しています: {key_str}"
+
+      # 例: logger.error("config_file_not_found", path_str="config/config.yml")
+      config_file_not_found: "設定ファイルが見つかりません: {path_str}"
+
+      # 例: logger.error("config_load_failed", error_str="YAML syntax error at line 5")
+      config_load_failed: "設定ファイルの読み込みに失敗しました: {error_str}"
+
+      # 例: logger.exception("config_type_coercion_failed", key_str="timeout_int", expected_type_str="整数型(int)", guide_msg_str="整数値を入力してください。", val_any="'abc'", current_type_str="str")
+      config_type_coercion_failed: "[設定型検証エラー] '{key_str}' 設定値は {expected_type_str} 型である必要があります。{guide_msg_str} (入力値: {val_any}, 実際の型: {current_type_str})"
+
+      # 例: logger.exception("config_auto_create_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_create_failed: "設定ファイルの自動生成に失敗しました [ファイル={file_path_str}], エラー: {error_str}"
+
+      # 例: logger.exception("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
+      config_auto_repair_failed: "設定ファイルの自動修復に失敗しました [ファイル={file_path_str}], エラー: {error_str}"
+
+    # --- [入力パラメータおよび日付検証エラー] ---
+    validation:
+      # 例: logger.error("invalid_date_format", key_str="date", val_str="2026-99-99", message_str="YYYYMMDD形式である必要があります。")
+      invalid_date_format: "入力日付フォーマットエラー [Key={key_str}, Val={val_str}]: {message_str}"
+
+      # 例: logger.error("invalid_date_range", start_date_str="20261231", end_date_str="20260101", message_str="開始日は終了日より後であってはなりません。")
+      invalid_date_range: "入力日付範囲エラー [開始={start_date_str}, 終了={end_date_str}]: {message_str}"
+
+    # --- [ルールおよびスキーマロードエラー] ---
+    rule:
+      # 例: logger.exception("tool_import_failed", tool_name_str="code.date_check", error_str="Module not found")
+      tool_import_failed: "動的ルールユーティリティモジュール/関数 ({tool_name_str}) のロードに失敗しました: {error_str}"
+
+      # 例: logger.exception("schema_load_failed", namespace_str="sys", path_str="schemas/sys/sys.json", error_str="JSONDecodeError")
+      schema_load_failed: "スキーマ仕様({namespace_str})ファイル({path_str})のロードに失敗しました: {error_str}"
+
+      # 例: logger.exception("tool_eval_error", func_name_str="code.date_check", error_str="TypeError")
+      tool_eval_error: "動的ルールユーティリティ関数の評価に失敗しました [Tool={func_name_str}], エラー: {error_str}"
+
+      # 例: logger.exception("tool_execution_failed", func_name_str="code.date_check", error_str="RuntimeError")
+      tool_execution_failed: "動的ルールユーティリティ関数の実行に失敗しました [Tool={func_name_str}], エラー: {error_str}"
+
+    # --- [データベースロードエラー] ---
+    db:
+      # 例: logger.exception("table_get_failed", table_name_str="TB_SAMPLE", error_str="Table not found")
+      table_get_failed: "BigQuery テーブル({table_name_str})情報の照会に失敗しました: {error_str}"
+
+      # 例: logger.exception("table_metadata_update_failed", table_name_str="TB_SAMPLE", error_str="Permission denied")
+      table_metadata_update_failed: "BigQuery テーブル({table_name_str})メタデータの更新に失敗しました: {error_str}"
+
+      # 例: logger.error("table_timestamp_mode_mismatch", table_name_str="TB_SAMPLE", recorded_mode_str="kst_as_utc", configured_mode_str="standard_utc")
+      table_timestamp_mode_mismatch: "BigQuery 対象テーブル '{table_name_str}' タイムスタンプモードの不一致 (記録されたモード: {recorded_mode_str}, 現在の設定: {configured_mode_str})"
+
+      # 例: logger.error("insert_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      insert_failed: "{service_name_str} データ書き込み失敗: {target_name_str}, エラー: {error_str}"
+
+      # 例: logger.exception("load_table_from_json_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      load_table_from_json_failed: "{service_name_str} テーブルロード失敗: {target_name_str}, エラー: {error_str}"
+
+      # 例: logger.exception("db_table_merge_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
+      db_table_merge_failed: "{service_name_str} テーブル({target_name_str}) MERGE ロード失敗: {error_str}"
+
+      # 例: logger.exception("db_merge_load_failed", service_name_str="BigQuery", total_rows_int=100, error_str="Invalid schema")
+      db_merge_load_failed: "{service_name_str} マージ(MERGE)ロード最終失敗: 合計 {total_rows_int} 行, エラー: {error_str}"
+
+      # 例: logger.exception("db_load_max_retries_exceeded", service_name_str="BigQuery", max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
+      db_load_max_retries_exceeded: "{service_name_str} バッチロード最大再試行回数 ({max_retries_int}回) 超過のため最終失敗処理: [Key={target_key_str}] エラー: {error_str}"
+
+      # 例: logger.exception("db_streaming_fallback_failed", service_name_str="BigQuery", target_key_str="sample.json", error_str="Permission denied")
+      db_streaming_fallback_failed: "{service_name_str} ストリーミングロードフォールバック最終失敗: [Key={target_key_str}] エラー: {error_str}"
+
+      # 例: logger.exception("db_bulk_load_failed", service_name_str="BigQuery", total_rows_int=100, error_str="Invalid schema")
+      db_bulk_load_failed: "{service_name_str} 一括(Bulk)ロード最終失敗: 合計 {total_rows_int} 行, エラー: {error_str}"
+
+      # 例: logger.exception("db_bulk_streaming_fallback_failed", service_name_str="BigQuery", error_str="Permission denied")
+      db_bulk_streaming_fallback_failed: "{service_name_str} 一括ストリーミングフォールバックロード最終失敗: エラー: {error_str}"
+
+      # 例: logger.exception("db_delete_failed", service_name_str="BigQuery", target_name_str="tbl", where_clause_str="...", error_str="Permission denied")
+      db_delete_failed: "{service_name_str} テーブル({target_name_str}) データ整理(DELETE)失敗: [条件='{where_clause_str}'], エラー: {error_str}"
+
+      # 例: logger.error("db_file_lock_failed", db_path_str="data/app.db", error_str="database is locked")
+      db_file_lock_failed: "データベース接続に失敗しました (パス: {db_path_str})。サーバープロセスや別セッションが該当DBファイルをロックしている可能性があります。関連プロセスを終了してから再試行してください: {error_str}"
+
+      # 例: logger.error("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
+      query_execution_failed: "{service_name_str} クエリ実行失敗: [エラー={error_str}] クエリ: {query_str}"
+
+    # --- [ストレージ接続、メタデータおよびファイル転送エラー] ---
+    storage:
+      # 例: logger.exception("storage_client_init_failed", storage_type_str="GCS", error_str="Bucket not found")
+      storage_client_init_failed: "{storage_type_str} クライアントの初期化に失敗しました: {error_str}"
+
+      # 例: logger.error("connection_failed", service_name_str="Storage", error_str="Connection timed out")
+      connection_failed: "{service_name_str} 接続に失敗しました: {error_str}"
+
+      # 例: logger.error("list_failed", storage_type_str="Storage", error_str="Access Denied")
+      list_failed: "{storage_type_str} オブジェクト一覧の照会に失敗しました: {error_str}"
+
+      # 例: logger.error("bucket_not_found", storage_type_str="Storage", bucket_name_str="my-bucket", error_str="Bucket not found")
+      bucket_not_found: "{storage_type_str} バケットが見つからないかアクセス権限がありません: {bucket_name_str}, エラー: {error_str}"
+
+      # 例: logger.error("storage_meta_error", storage_type_str="Storage", target_name_str="path/file.pdf", error_str="404 Not Found")
+      storage_meta_error: "{storage_type_str} メタデータ照会中にエラーが発生しました ({target_name_str}): {error_str}"
+
+      # 例: logger.error("transfer_failed", file_name_str="sample.pdf", error_str="Network dropped")
+      transfer_failed: "ファイル転送失敗: {file_name_str}, エラー: {error_str}"
+
+      # 例: logger.exception("storage_extract_failed", target_file_str="sample.json", error_str="KeyError")
+      storage_extract_failed: "ストレージファイル({target_file_str})のデータ抽出および変換に失敗しました: {error_str}"
+
+      # 例: logger.exception("folder_search_error", search_prefix_str="folder/", error_str="Access Denied")
+      folder_search_error: "ストレージフォルダ '{search_prefix_str}' 検索中にエラーが発生しました: {error_str}"
+
+      # 例: logger.error("json_process_error", stage_str="デコード/解析", json_key_str="folder/123.json", error_str="JSONDecodeError")
+      json_process_error: "メタデータ {stage_str} 失敗: [Key={json_key_str}], エラー: {error_str}"
+
+      # 例: logger.error("source_size_error", source_key_str="sample.pdf", json_key_str="sample.json", error_str="404 Not Found")
+      source_size_error: "元ファイルサイズの照会に失敗しました: [Source_Key={source_key_str} JSON_Key={json_key_str}], エラー: {error_str}"
+
+      # 例: logger.exception("storage_clean_failed", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", error_str="Access Denied")
+      storage_clean_failed: "{storage_type_str} データ整理(削除)失敗: [Prefix={prefix_str}], エラー: {error_str}"
+
+      # 例: logger.exception("storage_date_folder_purge_error", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/", error_str="Access Denied")
+      storage_date_folder_purge_error: "{storage_type_str} 特定日付残余フォルダ整理(削除)失敗: [Prefix={prefix_str}], エラー: {error_str}"
+
+    # --- [外部サービスおよび HTTP API 連携エラー] ---
+    service:
+      # 例: logger.error("api_http_error", service_name_str="外部 API", code_int=500, detail_str="Internal Server Error")
+      api_http_error: "{service_name_str} サーバーエラー HTTP {code_int}: {detail_str}"
+
+      # 例: logger.error("api_connection_error", service_name_str="外部連携 API", detail_str="Port unreachable")
+      api_connection_error: "{service_name_str} 接続失敗 (サーバー未稼働またはネットワーク障害): {detail_str}"
+
+      # 例: logger.error("api_unexpected_error", service_name_str="Agent", detail_str="KeyError")
+      api_unexpected_error: "{service_name_str} 連携中に予期しないエラーが発生しました: {detail_str}"
+
+      # 例: logger.error("api_missing_field", service_name_str="Generator", field_name_str="result")
+      api_missing_field: "{service_name_str} レスポンス内に '{field_name_str}' フィールドが存在しません。"
+
+    # --- [権限拒否エラー] ---
+    permission:
+      # 例: logger.error("permission_denied", resource_type_str="テーブル", resource_name_str="proj.ds.tbl", error_str="Access Denied")
+      permission_denied: "{resource_type_str} へのアクセス/実行権限が不足しているため処理が拒否されました: {resource_name_str}, エラー: {error_str}"
+
+  CRITICAL:
+    # --- [システム致命的エラー] ---
+    system:
+      # 例: logger.critical("client_init_failed", client_name_str="Storage", error_str="Connection refused")
+      client_init_failed: "{client_name_str} クライアントの初期化中に致命的なエラーが発生したためプログラムを終了します: {error_str}"
+
+      # 例: logger.critical("fail_fast_config_missing", path_str="storage.bucket_name", desc_info_str=" (バケット名)", config_file_str="config.yml")
+      fail_fast_config_missing: "[FATAL][Fail-Fast] 必須設定項目が欠落しているためプログラムを直ちに終了します: '{path_str}'{desc_info_str}。設定ファイル({config_file_str})にこの設定値を必ず定義してください。"

@@ -7,7 +7,7 @@
 도메인 의미: 여러 에이전트 프로젝트가 공용으로 사용하는 설정 로더, 로거, 예외 핸들러 라이브러리 패키지입니다.
 """
 
-__version__: str = "0.4.91"
+__version__: str = "0.4.92"
 
 from agent_common.clients import BigQueryClient, GcsClient, S3Client
 from agent_common.tool.date.date_time_utils import DateTimeUtils
@@ -25,6 +25,7 @@ from agent_common.config_loader import (
 )
 from agent_common.error_handler import ErrorHandler, error_handler, raise_coercion_error
 from agent_common.llm import LlmClient, LlmInferenceError
+from agent_common.localizer import Localizer
 
 __all__ = [
     "ConfigLoader",
@@ -48,5 +49,6 @@ __all__ = [
     "_SafeNamespace",
     "ProjectLogger",
     "SingleLineFlattenFormatter",
+    "Localizer",
 ]
 

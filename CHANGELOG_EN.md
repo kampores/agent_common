@@ -1,6 +1,21 @@
 # Version History (Changelog)
 
-> [ 🇰🇷 Korean Version (한국어 체인지로그) ](https://github.com/kampores/agent_common/blob/main/CHANGELOG_KO.md)
+> [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
+
+### v0.4.92 (2026-10-04)
+
+- **Language Localization (`Localizer`) Introduction & Single Responsibility Principle (SRP) Decoupling (Rules 1.4.1, 1.5.1, 4.2)**:
+  - `Localizer`: Introduced dedicated module for standard language code normalization, global language management, and generic localized resource file path discovery (`resolve_localized_file`, `resolve_localized_path_from_list`).
+  - Decoupled `logging` configuration dictionaries, logging environment variables (`AGENT_LOG_LANGUAGE`), hardcoded `logging_messages` filenames, and log level structures from `Localizer`.
+  - `ConfigLoader`: Extracted logging-specific language resolution (`_resolve_logging_language`) for environment variables (`AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`) and `logging.language_str`, delegating normalization to `Localizer`.
+  - `ProjectLogger`: Standardized default logging language to `KR` in `APP_DEFAULT_SCHEMA_DICT`, retaining full responsibility for log formatting, level template searches, and summary report descriptions.
+- **National & Language Code Standardization (`KR`, `JP`, `EN`, `ZH`)**:
+  - Aligned default language code from `KO` to `KR` to match manual directories (`manual/kr/`, `manual/jp/`), filenames (`*_kr.md`, `*_jp.md`), and READMEs (`README_KR.md`, `README_JP.md`).
+  - Updated `logging.language_str` default to `KR` across `default_agent_common.yml` and `config.yml`.
+  - Added `logging_messages_kr.yml`, `logging_messages_zh.yml`, and `logging_messages_jp.yml`, completing standard log templates across all 4 languages (KR, EN, ZH, JP).
+  - Created `CHANGELOG_KR.md` and updated multi-language documentation navigation banners.
+- **Standalone Modules (`load_util.py`, `ig_gcs_bigquery_insert.py`) Language Fixation to `KR`**:
+  - Fixed runtime logging language strictly to `KR` and removed extraneous multi-language branches and heuristic fallbacks.
 
 ### v0.4.91 (2026-10-03)
 

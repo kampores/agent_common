@@ -1,4 +1,4 @@
-include README.md CHANGELOG_KO.md CHANGELOG_EN.md LICENSE
+include README*.md CHANGELOG*.md LICENSE
 graft src/agent_common/config
 graft manual
 recursive-include src/agent_common/config *.yml
