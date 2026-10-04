@@ -2,6 +2,32 @@
 
 > [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
 
+### v0.4.95 (2026-10-04)
+
+- **修正 `ProjectLogger.get_log_id_description` 局部变量名 (遵循规则 1.6.1, 1.6.2, 4.2)**:
+  - 将缺少类型后缀且使用缩写的 `template_val` 改为与 `get_log_msg` 一致的 `template_str`。
+  - 行为无变化。
+- **将 SDK 延迟加载函数移入客户端类内部 (遵循规则 1.4.1, 4.2)**:
+  - 将模块级函数 `_get_boto3`、`_get_gcs`、`_get_bigquery` 分别移入 `S3Client`、`GcsClient`、`BigQueryClient`，改为 `@classmethod`。
+  - 将模块级缓存变量 (`_boto3_module`, `_boto_config_cls`, `_storage_module`, `_bigquery_module`, `_service_account_module`) 改为各类的类变量，并删除 `global` 声明。
+  - 行为无变化。
+- **新增并公开 GCP 认证解析专用类 `GcpCredentialResolver` (遵循规则 1.4.1, 1.4.7, 1.6.2, 4.2)**:
+  - 删除模块级函数 `_resolve_gcp_credentials`，迁移至 `GcpCredentialResolver.resolve()`。4 级认证优先级保持不变。
+  - `GcsClient`、`BigQueryClient` 通过组合 (Composition) 而非继承持有 `self.credential_resolver`，单独拆分任一客户端时不依赖另一个客户端。
+  - 将 `google.oauth2.service_account` 的延迟加载统一到 `GcpCredentialResolver`。`GcsClient._get_gcs()`、`BigQueryClient._get_bigquery()` 不再返回元组，仅返回各自的模块。
+  - 注册为公开 API (`from agent_common import GcpCredentialResolver`)，可在 GCS、BigQuery 之外的 GCP 服务中复用。
+  - 整理缩写变量名: `val_str`, `cred_path`, `cred_err` → `env_credentials_path_str`, `credentials_file_path`, `credentials_error`。
+  - 未安装 `google-auth` 时，`ImportError` 会在客户端 `_connect` 中被包装为 `ConnectionError`。
+  - 新增 4 国语言手册 `3.6 GCP 服务账号认证解析器` (`06_gcp_credential_resolver_*.md`)，并同步更新 README 的主要功能、使用示例与手册目录。
+- **移除 KST-as-UTC 时间戳模式 (遵循规则 4.2，兼容性变更)**:
+  - 删除将本地时间数字以 `+00:00` 存储的 KST-as-UTC 模式。需要原样显示本地时间时，请使用 `DATETIME` 列与 `convert_to_bigquery_datetime`。
+  - 已删除: 配置项 `bigquery.kst_as_utc_timestamp_bool`、属性 `BigQueryClient.kst_as_utc_timestamp_bool`、方法 `BigQueryClient.validate_and_sync_table_timestamp_mode()`。
+  - 已删除的日志消息键: `table_timestamp_mode_legacy_warning`, `table_timestamp_mode_mismatch`, `table_get_failed`, `table_metadata_update_failed`。
+  - `convert_to_bigquery_timestamp` 始终附带最终确定的时区偏移量返回（源数据自带值 → `default_tz_offset_str` → `timezone_offset_str` → 系统时区）。
+- **全面修订手册 `3.5` 并整理文档编号 (遵循规则 4.2)**:
+  - 将手册文件名由 `05_bigquery_timestamp_and_tz_sync_*.md` 改为 `05_bigquery_timestamp_and_datetime_conversion_*.md`，并围绕 `TIMESTAMP` 与 `DATETIME` 两个转换方法以 4 国语言重写，补充此前缺失的 `convert_to_bigquery_datetime` 规格与使用示例。
+  - 将 README 主要功能中的 `3.6 BigQuery 标准 DATETIME 转换` 条目并入 `3.5`，使功能编号与手册文件 (01~06) 一一对应。
+
 ### v0.4.94 (2026-10-04)
 
 - **修复 PyPI README 语言跳转锚点链接 (遵循规则 4.2)**:

@@ -1,7 +1,7 @@
 # 3.2. Google Cloud Storage 流式客户端与多层级鉴权 (`GcsClient`)
 
 > **所属模块**: `agent_common.clients.GcsClient`  
-> **核心方法**: `get_blob_size()`, `upload_stream()`, `_resolve_gcp_credentials()`  
+> **核心方法**: `get_blob_size()`, `upload_stream()`, `GcpCredentialResolver.resolve()`  
 > **依赖组件**: `google-cloud-storage>=2.10.0`, `google-auth`
 
 ---
@@ -18,7 +18,7 @@ Google Cloud Storage (GCS) 是云端大数据湖与 BigQuery 数仓入库的核�
 
 ## 2. 4 阶段服务账号鉴权优先级架构
 
-`GcsClient` 底层通过 `_resolve_gcp_credentials()` 按照以下 4 级优先级顺次解析 GCP 鉴权凭证 (`google.auth.credentials.Credentials`)：
+`GcsClient` 底层通过 `GcpCredentialResolver.resolve()` 按照以下 4 级优先级顺次解析 GCP 鉴权凭证 (`google.auth.credentials.Credentials`)：
 
 ```mermaid
 flowchart TD

@@ -269,9 +269,6 @@ logging_messages:
       # Example: logger.warning("table_truncate_warning", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
       table_truncate_warning: "All existing data in {service_name_str} table ({table_name_str}) will be deleted (TRUNCATE). Caution is required."
 
-      # Example: logger.warning("table_timestamp_mode_legacy_warning", table_name_str="TB_SAMPLE", mode_str="utc", num_rows_int=100)
-      table_timestamp_mode_legacy_warning: "Existing data without timezone mode labels exists in {table_name_str}. Applying current setting '{mode_str}', but caution is required for consistency. [Rows={num_rows_int}]"
-
       # Example: logger.warning("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
       query_execution_failed: "{service_name_str} query execution failed: [Error={error_str}] Query: {query_str}"
 
@@ -335,14 +332,6 @@ logging_messages:
 
     # --- [Database Load Errors] ---
     db:
-      # Example: logger.exception("table_get_failed", table_name_str="TB_SAMPLE", error_str="Table not found")
-      table_get_failed: "Failed to retrieve BigQuery table({table_name_str}) info: {error_str}"
-
-      # Example: logger.exception("table_metadata_update_failed", table_name_str="TB_SAMPLE", error_str="Permission denied")
-      table_metadata_update_failed: "Failed to update BigQuery table({table_name_str}) metadata: {error_str}"
-
-      # Example: logger.error("table_timestamp_mode_mismatch", table_name_str="TB_SAMPLE", recorded_mode_str="kst_as_utc", configured_mode_str="standard_utc")
-      table_timestamp_mode_mismatch: "BigQuery target table '{table_name_str}' timestamp mode mismatch (recorded: {recorded_mode_str}, configured: {configured_mode_str})"
 
       # Example: logger.error("insert_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
       insert_failed: "{service_name_str} data load failed: {target_name_str}, error: {error_str}"

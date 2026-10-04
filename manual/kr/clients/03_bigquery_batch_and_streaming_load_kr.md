@@ -63,7 +63,7 @@ def __init__(
 ) -> None
 ```
 - **초기화 및 스키마 사전 검증 (Fail-Fast)**:
-  - `_resolve_gcp_credentials()`를 통한 4단계 인증 해결.
+  - `GcpCredentialResolver.resolve()`를 통한 4단계 인증 해결.
   - `GOOGLE_CLOUD_PROJECT` 환경변수가 설정되어 있는 경우 프로젝트 ID 자동 오버라이드.
   - 초기화 시점에 `client.get_table()`을 호출하여 대상 데이터셋 및 테이블의 존재 여부와 컬럼 스키마를 사전 캐싱(`self.table_obj`).
 

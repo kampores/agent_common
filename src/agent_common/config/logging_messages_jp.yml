@@ -269,9 +269,6 @@ logging_messages:
       # 例: logger.warning("table_truncate_warning", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
       table_truncate_warning: "{service_name_str} テーブル({table_name_str})の既存全データが削除(TRUNCATE)されます。注意が必要です。"
 
-      # 例: logger.warning("table_timestamp_mode_legacy_warning", table_name_str="TB_SAMPLE", mode_str="utc", num_rows_int=100)
-      table_timestamp_mode_legacy_warning: "BigQuery 対象テーブル({table_name_str})にタイムゾーンモードラベルが未登録の既存データが存在します。現在の設定 '{mode_str}' を適用しますが、データ整合性にご注意ください。[行数={num_rows_int}]"
-
       # 例: logger.warning("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
       query_execution_failed: "{service_name_str} クエリ実行失敗: [エラー={error_str}] クエリ: {query_str}"
 
@@ -335,14 +332,6 @@ logging_messages:
 
     # --- [データベースロードエラー] ---
     db:
-      # 例: logger.exception("table_get_failed", table_name_str="TB_SAMPLE", error_str="Table not found")
-      table_get_failed: "BigQuery テーブル({table_name_str})情報の照会に失敗しました: {error_str}"
-
-      # 例: logger.exception("table_metadata_update_failed", table_name_str="TB_SAMPLE", error_str="Permission denied")
-      table_metadata_update_failed: "BigQuery テーブル({table_name_str})メタデータの更新に失敗しました: {error_str}"
-
-      # 例: logger.error("table_timestamp_mode_mismatch", table_name_str="TB_SAMPLE", recorded_mode_str="kst_as_utc", configured_mode_str="standard_utc")
-      table_timestamp_mode_mismatch: "BigQuery 対象テーブル '{table_name_str}' タイムスタンプモードの不一致 (記録されたモード: {recorded_mode_str}, 現在の設定: {configured_mode_str})"
 
       # 例: logger.error("insert_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
       insert_failed: "{service_name_str} データ書き込み失敗: {target_name_str}, エラー: {error_str}"

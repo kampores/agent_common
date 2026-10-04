@@ -1,7 +1,7 @@
 # 3.2. Google Cloud Storage ストリーミングクライアントおよび多階層認証 (`GcsClient`)
 
 > **所属モジュール**: `agent_common.clients.GcsClient`  
-> **中核メソッド**: `get_blob_size()`, `upload_stream()`, `_resolve_gcp_credentials()`  
+> **中核メソッド**: `get_blob_size()`, `upload_stream()`, `GcpCredentialResolver.resolve()`  
 > **依存パッケージ**: `google-cloud-storage>=2.10.0`, `google-auth`
 
 ---
@@ -18,7 +18,7 @@ Google Cloud Storage (GCS) は、ビッグデータレイクおよび BigQuery �
 
 ## 2. 4段階のサービスアカウント認証優先順位アーキテクチャ
 
-`GcsClient` および内部の `_resolve_gcp_credentials()` 関数は、以下の4段階の優先順位に従って GCP 認証オブジェクト（`google.auth.credentials.Credentials`）を安全に解決します:
+`GcsClient` および内部の `GcpCredentialResolver.resolve()` メソッドは、以下の4段階の優先順位に従って GCP 認証オブジェクト（`google.auth.credentials.Credentials`）を安全に解決します:
 
 ```mermaid
 flowchart TD

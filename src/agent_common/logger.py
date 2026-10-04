@@ -559,22 +559,22 @@ class ProjectLogger:
             return ""
 
         target_code_str: str = str(log_id_str).strip()
-        template_val: str | None = self._search_template_in_level("ERROR", target_code_str)
+        template_str: str | None = self._search_template_in_level("ERROR", target_code_str)
 
-        if not template_val:
+        if not template_str:
             all_msgs_dict = self.config_loader.setting("logging_messages")
             if isinstance(all_msgs_dict, dict):
                 for level_str in all_msgs_dict.keys():
                     candidate_str: str | None = self._search_template_in_level(str(level_str).upper(), target_code_str)
                     if candidate_str:
-                        template_val = candidate_str
+                        template_str = candidate_str
                         break
 
-        if not template_val or not isinstance(template_val, str) or template_val == target_code_str:
+        if not template_str or not isinstance(template_str, str) or template_str == target_code_str:
             return ""
 
         import re
-        title_str: str = template_val.split(":")[0].strip()
+        title_str: str = template_str.split(":")[0].strip()
         if "[" in title_str:
             if title_str.startswith("[") and "]" in title_str:
                 closing_bracket_idx_int: int = title_str.find("]")

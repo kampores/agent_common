@@ -268,9 +268,6 @@ logging_messages:
       # 예시: logger.warning("table_truncate_warning", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
       table_truncate_warning: "{service_name_str} 테이블({table_name_str})의 기존 모든 데이터가 삭제(TRUNCATE)됩니다. 주의가 필요합니다."
 
-      # 예시: logger.warning("table_timestamp_mode_legacy_warning", table_name_str="TB_SAMPLE", mode_str="utc", num_rows_int=100)
-      table_timestamp_mode_legacy_warning: "BigQuery 대상 테이블({table_name_str})에 타임존 모드 라벨이 등록되지 않은 기존 데이터가 존재합니다. 현재 설정 '{mode_str}'을(를) 적용하되 데이터 정합성에 주의하십시오. [행수={num_rows_int}]"
-
       # 예시: logger.warning("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
       query_execution_failed: "{service_name_str} 쿼리 실행 실패: [에러={error_str}] 쿼리: {query_str}"
 
@@ -334,14 +331,6 @@ logging_messages:
 
     # --- [데이터베이스 적재 오류] ---
     db:
-      # 예시: logger.exception("table_get_failed", table_name_str="TB_SAMPLE", error_str="Table not found")
-      table_get_failed: "BigQuery 테이블({table_name_str}) 정보 조회 실패: {error_str}"
-
-      # 예시: logger.exception("table_metadata_update_failed", table_name_str="TB_SAMPLE", error_str="Permission denied")
-      table_metadata_update_failed: "BigQuery 테이블({table_name_str}) 메타데이터 갱신 실패: {error_str}"
-
-      # 예시: logger.error("table_timestamp_mode_mismatch", table_name_str="TB_SAMPLE", recorded_mode_str="kst_as_utc", configured_mode_str="standard_utc")
-      table_timestamp_mode_mismatch: "BigQuery 대상 테이블 '{table_name_str}' 타임스탬프 모드 불일치 (기록된 모드: {recorded_mode_str}, 현재 설정: {configured_mode_str})"
 
       # 예시: logger.error("insert_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
       insert_failed: "{service_name_str} 데이터 적재 실패: {target_name_str}, 에러: {error_str}"

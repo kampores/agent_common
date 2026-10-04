@@ -63,7 +63,7 @@ def __init__(
 ) -> None
 ```
 - **初始化与元数据缓存 (Fail-Fast)**:
-  - 自动通过 `_resolve_gcp_credentials()` 解析 4 级认证。
+  - 自动通过 `GcpCredentialResolver.resolve()` 解析 4 级认证。
   - 若配置了 `GOOGLE_CLOUD_PROJECT` 环境变量则自动覆盖 Project ID。
   - 构造时即调用 `client.get_table()` 预热并缓存目标表的字段 Schema（`self.table_obj`），提前拦截表不存在或权限异常。
 

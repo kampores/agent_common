@@ -2,6 +2,32 @@
 
 > [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
 
+### v0.4.95 (2026-10-04)
+
+- **`ProjectLogger.get_log_id_description` のローカル変数名を修正 (ルール 1.6.1, 1.6.2, 4.2 準拠)**:
+  - 型サフィックスがなく省略形を使っていた `template_val` を、`get_log_msg` と同じ `template_str` に変更。
+  - 動作の変更なし。
+- **SDK 遅延読み込み関数をクライアントクラス内部へ移動 (ルール 1.4.1, 4.2 準拠)**:
+  - モジュールレベル関数 `_get_boto3`, `_get_gcs`, `_get_bigquery` を、それぞれ `S3Client`, `GcsClient`, `BigQueryClient` の `@classmethod` に移動。
+  - モジュールレベルのキャッシュ変数 (`_boto3_module`, `_boto_config_cls`, `_storage_module`, `_bigquery_module`, `_service_account_module`) を各クラス変数に移動し、`global` 宣言を削除。
+  - 動作の変更なし。
+- **GCP 認証解決専用クラス `GcpCredentialResolver` の新設と公開 (ルール 1.4.1, 1.4.7, 1.6.2, 4.2 準拠)**:
+  - モジュールレベル関数 `_resolve_gcp_credentials` を削除し、`GcpCredentialResolver.resolve()` へ移行。4 段階の認証優先順位は従来どおり。
+  - `GcsClient`, `BigQueryClient` は継承ではなくコンポジションで `self.credential_resolver` を保持し、どちらか一方のクライアントだけを切り出しても他方に依存しない構成に変更。
+  - `google.oauth2.service_account` の遅延読み込みを `GcpCredentialResolver` に一元化。`GcsClient._get_gcs()`, `BigQueryClient._get_bigquery()` はタプルではなく自身のモジュールのみを返却。
+  - 公開 API (`from agent_common import GcpCredentialResolver`) として登録し、GCS・BigQuery 以外の GCP サービスでも再利用可能。
+  - 省略形の変数名を整理: `val_str`, `cred_path`, `cred_err` → `env_credentials_path_str`, `credentials_file_path`, `credentials_error`。
+  - `google-auth` 未インストール時、`ImportError` はクライアントの `_connect` で `ConnectionError` にラップされて送出。
+  - マニュアル `3.6 GCP サービスアカウント認証リゾルバー` (`06_gcp_credential_resolver_*.md`) を 4 カ国語で新設し、README の主要機能・使用例・マニュアル一覧に反映。
+- **KST-as-UTC タイムスタンプモードの削除 (ルール 4.2 準拠、互換性変更)**:
+  - 現地時刻の数字を `+00:00` として保存していた KST-as-UTC モードを削除。現地時刻をそのまま表示したい場合は、`DATETIME` 列と `convert_to_bigquery_datetime` を使用。
+  - 削除項目: 設定 `bigquery.kst_as_utc_timestamp_bool`、属性 `BigQueryClient.kst_as_utc_timestamp_bool`、メソッド `BigQueryClient.validate_and_sync_table_timestamp_mode()`。
+  - 削除されたログメッセージキー: `table_timestamp_mode_legacy_warning`, `table_timestamp_mode_mismatch`, `table_get_failed`, `table_metadata_update_failed`。
+  - `convert_to_bigquery_timestamp` は、決定されたタイムゾーンオフセット（元データの明記値 → `default_tz_offset_str` → `timezone_offset_str` → システムタイムゾーン）を常に付与して返却。
+- **マニュアル `3.5` の全面改訂と文書番号の整理 (ルール 4.2 準拠)**:
+  - マニュアルのファイル名を `05_bigquery_timestamp_and_tz_sync_*.md` から `05_bigquery_timestamp_and_datetime_conversion_*.md` に変更し、`TIMESTAMP`・`DATETIME` の 2 つの変換メソッドを中心に 4 カ国語で書き直し。これまで欠けていた `convert_to_bigquery_datetime` の仕様と使用例を追加。
+  - README 主要機能の `3.6 BigQuery 標準 DATETIME 変換` 項目を `3.5` に統合し、機能番号とマニュアルファイル (01〜06) が 1:1 で対応するよう整理。
+
 ### v0.4.94 (2026-10-04)
 
 - **PyPI README 言語移動アンカーリンクの修正 (ルール 4.2 準拠)**:

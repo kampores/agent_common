@@ -63,7 +63,7 @@ def __init__(
 ) -> None
 ```
 - **初期化とスキーマの事前検証 (Fail-Fast)**:
-  - `_resolve_gcp_credentials()` による4段階認証解決。
+  - `GcpCredentialResolver.resolve()` による4段階認証解決。
   - 初期化時に `client.get_table()` を呼び出し、対象データセットおよびテーブルの存在有無とスキーマを事前キャッシュ（`self.table_obj`）。
 
 ### 3.2. JSON バッチテーブルロード (`load_table_from_json_data`)

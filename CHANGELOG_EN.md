@@ -2,6 +2,32 @@
 
 > [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
 
+### v0.4.95 (2026-10-04)
+
+- **Renamed Local Variable in `ProjectLogger.get_log_id_description` (Rules 1.6.1, 1.6.2, 4.2)**:
+  - Renamed `template_val`, which lacked a type suffix and used an abbreviation, to `template_str`, matching `get_log_msg`.
+  - No behavior change.
+- **Moved SDK Lazy Loaders into Client Classes (Rules 1.4.1, 4.2)**:
+  - Moved module-level functions `_get_boto3`, `_get_gcs`, `_get_bigquery` into `S3Client`, `GcsClient`, `BigQueryClient` respectively as `@classmethod`s.
+  - Moved module-level cache variables (`_boto3_module`, `_boto_config_cls`, `_storage_module`, `_bigquery_module`, `_service_account_module`) to class variables and removed the `global` declarations.
+  - No behavior change.
+- **Introduced and Exported `GcpCredentialResolver`, a Dedicated GCP Credential Resolution Class (Rules 1.4.1, 1.4.7, 1.6.2, 4.2)**:
+  - Removed the module-level function `_resolve_gcp_credentials` and moved it to `GcpCredentialResolver.resolve()`. The 4-tier credential precedence is unchanged.
+  - `GcsClient` and `BigQueryClient` hold `self.credential_resolver` by composition rather than inheritance, so either client can be extracted without depending on the other.
+  - Consolidated lazy loading of `google.oauth2.service_account` into `GcpCredentialResolver`. `GcsClient._get_gcs()` and `BigQueryClient._get_bigquery()` now return their own single module instead of a tuple.
+  - Registered as public API (`from agent_common import GcpCredentialResolver`) so it can be reused for GCP services beyond GCS and BigQuery.
+  - Replaced abbreviated variable names: `val_str`, `cred_path`, `cred_err` → `env_credentials_path_str`, `credentials_file_path`, `credentials_error`.
+  - When `google-auth` is not installed, the `ImportError` is now wrapped in `ConnectionError` by the client's `_connect`.
+  - Added manual `3.6 GCP Service Account Credential Resolver` (`06_gcp_credential_resolver_*.md`) in 4 languages, and reflected it in the README feature list, usage examples, and manual index.
+- **Removed the KST-as-UTC Timestamp Mode (Rule 4.2, Breaking Change)**:
+  - Deleted the KST-as-UTC mode, which stored local clock digits with a `+00:00` offset. When local time must be shown as is, use a `DATETIME` column with `convert_to_bigquery_datetime`.
+  - Removed: the `bigquery.kst_as_utc_timestamp_bool` setting, the `BigQueryClient.kst_as_utc_timestamp_bool` attribute, and the `BigQueryClient.validate_and_sync_table_timestamp_mode()` method.
+  - Removed log message keys: `table_timestamp_mode_legacy_warning`, `table_timestamp_mode_mismatch`, `table_get_failed`, `table_metadata_update_failed`.
+  - `convert_to_bigquery_timestamp` now always returns the value with the resolved time zone offset (source value → `default_tz_offset_str` → `timezone_offset_str` → system time zone).
+- **Rewrote Manual `3.5` and Aligned Document Numbering (Rule 4.2)**:
+  - Renamed the manual from `05_bigquery_timestamp_and_tz_sync_*.md` to `05_bigquery_timestamp_and_datetime_conversion_*.md` and rewrote it in 4 languages around the two `TIMESTAMP` and `DATETIME` conversion methods, adding the previously missing `convert_to_bigquery_datetime` specification and examples.
+  - Merged the README feature entry `3.6 BigQuery Standard DATETIME Conversion` into `3.5`, so feature numbers map 1:1 to manual files (01-06).
+
 ### v0.4.94 (2026-10-04)
 
 - **Fixed PyPI README Language Navigation Anchors (Rule 4.2)**:

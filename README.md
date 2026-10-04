@@ -41,8 +41,8 @@
 - **3.2. [Google Cloud Storage 스트리밍 클라이언트 및 멀티 계층 인증 (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/02_gcs_cloud_storage_client_kr.md)**: 4단계 GCP 인증 우선순위(`GOOGLE_APPLICATION_CREDENTIALS_JSON` 인메모리 JSON -> `GOOGLE_APPLICATION_CREDENTIALS` 파일 -> `credentials_path_str` -> Google ADC) 지원, 연결 및 버킷 권한 조기 검증, 블롭 메타데이터 및 크기 조회(`get_blob_size`), 메모리 낭비 없는 청크 단위 스트림 직접 업로드(`upload_stream`).
 - **3.3. [BigQuery 배치 및 스트리밍 적재 클라이언트 (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/03_bigquery_batch_and_streaming_load_kr.md)**: 연결 및 테이블 스키마 사전 캐싱(`get_table`), JSON 배치 로드 Job(`load_table_from_json_data`) 및 중첩 에러(`errors`, `location`, `reason`) 상세 분해, 실시간 스트리밍 인서트(`insert_rows_json_data`), 범용 동기 SQL 쿼리(`query`), 중복 전송 방지용 기존 키 집합 추출(`get_existing_keys`), 기존 레코드 메타데이터 일괄 조회(`get_existing_records_metadata`).
 - **3.4. [BigQuery 고성능 인라인 MERGE (Upsert) 쿼리 엔진 (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/04_bigquery_inline_merge_upsert_kr.md)**: 스테이징 임시 테이블 생성 없이 직접 `UNNEST(JSON_QUERY_ARRAY(@json_payload))` 기반 인라인 MERGE INTO 수행, 기본키(PK) 기준 자동 UPDATE/INSERT 분기, 생성일시 등 최초 값 보존(`preserve_columns_list`), 컬럼 데이터 타입 자동 추론 및 명시적 캐스팅(`column_types_dict`), 한글/특수문자/예약어 백틱(`` ` ``) 완벽 보호, HTTP 413 페이로드 초과 방지 기본 100건 청크 자동 분할.
-- **3.5. [BigQuery 타임존 오프셋 변환 및 테이블 타임존 모드 검증·동기화 (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync_kr.md)**: ISO 8601, 공백 구분, 14자리/8자리 숫자 등 다양한 원천 날짜 문자열의 BigQuery 표준 타임스탬프 정규화, 타임존 오프셋 우선순위(`timezone_offset_str`), 한국 시각 숫자 보존 모드(`kst_as_utc_timestamp_bool`), 테이블 메타데이터 자동 동기화 및 기존 데이터 존재 시 불일치 차단(Fail-Fast).
-- **3.6. [BigQuery 표준 DATETIME 변환 (`convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync_kr.md)**: BigQuery `DATETIME` 스키마 규격에 맞추어 타임존 오프셋을 배제한 순수 벽시계 시각(`YYYY-MM-DD HH:MM:SS`)으로 변환.
+- **3.5. [BigQuery TIMESTAMP·DATETIME 일시 문자열 변환 (`convert_to_bigquery_timestamp`, `convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_datetime_conversion_kr.md)**: ISO 8601, 공백 구분, 14자리/8자리 숫자 등 다양한 원천 날짜 문자열을 `TIMESTAMP` 컬럼용(타임존 오프셋 포함, 우선순위 `timezone_offset_str`)과 `DATETIME` 컬럼용(오프셋 없는 벽시계 시각 `YYYY-MM-DD HH:MM:SS`) 표준 문자열로 정규화.
+- **3.6. [GCP 서비스 계정 인증 해석기 (`GcpCredentialResolver`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/06_gcp_credential_resolver_kr.md)**: 4단계 우선순위(환경변수 JSON → 환경변수 파일 경로 → 설정 파일 경로 → ADC)에 따른 GCP 인증 해석을 전담하는 독립 클래스. `GcsClient`·`BigQueryClient`가 합성(Composition)으로 사용하며, 그 외 GCP 서비스에서도 단독으로 재사용 가능.
 
 #### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
 - **4.1. [이원화된 Tool 디렉터리 계층 탐색 및 동적 로딩 (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/01_dual_tool_hierarchy_discovery_kr.md)**:
@@ -162,6 +162,22 @@ bq_client.merge_table_from_json_data(
 )
 ```
 
+#### 6. GcpCredentialResolver로 다른 GCP 서비스 인증하기
+```python
+from google.cloud import pubsub_v1
+
+from agent_common import ConfigLoader, GcpCredentialResolver
+
+# 환경변수 JSON → 환경변수 파일 경로 → 지정 경로 순으로 해석하고, 모두 없으면 None(ADC)을 반환
+credentials = GcpCredentialResolver(
+    credentials_path_str="config/secrets/gcp_sa_key.json",
+    config_loader_obj=ConfigLoader(),
+).resolve()
+
+# GCS·BigQuery 외의 GCP 클라이언트에도 그대로 전달
+publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
+```
+
 ---
 
 ### 📖 상세 기능 매뉴얼 (User Manuals)
@@ -183,7 +199,8 @@ bq_client.merge_table_from_json_data(
 | **3.2** | **GCS 스트리밍 업로드 & 4단계 인증** | [02_gcs_cloud_storage_client_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/02_gcs_cloud_storage_client_kr.md) | 4단계 서비스 계정 인증 우선순위, 연결 검증, 메타데이터 조회, 메모리 파이프라인 업로드 |
 | **3.3** | **BigQuery 배치 적재 & 스트리밍 인서트** | [03_bigquery_batch_and_streaming_load_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/03_bigquery_batch_and_streaming_load_kr.md) | JSON 배치 로드 Job vs 스트리밍 API, 중첩 에러 상세 분해, 중복 방지 키 집합 조회 |
 | **3.4** | **BigQuery 인라인 MERGE (Upsert) 엔진** | [04_bigquery_inline_merge_upsert_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/04_bigquery_inline_merge_upsert_kr.md) | 임시 테이블 없는 인라인 MERGE, UNNEST 파라미터 바인딩, 동적 타입 캐스팅, 100건 청크 분할 |
-| **3.5** | **BigQuery 타임존 변환 & 모드 검증·동기화** | [05_bigquery_timestamp_and_tz_sync_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_tz_sync_kr.md) | ISO/압축 일시 정규화, Standard-UTC vs KST-as-UTC 모드, 테이블 메타데이터 동기화 및 Fail-Fast |
+| **3.5** | **BigQuery TIMESTAMP·DATETIME 변환** | [05_bigquery_timestamp_and_datetime_conversion_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_datetime_conversion_kr.md) | ISO/압축 일시 정규화, 타임존 오프셋 결정 우선순위, 컬럼 타입별 메서드 선택 기준 |
+| **3.6** | **GCP 서비스 계정 인증 해석기** | [06_gcp_credential_resolver_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/06_gcp_credential_resolver_kr.md) | `GcpCredentialResolver`, 4단계 인증 우선순위, 다른 GCP 서비스에서의 단독 재사용, 합성(Composition) 구조 |
 | **4.1** | **이원화된 Tool 디렉터리 계층 탐색 & 동적 로딩** | [01_dual_tool_hierarchy_discovery_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/01_dual_tool_hierarchy_discovery_kr.md) | 내장(1순위) vs 로컬(2순위) 탐색 계층, 3단계 함수 탐색, `_tool_cache`, 사전 검증 |
 | **4.2** | **선언적 템플릿 치환 & 표현식 평가** | [02_declarative_template_eval_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/02_declarative_template_eval_kr.md) | `ToolParser.eval()`, 도구 함수 직통 호출, 점(.) 네임스페이스 바인딩, 파이프(`\|`) 폴백 |
 | **4.3** | **안전한 네임스페이스 탐색 (`_SafeNamespace`)** | [03_safe_namespace_navigation_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/03_safe_namespace_navigation_kr.md) | 점(.)/인덱스 통합 접근, 대소문자 무관 탐색, 누락 필드 `""` 반환, 중첩 래핑 |
@@ -232,7 +249,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.94-py3-none-any.whl
+pip install dist/agent_common-0.4.95-py3-none-any.whl
 ```
 
 #### 🌐 PyPI 공식 배포 (관리자 전용)
@@ -247,7 +264,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.94*
+python -m twine upload dist/agent_common-0.4.95*
 ```
 
 ---
@@ -293,8 +310,8 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **3.2. [Google Cloud Storage Streaming Client & Multi-Tier Auth (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/02_gcs_cloud_storage_client_en.md)**: Four-tier GCP credential resolution hierarchy (`GOOGLE_APPLICATION_CREDENTIALS_JSON` in-memory JSON -> `GOOGLE_APPLICATION_CREDENTIALS` file -> `credentials_path_str` -> Google ADC), instant bucket reachability validation, blob metadata lookup (`get_blob_size`), zero-disk chunked streaming uploads (`upload_stream`).
 - **3.3. [BigQuery Batch Loading & Streaming Ingestion (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/03_bigquery_batch_and_streaming_load_en.md)**: Fail-fast schema caching (`get_table`), JSON batch load jobs (`load_table_from_json_data`) with unpacked nested error diagnostics, real-time streaming ingestion (`insert_rows_json_data`), general SQL query execution (`query`), unique key deduplication set lookup (`get_existing_keys`).
 - **3.4. [BigQuery High-Performance Inline MERGE (Upsert) Engine (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/04_bigquery_inline_merge_upsert_en.md)**: Executes direct inline MERGE INTO via `UNNEST(JSON_QUERY_ARRAY(@json_payload))` without temporary staging tables, automatic primary key routing, original column preservation (`preserve_columns_list`), schema type inference and casting (`column_types_dict`), reserved keyword and Unicode column backtick escaping, HTTP 413 payload limit protection via default 100-row chunking.
-- **3.5. [BigQuery Timestamp Conversion & Timezone Mode Synchronization (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_tz_sync_en.md)**: Normalizes ISO 8601, whitespace, and 14-digit/8-digit timestamps to standard BigQuery formats, timezone offset precedence (`timezone_offset_str`), display convenience mode (`kst_as_utc_timestamp_bool`), automated table metadata synchronization with fail-fast mismatch blocking.
-- **3.6. [BigQuery Standard DATETIME Conversion (`convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_tz_sync_en.md)**: Converts raw datetime inputs to timezone-naive wall-clock timestamps (`YYYY-MM-DD HH:MM:SS`) matching BigQuery `DATETIME` columns.
+- **3.5. [BigQuery TIMESTAMP and DATETIME String Conversion (`convert_to_bigquery_timestamp`, `convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_datetime_conversion_en.md)**: Normalizes ISO 8601, whitespace-separated, and 14-digit/8-digit date strings into standard strings for `TIMESTAMP` columns (with a time zone offset, precedence via `timezone_offset_str`) and for `DATETIME` columns (wall-clock `YYYY-MM-DD HH:MM:SS` without an offset).
+- **3.6. [GCP Service Account Credential Resolver (`GcpCredentialResolver`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/06_gcp_credential_resolver_en.md)**: Standalone class dedicated to resolving GCP credentials by a four-tier precedence (environment JSON → environment file path → configured file path → ADC). Used by `GcsClient` and `BigQueryClient` through composition, and reusable on its own for other GCP services.
 
 #### 4. Dynamic Tool Loader & Template Evaluator (`agent_common.tool_parser`) & Built-in Tools (`agent_common.tool`)
 - **4.1. [Dual Tool Hierarchy Discovery & Dynamic Loading (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/01_dual_tool_hierarchy_discovery_en.md)**:
@@ -412,6 +429,22 @@ bq_client.merge_table_from_json_data(
 )
 ```
 
+#### 6. Authenticating Other GCP Services with GcpCredentialResolver
+```python
+from google.cloud import pubsub_v1
+
+from agent_common import ConfigLoader, GcpCredentialResolver
+
+# Resolves environment JSON -> environment file path -> given path, and returns None (ADC) when none apply
+credentials = GcpCredentialResolver(
+    credentials_path_str="config/secrets/gcp_sa_key.json",
+    config_loader_obj=ConfigLoader(),
+).resolve()
+
+# Pass it straight to GCP clients other than GCS and BigQuery
+publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
+```
+
 ---
 
 ### 📖 Detailed Feature Manuals
@@ -433,7 +466,8 @@ bq_client.merge_table_from_json_data(
 | **3.2** | **GCS Streaming Upload & 4-Tier Auth** | [02_gcs_cloud_storage_client_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/02_gcs_cloud_storage_client_en.md) | 4-tier GCP credential precedence, connection validation, metadata retrieval, in-memory stream upload |
 | **3.3** | **BigQuery Batch Loading & Streaming Ingestion** | [03_bigquery_batch_and_streaming_load_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/03_bigquery_batch_and_streaming_load_en.md) | JSON batch load jobs vs streaming API, nested error diagnostics unpacking, deduplication key lookup |
 | **3.4** | **BigQuery Inline MERGE (Upsert) Engine** | [04_bigquery_inline_merge_upsert_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/04_bigquery_inline_merge_upsert_en.md) | Pure inline MERGE without staging tables, UNNEST parameter binding, dynamic type casting, 100-row chunks |
-| **3.5** | **BigQuery Timestamp Conversion & TZ Sync** | [05_bigquery_timestamp_and_tz_sync_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_tz_sync_en.md) | ISO/compact timestamp normalization, Standard-UTC vs KST-as-UTC modes, table metadata auto-sync & Fail-Fast |
+| **3.5** | **BigQuery TIMESTAMP & DATETIME Conversion** | [05_bigquery_timestamp_and_datetime_conversion_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/05_bigquery_timestamp_and_datetime_conversion_en.md) | ISO/compact datetime normalization, time zone offset precedence, choosing a method by column type |
+| **3.6** | **GCP Service Account Credential Resolver** | [06_gcp_credential_resolver_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/06_gcp_credential_resolver_en.md) | `GcpCredentialResolver`, 4-tier credential precedence, standalone reuse for other GCP services, composition design |
 | **4.1** | **Dual Tool Hierarchy Discovery & Dynamic Loading** | [01_dual_tool_hierarchy_discovery_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/01_dual_tool_hierarchy_discovery_en.md) | Built-in (Priority 1) vs Local (Priority 2) discovery, 3-step function introspection, `_tool_cache`, `scan_rules_for_tool_functions` pre-flight validation |
 | **4.2** | **Declarative Template Evaluation & Expression Resolution** | [02_declarative_template_eval_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/02_declarative_template_eval_en.md) | `ToolParser.eval()`, direct tool calls, dot-notation namespaces, pipe (`\|`) fallbacks, signature-aware parameter binding, and automatic context injection |
 | **4.3** | **Safe Namespace Lookup & Case-Insensitive Access** | [03_safe_namespace_navigation_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/03_safe_namespace_navigation_en.md) | `_SafeNamespace`, case-insensitive lookups, silent empty-string (`""`) fallback on missing keys, recursive nested collection wrapping |
@@ -470,7 +504,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.94-py3-none-any.whl
+pip install dist/agent_common-0.4.95-py3-none-any.whl
 ```
 
 #### 🌐 Official PyPI Distribution (Maintainers Only)
@@ -485,7 +519,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.94*
+python -m twine upload dist/agent_common-0.4.95*
 ```
 
 ---
@@ -531,8 +565,8 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
 - **3.2. [Google Cloud Storage 流式客户端与多层级认证 (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/02_gcs_cloud_storage_client_zh.md)**: 4 级 GCP 认证回退体系 (`GOOGLE_APPLICATION_CREDENTIALS_JSON` 内存 JSON -> `GOOGLE_APPLICATION_CREDENTIALS` 文件 -> `credentials_path_str` -> Google ADC)，存储桶连通性早验，分块流式上传零临时文件占用 (`upload_stream`)。
 - **3.3. [BigQuery 批量加载与流式插入客户端 (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/03_bigquery_batch_and_streaming_load_zh.md)**: 快速失败架构与表元数据缓存 (`get_table`)，JSON 批量加载作业 (`load_table_from_json_data`) 深度展开嵌套错误，实时流式写入 (`insert_rows_json_data`)，同步 SQL 查询 (`query`)，防重唯一键集合提取 (`get_existing_keys`)。
 - **3.4. [BigQuery 高性能内联 MERGE (Upsert) 引擎 (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/04_bigquery_inline_merge_upsert_zh.md)**: 无需临时暂存表，基于 `UNNEST(JSON_QUERY_ARRAY(@json_payload))` 执行内联 MERGE INTO，主键自动更新/插入，保留初始列值 (`preserve_columns_list`)，列类型推断与显式转换，防 HTTP 413 载荷超限默认 100 行自动切片。
-- **3.5. [BigQuery 时区偏移转换与表时区模式校验·同步 (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/05_bigquery_timestamp_and_tz_sync_zh.md)**: 将各类源日期字符串规范化为标准 BigQuery 时间戳，时区偏移优先级 (`timezone_offset_str`)，韩国时间保持模式 (`kst_as_utc_timestamp_bool`)，表元数据自动同步与不匹配快速失败拦截。
-- **3.6. [BigQuery 标准 DATETIME 转换 (`convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/05_bigquery_timestamp_and_tz_sync_zh.md)**: 转换为无时区物理钟表时刻 (`YYYY-MM-DD HH:MM:SS`)。
+- **3.5. [BigQuery TIMESTAMP 与 DATETIME 日期时间字符串转换 (`convert_to_bigquery_timestamp`, `convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/05_bigquery_timestamp_and_datetime_conversion_zh.md)**: 将 ISO 8601、空格分隔、14 位/8 位数字等各类源日期字符串规范化为 `TIMESTAMP` 列用（带时区偏移量，优先级 `timezone_offset_str`）与 `DATETIME` 列用（不带偏移量的钟表时刻 `YYYY-MM-DD HH:MM:SS`）的标准字符串。
+- **3.6. [GCP 服务账号认证解析器 (`GcpCredentialResolver`)](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/06_gcp_credential_resolver_zh.md)**: 按 4 级优先级（环境变量 JSON → 环境变量文件路径 → 配置文件路径 → ADC）专门负责 GCP 认证解析的独立类。`GcsClient`、`BigQueryClient` 通过组合 (Composition) 使用，也可在其他 GCP 服务中单独复用。
 
 #### 4. 动态工具加载器与模板评估器 (`agent_common.tool_parser`) & 内置工具 (`agent_common.tool`)
 - **4.1. [双层 Tool 目录层级发现与动态加载 (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/zh/tool_parser/01_dual_tool_hierarchy_discovery_zh.md)**:
@@ -650,6 +684,22 @@ bq_client.merge_table_from_json_data(
 )
 ```
 
+#### 6. 使用 GcpCredentialResolver 为其他 GCP 服务认证
+```python
+from google.cloud import pubsub_v1
+
+from agent_common import ConfigLoader, GcpCredentialResolver
+
+# 按 环境变量 JSON → 环境变量文件路径 → 指定路径 的顺序解析，均不存在时返回 None (ADC)
+credentials = GcpCredentialResolver(
+    credentials_path_str="config/secrets/gcp_sa_key.json",
+    config_loader_obj=ConfigLoader(),
+).resolve()
+
+# 可直接传给 GCS、BigQuery 以外的 GCP 客户端
+publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
+```
+
 ---
 
 ### 📖 详细功能用户手册 (User Manuals)
@@ -671,7 +721,8 @@ bq_client.merge_table_from_json_data(
 | **3.2** | **GCS 流式上传 & 4 级认证体系** | [02_gcs_cloud_storage_client_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/02_gcs_cloud_storage_client_zh.md) | 4 级服务账号凭证优先级，连接验证，元数据获取，零磁盘暂存分块流式上传 |
 | **3.3** | **BigQuery 批量加载 & 流式插入** | [03_bigquery_batch_and_streaming_load_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/03_bigquery_batch_and_streaming_load_zh.md) | JSON 批量加载 vs 流式 API，嵌套错误解包，防重已有唯一键集合提取 |
 | **3.4** | **BigQuery 内联 MERGE (Upsert) 引擎** | [04_bigquery_inline_merge_upsert_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/04_bigquery_inline_merge_upsert_zh.md) | 无需中间临时表的内联 MERGE，UNNEST 参数化绑定，动态类型转换，100 条分片 |
-| **3.5** | **BigQuery 时区转换 & 模式校验·同步** | [05_bigquery_timestamp_and_tz_sync_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/05_bigquery_timestamp_and_tz_sync_zh.md) | ISO 与压缩日期字符串规范化，UTC/KST 模式，表元数据自动同步与快速失败拦截 |
+| **3.5** | **BigQuery TIMESTAMP 与 DATETIME 转换** | [05_bigquery_timestamp_and_datetime_conversion_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/05_bigquery_timestamp_and_datetime_conversion_zh.md) | ISO 与压缩日期时间规范化，时区偏移量决定优先级，按列类型选择方法 |
+| **3.6** | **GCP 服务账号认证解析器** | [06_gcp_credential_resolver_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/06_gcp_credential_resolver_zh.md) | `GcpCredentialResolver`、4 级认证优先级、在其他 GCP 服务中单独复用、组合 (Composition) 结构 |
 | **4.1** | **双层 Tool 目录结构发现 & 动态加载** | [01_dual_tool_hierarchy_discovery_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/tool_parser/01_dual_tool_hierarchy_discovery_zh.md) | 内置 (优先 1) 与项目本地 (优先 2) 发现机制，3 阶段函数内省，`_tool_cache` 预校验 |
 | **4.2** | **声明式模板替换 & 表达式评估** | [02_declarative_template_eval_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/tool_parser/02_declarative_template_eval_zh.md) | `ToolParser.eval()`，工具函数直调，点号命名空间绑定，管道符 (`\|`) 兜底降级 |
 | **4.3** | **安全命名空间导航 (`_SafeNamespace`)** | [03_safe_namespace_navigation_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/tool_parser/03_safe_namespace_navigation_zh.md) | 点/中括号通用解析，不区分大小写，缺字段静默返回 `""`，递归封装嵌套容器 |
@@ -708,7 +759,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 生产环境 (安装 Wheel 包)
-pip install dist/agent_common-0.4.94-py3-none-any.whl
+pip install dist/agent_common-0.4.95-py3-none-any.whl
 ```
 
 #### 🌐 官方 PyPI 镜像分发（仅限维护者）
@@ -723,7 +774,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. 上传至 PyPI
-python -m twine upload dist/agent_common-0.4.94*
+python -m twine upload dist/agent_common-0.4.95*
 ```
 
 ---
@@ -769,8 +820,8 @@ python -m twine upload dist/agent_common-0.4.94*
 - **3.2. [Google Cloud Storage ストリーミングクライアントおよび多層認証 (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/02_gcs_cloud_storage_client_jp.md)**: 4段階 GCP 認証階層 (`GOOGLE_APPLICATION_CREDENTIALS_JSON` メモリ JSON -> `GOOGLE_APPLICATION_CREDENTIALS` ファイル -> `credentials_path_str` -> Google ADC)、バケット疎通検証、チャンク単位ストリーム直接アップロード (`upload_stream`)。
 - **3.3. [BigQuery バッチロードおよびストリーミング挿入クライアント (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/03_bigquery_batch_and_streaming_load_jp.md)**: テーブルメタデータキャッシュ (`get_table`)、JSON バッチロード Job (`load_table_from_json_data`)、リアルタイムストリーミング挿入 (`insert_rows_json_data`)、同期 SQL クエリ (`query`)、重複防止キー抽出 (`get_existing_keys`)。
 - **3.4. [BigQuery 高性能インライン MERGE (Upsert) エンジン (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/04_bigquery_inline_merge_upsert_jp.md)**: 一時テーブル不要で `UNNEST(JSON_QUERY_ARRAY(@json_payload))` によるインライン MERGE INTO 実行、主キー基準の自動 UPDATE/INSERT、作成日時等の初期値保護 (`preserve_columns_list`)、100件チャンク自動分割。
-- **3.5. [BigQuery タイムゾーンオフセット変換およびテーブルタイムゾーンモード検証・同期 (`convert_to_bigquery_timestamp`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/05_bigquery_timestamp_and_tz_sync_jp.md)**: 多様な日時文字列の BigQuery 標準タイムスタンプ正規化、タイムゾーンオフセット優先順位 (`timezone_offset_str`)、テーブルメタデータ自動同期および不一致遮断 (Fail-Fast)。
-- **3.6. [BigQuery 標準 DATETIME 変換 (`convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/05_bigquery_timestamp_and_tz_sync_jp.md)**: BigQuery `DATETIME` 列仕様に合わせたタイムゾーンなしの自然時刻 (`YYYY-MM-DD HH:MM:SS`) への変換。
+- **3.5. [BigQuery TIMESTAMP・DATETIME 日時文字列変換 (`convert_to_bigquery_timestamp`, `convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/05_bigquery_timestamp_and_datetime_conversion_jp.md)**: ISO 8601、空白区切り、14桁/8桁の数字など多様な日時文字列を、`TIMESTAMP` 列向け（タイムゾーンオフセット付き、優先順位 `timezone_offset_str`）および `DATETIME` 列向け（オフセットなしの壁時計時刻 `YYYY-MM-DD HH:MM:SS`）の標準文字列へ正規化。
+- **3.6. [GCP サービスアカウント認証リゾルバー (`GcpCredentialResolver`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/06_gcp_credential_resolver_jp.md)**: 4段階の優先順位（環境変数 JSON → 環境変数のファイルパス → 設定ファイルのパス → ADC）による GCP 認証解決を専任する独立クラス。`GcsClient`・`BigQueryClient` がコンポジションで利用し、その他の GCP サービスでも単独で再利用可能。
 
 #### 4. 動的ツールローダーおよびテンプレート評価器 (`agent_common.tool_parser`) & 組み込みツール (`agent_common.tool`)
 - **4.1. [二元化 Tool ディレクトリ階層探索および動的ロード (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/01_dual_tool_hierarchy_discovery_jp.md)**:
@@ -888,6 +939,22 @@ bq_client.merge_table_from_json_data(
 )
 ```
 
+#### 6. GcpCredentialResolver で他の GCP サービスを認証する
+```python
+from google.cloud import pubsub_v1
+
+from agent_common import ConfigLoader, GcpCredentialResolver
+
+# 環境変数 JSON → 環境変数のファイルパス → 指定パス の順に解決し、いずれもなければ None (ADC) を返却
+credentials = GcpCredentialResolver(
+    credentials_path_str="config/secrets/gcp_sa_key.json",
+    config_loader_obj=ConfigLoader(),
+).resolve()
+
+# GCS・BigQuery 以外の GCP クライアントにもそのまま渡せます
+publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
+```
+
 ---
 
 ### 📖 詳細機能マニュアル (User Manuals)
@@ -909,7 +976,8 @@ bq_client.merge_table_from_json_data(
 | **3.2** | **GCS ストリーミングアップロード & 4段階認証** | [02_gcs_cloud_storage_client_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/02_gcs_cloud_storage_client_jp.md) | 4段階認証優先順位、バケット検証、メモリパイプラインによるゼロディスク転送 |
 | **3.3** | **BigQuery バッチロード & ストリーミング挿入** | [03_bigquery_batch_and_streaming_load_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/03_bigquery_batch_and_streaming_load_jp.md) | JSON バッチロード vs ストリーミング API、ネストエラー展開、既存キー重複防止 |
 | **3.4** | **BigQuery インライン MERGE (Upsert) エンジン** | [04_bigquery_inline_merge_upsert_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/04_bigquery_inline_merge_upsert_jp.md) | 一時テーブル不要のインライン MERGE、UNNEST パラメータバインディング、100件分割 |
-| **3.5** | **BigQuery タイムゾーン変換 & モード同期** | [05_bigquery_timestamp_and_tz_sync_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/05_bigquery_timestamp_and_tz_sync_jp.md) | ISO/圧縮日時正規化、UTC/KST モード、テーブルメタデータ同期および Fail-Fast |
+| **3.5** | **BigQuery TIMESTAMP・DATETIME 変換** | [05_bigquery_timestamp_and_datetime_conversion_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/05_bigquery_timestamp_and_datetime_conversion_jp.md) | ISO/圧縮日時の正規化、タイムゾーンオフセットの決定優先順位、列の型ごとのメソッド選択基準 |
+| **3.6** | **GCP サービスアカウント認証リゾルバー** | [06_gcp_credential_resolver_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/06_gcp_credential_resolver_jp.md) | `GcpCredentialResolver`、4段階の認証優先順位、他の GCP サービスでの単独再利用、コンポジション構造 |
 | **4.1** | **二元化 Tool ディレクトリ探索 & 動的ロード** | [01_dual_tool_hierarchy_discovery_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/01_dual_tool_hierarchy_discovery_jp.md) | 組み込み(優先1) vs ローカル(優先2) 探索、3段階関数内省、キャッシュ機構 |
 | **4.2** | **宣言的テンプレート置換 & 式評価** | [02_declarative_template_eval_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/02_declarative_template_eval_jp.md) | `ToolParser.eval()`、関数直接呼び出し、名前空間バインド、パイプ (`\|`) フォールバック |
 | **4.3** | **安全な名前空間探索 (`_SafeNamespace`)** | [03_safe_namespace_navigation_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/03_safe_namespace_navigation_jp.md) | ドット/インデックス統一、大文字小文字不問、欠落時 `""` 返却、再帰ラッピング |
@@ -946,7 +1014,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 本番環境（Wheel パッケージのインストール）
-pip install dist/agent_common-0.4.94-py3-none-any.whl
+pip install dist/agent_common-0.4.95-py3-none-any.whl
 ```
 
 #### 🌐 公式 PyPI 配布（管理者専用）
@@ -961,7 +1029,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI アップロード
-python -m twine upload dist/agent_common-0.4.94*
+python -m twine upload dist/agent_common-0.4.95*
 ```
 
 ---

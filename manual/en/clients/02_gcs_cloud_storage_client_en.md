@@ -1,7 +1,7 @@
 # 3.2. Google Cloud Storage Streaming Client & Multi-Tier Authentication (`GcsClient`)
 
 > **Module**: `agent_common.clients.GcsClient`  
-> **Key Methods**: `get_blob_size()`, `upload_stream()`, `_resolve_gcp_credentials()`  
+> **Key Methods**: `get_blob_size()`, `upload_stream()`, `GcpCredentialResolver.resolve()`  
 > **Dependencies**: `google-cloud-storage>=2.10.0`, `google-auth`
 
 ---

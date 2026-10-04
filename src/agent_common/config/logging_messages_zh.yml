@@ -269,9 +269,6 @@ logging_messages:
       # 示例: logger.warning("table_truncate_warning", service_name_str="BigQuery", table_name_str="TB_SAMPLE")
       table_truncate_warning: "{service_name_str} 表({table_name_str})的既有全部数据将被彻底清除 (TRUNCATE)。请务必保持谨慎。"
 
-      # 示例: logger.warning("table_timestamp_mode_legacy_warning", table_name_str="TB_SAMPLE", mode_str="utc", num_rows_int=100)
-      table_timestamp_mode_legacy_warning: "BigQuery 目标表({table_name_str})存在未标注时区模式标签的历史数据。当前已应用配置 '{mode_str}'，但请特别关注数据一致性。[行数={num_rows_int}]"
-
       # 示例: logger.warning("query_execution_failed", service_name_str="BigQuery", query_str="SELECT ...", error_str="Connection reset")
       query_execution_failed: "{service_name_str} 查询执行失败: [错误={error_str}] 查询语句: {query_str}"
 
@@ -335,14 +332,6 @@ logging_messages:
 
     # --- [数据库装载错误] ---
     db:
-      # 示例: logger.exception("table_get_failed", table_name_str="TB_SAMPLE", error_str="Table not found")
-      table_get_failed: "查询 BigQuery 表({table_name_str})信息失败: {error_str}"
-
-      # 示例: logger.exception("table_metadata_update_failed", table_name_str="TB_SAMPLE", error_str="Permission denied")
-      table_metadata_update_failed: "更新 BigQuery 表({table_name_str})元数据失败: {error_str}"
-
-      # 示例: logger.error("table_timestamp_mode_mismatch", table_name_str="TB_SAMPLE", recorded_mode_str="kst_as_utc", configured_mode_str="standard_utc")
-      table_timestamp_mode_mismatch: "BigQuery 目标表 '{table_name_str}' 时间戳模式不匹配 (已记录模式: {recorded_mode_str}, 当前配置: {configured_mode_str})"
 
       # 示例: logger.error("insert_failed", service_name_str="Database", target_name_str="TB_SAMPLE", error_str="Invalid schema")
       insert_failed: "{service_name_str} 数据写入失败: {target_name_str}, 错误: {error_str}"

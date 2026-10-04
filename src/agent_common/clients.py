@@ -38,92 +38,39 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
     "bigquery": {
         "ignore_unknown_values_bool": True,
         "timezone_offset_str": "+09:00",
-        "kst_as_utc_timestamp_bool": False,
         "max_retries_int": 3,
     },
 }
-
-
-# 서드파티 SDK 지연 로딩(Lazy Loading) 캐시 변수
-_boto3_module: Any = None
-_boto_config_cls: Any = None
-_storage_module: Any = None
-_bigquery_module: Any = None
-_service_account_module: Any = None
-
-
-
-def _get_boto3() -> Tuple[Any, Any]:
-    """
-    boto3 및 BotoConfig 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
-
-    :return: (boto3 모듈, BotoConfig 클래스) 튜플
-    :raises ImportError: boto3 패키지가 설치되어 있지 않은 경우 발생
-    """
-    global _boto3_module, _boto_config_cls
-    if _boto3_module is None or _boto_config_cls is None:
-        try:
-            import boto3
-            from botocore.client import Config as BotoConfig
-            _boto3_module = boto3
-            _boto_config_cls = BotoConfig
-        except ImportError as exc:
-            raise ImportError(
-                "AWS S3 및 Dell ECS 기능을 사용하려면 'boto3' 패키지가 필요합니다. "
-                "'pip install boto3' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
-            ) from exc
-    return _boto3_module, _boto_config_cls
-
-
-def _get_gcs() -> Tuple[Any, Any]:
-    """
-    google.cloud.storage 및 google.oauth2.service_account 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
-
-    :return: (storage 모듈, service_account 모듈) 튜플
-    :raises ImportError: google-cloud-storage 또는 google-auth 패키지가 설치되어 있지 않은 경우 발생
-    """
-    global _storage_module, _service_account_module
-    if _storage_module is None or _service_account_module is None:
-        try:
-            from google.cloud import storage
-            from google.oauth2 import service_account
-            _storage_module = storage
-            _service_account_module = service_account
-        except ImportError as exc:
-            raise ImportError(
-                "Google Cloud Storage(GCS) 기능을 사용하려면 'google-cloud-storage' 패키지가 필요합니다. "
-                "'pip install google-cloud-storage' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
-            ) from exc
-    return _storage_module, _service_account_module
-
-
-def _get_bigquery() -> Tuple[Any, Any]:
-    """
-    google.cloud.bigquery 및 google.oauth2.service_account 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
-
-    :return: (bigquery 모듈, service_account 모듈) 튜플
-    :raises ImportError: google-cloud-bigquery 또는 google-auth 패키지가 설치되어 있지 않은 경우 발생
-    """
-    global _bigquery_module, _service_account_module
-    if _bigquery_module is None or _service_account_module is None:
-        try:
-            from google.cloud import bigquery
-            from google.oauth2 import service_account
-            _bigquery_module = bigquery
-            _service_account_module = service_account
-        except ImportError as exc:
-            raise ImportError(
-                "Google Cloud BigQuery 기능을 사용하려면 'google-cloud-bigquery' 패키지가 필요합니다. "
-                "'pip install google-cloud-bigquery' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
-            ) from exc
-    return _bigquery_module, _service_account_module
-
 
 
 class S3Client:
     """
     AWS S3 및 Dell ECS(S3 호환) 저장소와의 연결, 데이터 조회 및 전송을 담당하는 공용 클라이언트 클래스.
     """
+
+    _boto3_module: Any = None
+    _boto_config_cls: Any = None
+
+    @classmethod
+    def _get_boto3(cls) -> Tuple[Any, Any]:
+        """
+        boto3 및 BotoConfig 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
+
+        :return: (boto3 모듈, BotoConfig 클래스) 튜플
+        :raises ImportError: boto3 패키지가 설치되어 있지 않은 경우 발생
+        """
+        if cls._boto3_module is None or cls._boto_config_cls is None:
+            try:
+                import boto3
+                from botocore.client import Config as BotoConfig
+                cls._boto3_module = boto3
+                cls._boto_config_cls = BotoConfig
+            except ImportError as exc:
+                raise ImportError(
+                    "AWS S3 및 Dell ECS 기능을 사용하려면 'boto3' 패키지가 필요합니다. "
+                    "'pip install boto3' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
+                ) from exc
+        return cls._boto3_module, cls._boto_config_cls
 
     def __init__(
         self,
@@ -176,7 +123,7 @@ class S3Client:
 
         :raises ConnectionError: 엔드포인트 연결 실패 또는 버킷 접근 권한 검증 실패 시 발생
         """
-        boto3_module, boto_config_cls = _get_boto3()
+        boto3_module, boto_config_cls = self._get_boto3()
         try:
             client_kwargs_dict: Dict[str, Any] = {
                 "service_name": "s3",
@@ -323,69 +270,124 @@ class S3Client:
             return "FAILED"
 
 
-def _resolve_gcp_credentials(
-    credentials_path_str: str,
-    config_loader_obj: ConfigLoader,
-    service_account_module: Any,
-) -> Any:
+class GcpCredentialResolver:
     """
-    GCP 서비스 계정 인증 자격 증명을 환경변수 및 로컬 파일 경로 설정에 따라 해결하여 반환합니다.
-    1순위: GOOGLE_APPLICATION_CREDENTIALS_JSON 환경변수 (인메모리 JSON 문자열)
-    2순위: GOOGLE_APPLICATION_CREDENTIALS 환경변수 (Google 공식 표준 파일 경로)
-    3순위: credentials_path_str 파일 경로 (.json 키 파일, config.yml 설정값)
-    4순위: None (Google ADC 기본 인증 활용)
+    GCP 서비스 계정 인증 자격 증명 해석을 전담하는 클래스.
 
-    :param credentials_path_str: 로컬 키 파일 경로 문자열 (미지정 시 "")
-    :param config_loader_obj: 프로젝트 루트 경로 계산용 ConfigLoader 인스턴스
-    :param service_account_module: google.oauth2.service_account 모듈
-    :return: google.auth.credentials.Credentials 인스턴스 또는 None
-    :raises FileNotFoundError: 파일 경로가 지정되었으나 존재하지 않는 경우 발생
-    :raises ValueError: 인메모리 JSON 환경변수 파싱 실패 시 발생
+    GcsClient, BigQueryClient 등 GCP 클라이언트가 합성(Composition)으로 보유하여 사용하며,
+    그 외 GCP 서비스를 다루는 코드에서도 단독으로 재사용할 수 있습니다.
     """
-    # 1순위: 인메모리 JSON 환경변수(GOOGLE_APPLICATION_CREDENTIALS_JSON) 검사
-    env_credentials_json_str: Optional[str] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-    if env_credentials_json_str and env_credentials_json_str.strip():
-        val_str: str = env_credentials_json_str.strip()
-        try:
-            key_info_dict: dict[str, Any] = json.loads(val_str)
-            return service_account_module.Credentials.from_service_account_info(key_info_dict)
-        except Exception as cred_err:
-            raise ValueError(
-                f"GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다: {cred_err}"
-            ) from cred_err
 
-    # 2순위: Google 공식 표준 환경변수(GOOGLE_APPLICATION_CREDENTIALS) 파일 경로 검사
-    env_credentials_str: Optional[str] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    if env_credentials_str and env_credentials_str.strip():
-        val_str: str = env_credentials_str.strip()
-        cred_path: Path = Path(val_str)
-        if not cred_path.is_absolute():
-            cred_path = config_loader_obj.project_path(cred_path)
-        if not cred_path.exists():
-            raise FileNotFoundError(
-                f"인증키 파일을 찾을 수 없습니다: {cred_path} (GOOGLE_APPLICATION_CREDENTIALS: '{val_str}')"
-            )
-        return service_account_module.Credentials.from_service_account_file(str(cred_path))
+    _service_account_module: Any = None
 
-    # 3순위: credentials_path_str 지정 파일 경로 검사
-    if credentials_path_str and credentials_path_str.strip():
-        cred_path: Path = Path(credentials_path_str)
-        if not cred_path.is_absolute():
-            cred_path = config_loader_obj.project_path(cred_path)
-        if not cred_path.exists():
-            raise FileNotFoundError(
-                f"인증키 파일을 찾을 수 없습니다: {cred_path} (config.yml 설정값: '{credentials_path_str}')"
-            )
-        return service_account_module.Credentials.from_service_account_file(str(cred_path))
+    @classmethod
+    def _get_service_account(cls) -> Any:
+        """
+        google.oauth2.service_account 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
 
-    # 4순위: None 반환 -> storage.Client() / bigquery.Client()가 ADC(기본 인증) 사용
-    return None
+        :return: service_account 모듈
+        :raises ImportError: google-auth 패키지가 설치되어 있지 않은 경우 발생
+        """
+        if cls._service_account_module is None:
+            try:
+                from google.oauth2 import service_account
+                cls._service_account_module = service_account
+            except ImportError as exc:
+                raise ImportError(
+                    "GCP 서비스 계정 인증 기능을 사용하려면 'google-auth' 패키지가 필요합니다. "
+                    "'pip install google-auth' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
+                ) from exc
+        return cls._service_account_module
+
+    def __init__(self, credentials_path_str: str, config_loader_obj: ConfigLoader):
+        """
+        인증 자격 증명 해석에 필요한 키 파일 경로와 설정 로더를 보관합니다.
+
+        :param credentials_path_str: 로컬 키 파일 경로 문자열 (미지정 시 "")
+        :param config_loader_obj: 프로젝트 루트 경로 계산용 ConfigLoader 인스턴스
+        """
+        self.credentials_path_str: str = credentials_path_str
+        self.config_loader: ConfigLoader = config_loader_obj
+
+    def resolve(self) -> Any:
+        """
+        GCP 서비스 계정 인증 자격 증명을 환경변수 및 로컬 파일 경로 설정에 따라 해결하여 반환합니다.
+        1순위: GOOGLE_APPLICATION_CREDENTIALS_JSON 환경변수 (인메모리 JSON 문자열)
+        2순위: GOOGLE_APPLICATION_CREDENTIALS 환경변수 (Google 공식 표준 파일 경로)
+        3순위: credentials_path_str 파일 경로 (.json 키 파일, config.yml 설정값)
+        4순위: None (Google ADC 기본 인증 활용)
+
+        :return: google.auth.credentials.Credentials 인스턴스 또는 None
+        :raises FileNotFoundError: 파일 경로가 지정되었으나 존재하지 않는 경우 발생
+        :raises ValueError: 인메모리 JSON 환경변수 파싱 실패 시 발생
+        :raises ImportError: google-auth 패키지가 설치되어 있지 않은 경우 발생
+        """
+        service_account_module: Any = self._get_service_account()
+
+        # 1순위: 인메모리 JSON 환경변수(GOOGLE_APPLICATION_CREDENTIALS_JSON) 검사
+        env_credentials_json_str: Optional[str] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        if env_credentials_json_str and env_credentials_json_str.strip():
+            try:
+                key_info_dict: dict[str, Any] = json.loads(env_credentials_json_str.strip())
+                return service_account_module.Credentials.from_service_account_info(key_info_dict)
+            except Exception as credentials_error:
+                raise ValueError(
+                    f"GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다: {credentials_error}"
+                ) from credentials_error
+
+        # 2순위: Google 공식 표준 환경변수(GOOGLE_APPLICATION_CREDENTIALS) 파일 경로 검사
+        env_credentials_str: Optional[str] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        if env_credentials_str and env_credentials_str.strip():
+            env_credentials_path_str: str = env_credentials_str.strip()
+            credentials_file_path: Path = Path(env_credentials_path_str)
+            if not credentials_file_path.is_absolute():
+                credentials_file_path = self.config_loader.project_path(credentials_file_path)
+            if not credentials_file_path.exists():
+                raise FileNotFoundError(
+                    f"인증키 파일을 찾을 수 없습니다: {credentials_file_path} (GOOGLE_APPLICATION_CREDENTIALS: '{env_credentials_path_str}')"
+                )
+            return service_account_module.Credentials.from_service_account_file(str(credentials_file_path))
+
+        # 3순위: credentials_path_str 지정 파일 경로 검사
+        if self.credentials_path_str and self.credentials_path_str.strip():
+            credentials_file_path = Path(self.credentials_path_str)
+            if not credentials_file_path.is_absolute():
+                credentials_file_path = self.config_loader.project_path(credentials_file_path)
+            if not credentials_file_path.exists():
+                raise FileNotFoundError(
+                    f"인증키 파일을 찾을 수 없습니다: {credentials_file_path} (config.yml 설정값: '{self.credentials_path_str}')"
+                )
+            return service_account_module.Credentials.from_service_account_file(str(credentials_file_path))
+
+        # 4순위: None 반환 -> storage.Client() / bigquery.Client()가 ADC(기본 인증) 사용
+        return None
 
 
 class GcsClient:
     """
     Google Cloud Storage(GCS) 버킷 연결 및 파일 스트림 업로드를 담당하는 공용 클라이언트 클래스.
     """
+
+    _storage_module: Any = None
+
+    @classmethod
+    def _get_gcs(cls) -> Any:
+        """
+        google.cloud.storage 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
+
+        :return: storage 모듈
+        :raises ImportError: google-cloud-storage 패키지가 설치되어 있지 않은 경우 발생
+        """
+        if cls._storage_module is None:
+            try:
+                from google.cloud import storage
+                cls._storage_module = storage
+            except ImportError as exc:
+                raise ImportError(
+                    "Google Cloud Storage(GCS) 기능을 사용하려면 'google-cloud-storage' 패키지가 필요합니다. "
+                    "'pip install google-cloud-storage' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
+                ) from exc
+        return cls._storage_module
 
     def __init__(
         self,
@@ -409,6 +411,10 @@ class GcsClient:
         self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
         self.config_loader: ConfigLoader = ConfigLoader()
+        self.credential_resolver: GcpCredentialResolver = GcpCredentialResolver(
+            credentials_path_str=self.credentials_path_str,
+            config_loader_obj=self.config_loader,
+        )
 
         resolved_timeout_int = (
             timeout_seconds_int
@@ -427,13 +433,9 @@ class GcsClient:
         """
         Google Cloud Storage 클라이언트를 초기화하고 해당 버킷의 연결/접근 권한 상태를 검증합니다 (Fail-Fast).
         """
-        storage_module, service_account_module = _get_gcs()
+        storage_module = self._get_gcs()
         try:
-            credentials = _resolve_gcp_credentials(
-                credentials_path_str=self.credentials_path_str,
-                config_loader_obj=self.config_loader,
-                service_account_module=service_account_module,
-            )
+            credentials = self.credential_resolver.resolve()
             if credentials is not None:
                 self.client = storage_module.Client(credentials=credentials)
             else:
@@ -571,6 +573,27 @@ class BigQueryClient:
     Google Cloud BigQuery(BQ) 테이블 연결 및 JSON 데이터 스트리밍 적재를 담당하는 공용 클라이언트 클래스.
     """
 
+    _bigquery_module: Any = None
+
+    @classmethod
+    def _get_bigquery(cls) -> Any:
+        """
+        google.cloud.bigquery 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
+
+        :return: bigquery 모듈
+        :raises ImportError: google-cloud-bigquery 패키지가 설치되어 있지 않은 경우 발생
+        """
+        if cls._bigquery_module is None:
+            try:
+                from google.cloud import bigquery
+                cls._bigquery_module = bigquery
+            except ImportError as exc:
+                raise ImportError(
+                    "Google Cloud BigQuery 기능을 사용하려면 'google-cloud-bigquery' 패키지가 필요합니다. "
+                    "'pip install google-cloud-bigquery' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
+                ) from exc
+        return cls._bigquery_module
+
     def __init__(
         self,
         project_id_str: str = "",
@@ -599,6 +622,10 @@ class BigQueryClient:
         self._logger: ProjectLogger | None = ProjectLogger(f"agent_common.{self.__class__.__name__}")
         # config_loader: self 인스턴스 소유 ConfigLoader 객체 생성
         self.config_loader: ConfigLoader = ConfigLoader()
+        self.credential_resolver: GcpCredentialResolver = GcpCredentialResolver(
+            credentials_path_str=self.credentials_path_str,
+            config_loader_obj=self.config_loader,
+        )
 
         resolved_timeout_int = (
             timeout_seconds_int
@@ -624,11 +651,6 @@ class BigQueryClient:
         else:
             self.timezone_offset_str = system_offset_str
 
-        # kst_as_utc_timestamp_bool: BigQuery TIMESTAMP 컬럼 적재 시 한국 시각(KST) 숫자를 UTC(+00:00)로 저장하여 콘솔에 KST 시각이 그대로 표시되도록 하는 옵션
-        self.kst_as_utc_timestamp_bool: bool = bool(
-            getattr(config.bigquery, "kst_as_utc_timestamp_bool", False)
-        )
-
         # client: google-cloud-bigquery 클라이언트 인스턴스
         self.client: Any = None
         self._connect()
@@ -648,16 +670,12 @@ class BigQueryClient:
         """
         Google Cloud BigQuery 클라이언트를 초기화하고 연결 및 테이블 스키마 상태를 검증합니다 (Fail-Fast).
         """
-        bigquery_module, service_account_module = _get_bigquery()
+        bigquery_module = self._get_bigquery()
         try:
             effective_project_id_str: str = (
                 os.environ.get("GOOGLE_CLOUD_PROJECT") or self.project_id_str
             )
-            credentials = _resolve_gcp_credentials(
-                credentials_path_str=self.credentials_path_str,
-                config_loader_obj=self.config_loader,
-                service_account_module=service_account_module,
-            )
+            credentials = self.credential_resolver.resolve()
             if credentials is not None:
                 self.client = bigquery_module.Client(credentials=credentials, project=effective_project_id_str)
             else:
@@ -668,163 +686,6 @@ class BigQueryClient:
             self.table_obj = self.client.get_table(table_ref_str)
         except Exception as e:
             raise ConnectionError(self.logger.exception("connection_failed", service_name_str="BigQuery", error_str=str(e))) from e
-
-    def validate_and_sync_table_timestamp_mode(self, write_disposition_str: str = "WRITE_APPEND") -> None:
-        """
-        BigQuery 대상 테이블의 현재 행 수 및 타임존 모드 라벨(timestamp_mode)을 조회하여 정합성을 검증합니다.
-        테이블이 비어있거나 WRITE_TRUNCATE 모드인 경우 현재 설정(kst_as_utc_timestamp_bool)에 맞춰
-        테이블 라벨(timestamp_mode), 테이블 설명(description) 및 TIMESTAMP 타입 컬럼 설명을 영구 갱신합니다.
-        기존 데이터가 존재하는 상태에서 설정과 테이블 모드가 불일치할 경우 데이터 혼용 방지를 위해 즉시 예외를 발생시킵니다 (Fail-Fast).
-
-        :param write_disposition_str: 이번 실행 시 적용되는 BigQuery 쓰기 옵션 ('WRITE_APPEND', 'WRITE_TRUNCATE', 'WRITE_EMPTY' 등)
-        :raises ValueError: 기존 적재된 테이블의 타임존 모드와 현재 설정이 불일치하는 경우
-        :raises RuntimeError: BigQuery 테이블 메타데이터 갱신 실패 시
-        """
-        table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
-        bigquery_module, _ = _get_bigquery()
-
-        # 최신 Table 객체 상태 갱신
-        if self.client is not None and hasattr(self.client, "get_table"):
-            try:
-                self.table_obj = self.client.get_table(table_ref_str)
-            except Exception as get_exc:
-                self.logger.exception("table_get_failed", table_name_str=self.table_id_str, error_str=str(get_exc))
-                raise RuntimeError(f"BigQuery 테이블({self.table_id_str}) 조회 실패: {str(get_exc)}") from get_exc
-
-        if not hasattr(self, "table_obj") or self.table_obj is None:
-            return
-
-        target_mode_str: str = "kst_as_utc" if self.kst_as_utc_timestamp_bool else "standard_utc"
-        num_rows_int: int = int(getattr(self.table_obj, "num_rows", 0) or 0)
-        is_truncate_mode_bool: bool = str(write_disposition_str).upper() == "WRITE_TRUNCATE"
-
-        existing_labels_dict: dict[str, str] = dict(getattr(self.table_obj, "labels", None) or {})
-        recorded_mode_str: Optional[str] = existing_labels_dict.get("timestamp_mode")
-
-        # 1. 테이블이 비어있거나(num_rows == 0) WRITE_TRUNCATE 실행인 경우 -> 신규 모드로 최초 확정 및 갱신
-        if num_rows_int == 0 or is_truncate_mode_bool:
-            fields_to_update_list: list[str] = []
-
-            # (1) 테이블 라벨 갱신
-            if recorded_mode_str != target_mode_str:
-                existing_labels_dict["timestamp_mode"] = target_mode_str
-                self.table_obj.labels = existing_labels_dict
-                fields_to_update_list.append("labels")
-
-            # (2) 테이블 설명(Description) 갱신
-            clean_table_desc_str: str = re.sub(
-                r"^\[TIMESTAMP 모드: [^\]]+\]\s*",
-                "",
-                str(getattr(self.table_obj, "description", "") or ""),
-            ).strip()
-            mode_desc_prefix_str: str = (
-                "[TIMESTAMP 모드: KST-as-UTC] 고객사 화면 표시용 한국 시각(KST)이 UTC(+00:00)로 기록되는 테이블입니다."
-                if self.kst_as_utc_timestamp_bool
-                else "[TIMESTAMP 모드: Standard-UTC] 표준 UTC 시각으로 기록되는 테이블입니다."
-            )
-            new_table_desc_str: str = (
-                f"{mode_desc_prefix_str} {clean_table_desc_str}".strip()
-                if clean_table_desc_str
-                else mode_desc_prefix_str
-            )
-            if getattr(self.table_obj, "description", None) != new_table_desc_str:
-                self.table_obj.description = new_table_desc_str
-                fields_to_update_list.append("description")
-
-            # (3) TIMESTAMP 타입 컬럼 설명(SchemaField Description) 갱신
-            col_prefix_str: str = "[KST-as-UTC] " if self.kst_as_utc_timestamp_bool else "[Standard-UTC] "
-            schema_changed_bool: bool = False
-            updated_schema_list: list[Any] = []
-            for field_obj in (getattr(self.table_obj, "schema", None) or []):
-                if str(getattr(field_obj, "field_type", "")).upper() == "TIMESTAMP":
-                    raw_field_desc_str: str = str(getattr(field_obj, "description", "") or "")
-                    clean_field_desc_str: str = re.sub(
-                        r"^\[(KST-as-UTC|Standard-UTC)\]\s*", "", raw_field_desc_str
-                    ).strip()
-                    new_field_desc_str: str = f"{col_prefix_str}{clean_field_desc_str}".strip()
-                    if raw_field_desc_str != new_field_desc_str:
-                        schema_changed_bool = True
-                    if bigquery_module is not None and hasattr(bigquery_module, "SchemaField"):
-                        updated_schema_list.append(
-                            bigquery_module.SchemaField(
-                                name=field_obj.name,
-                                field_type=field_obj.field_type,
-                                mode=field_obj.mode,
-                                description=new_field_desc_str,
-                                fields=getattr(field_obj, "fields", ()),
-                            )
-                        )
-                    else:
-                        field_obj.description = new_field_desc_str
-                        updated_schema_list.append(field_obj)
-                else:
-                    updated_schema_list.append(field_obj)
-
-            if schema_changed_bool:
-                self.table_obj.schema = updated_schema_list
-                fields_to_update_list.append("schema")
-
-            if fields_to_update_list:
-                if self.client is not None and hasattr(self.client, "update_table"):
-                    try:
-                        self.table_obj = self.client.update_table(self.table_obj, fields_to_update_list)
-                        self.logger.info(
-                            "table_timestamp_mode_initialized",
-                            table_name_str=self.table_id_str,
-                            mode_str=target_mode_str,
-                            num_rows_int=num_rows_int,
-                        )
-                    except Exception as update_exc:
-                        self.logger.exception(
-                            "table_metadata_update_failed",
-                            table_name_str=self.table_id_str,
-                            error_str=str(update_exc),
-                        )
-                        raise RuntimeError(
-                            f"BigQuery 테이블({self.table_id_str}) 메타데이터 갱신 실패: {str(update_exc)}"
-                        ) from update_exc
-                else:
-                    self.logger.info(
-                        "table_timestamp_mode_initialized",
-                        table_name_str=self.table_id_str,
-                        mode_str=target_mode_str,
-                        num_rows_int=num_rows_int,
-                    )
-            else:
-                self.logger.info(
-                    "table_timestamp_mode_verified",
-                    table_name_str=self.table_id_str,
-                    mode_str=target_mode_str,
-                )
-            return
-
-        # 2. 테이블에 기존 데이터가 존재하는 경우 (num_rows > 0 및 WRITE_TRUNCATE 아님)
-        if recorded_mode_str:
-            if recorded_mode_str != target_mode_str:
-                self.logger.error(
-                    "table_timestamp_mode_mismatch",
-                    table_name_str=self.table_id_str,
-                    recorded_mode_str=recorded_mode_str,
-                    configured_mode_str=target_mode_str,
-                )
-                raise ValueError(
-                    f"데이터 혼란 방지(Fail-Fast): BigQuery 대상 테이블 '{self.table_id_str}'은(는) "
-                    f"'{recorded_mode_str}' 모드로 기록되어 있으나 현재 설정은 '{target_mode_str}'입니다. "
-                    f"데이터 오염을 방지하기 위해 작업을 중단합니다. 테이블을 TRUNCATE하거나 설정을 일치시키십시오."
-                )
-            self.logger.info(
-                "table_timestamp_mode_verified",
-                table_name_str=self.table_id_str,
-                mode_str=target_mode_str,
-            )
-        else:
-            # 라벨이 없는 레거시 테이블인 경우 경고 출력
-            self.logger.warning(
-                "table_timestamp_mode_legacy_warning",
-                table_name_str=self.table_id_str,
-                mode_str=target_mode_str,
-                num_rows_int=num_rows_int,
-            )
 
     def load_table_from_json_data(
         self,
@@ -859,7 +720,7 @@ class BigQueryClient:
         if rows_to_insert_list is None:
             raise ValueError(f"지원하지 않는 JSON 데이터 포맷 구조입니다: {type(json_data_any)}")
 
-        bigquery_module, _ = _get_bigquery()
+        bigquery_module = self._get_bigquery()
         try:
             write_disposition_effective_str: str = (
                 write_disposition_str
@@ -1036,7 +897,7 @@ class BigQueryClient:
 
         effective_timeout_int: int = timeout_int if timeout_int is not None else self.timeout_seconds_int
         table_ref_str: str = f"{self.project_id_str}.{self.dataset_id_str}.{self.table_id_str}"
-        bigquery_module, _ = _get_bigquery()
+        bigquery_module = self._get_bigquery()
 
         # 중복 제거 및 빈 값 배제
         unique_pk_list: list[str] = [str(pk_item_str).strip() for pk_item_str in set(pk_list) if str(pk_item_str).strip()]
@@ -1294,7 +1155,7 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
             pk_key_str=pk_key_str,
         )
 
-        bigquery_module, _ = _get_bigquery()
+        bigquery_module = self._get_bigquery()
         try:
             for chunk_idx_int in range(total_chunks_int):
                 start_idx_int: int = chunk_idx_int * chunk_size_int
@@ -1351,7 +1212,6 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
         """
         다양한 원천 날짜/시간 문자열(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 타임스탬프(YYYY-MM-DD HH:MM:SS{tz}) 포맷으로 변환합니다.
         원천 데이터에 타임존 오프셋이 명시되어 있지 않은 경우 config.yml의 bigquery.timezone_offset(기본값: '+09:00')을 적용합니다.
-        kst_as_utc_timestamp_bool이 활성화된 경우 한국 시각(KST) 숫자를 보존하여 '+00:00'(UTC)으로 변환함으로써 BigQuery 콘솔에서 KST 시각으로 표시되도록 지원합니다.
 
         :param val_any: 변환 대상 날짜/시간 데이터 (str, datetime, int 등)
         :param default_tz_offset_str: 타임존 오프셋이 없을 시 적용할 기본 오프셋 (미지정 시 config.yml 설정값 사용)
@@ -1369,20 +1229,14 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
         tz_pattern_str: str = r"(?P<tz>Z|[+-]\d{2}:?\d{2})$"
         tz_match_obj: Any = re.search(tz_pattern_str, val_str)
         tz_suffix_str: str = applied_tz_offset_str
-        has_explicit_tz_bool: bool = False
-        raw_tz_val_str: str = ""
         if tz_match_obj:
-            has_explicit_tz_bool = True
             raw_tz_str: str = tz_match_obj.group("tz")
             if raw_tz_str == "Z":
                 tz_suffix_str = "Z"
-                raw_tz_val_str = "+00:00"
             elif len(raw_tz_str) == 5 and raw_tz_str[0] in "+-":
                 tz_suffix_str = f"{raw_tz_str[:3]}:{raw_tz_str[3:]}"
-                raw_tz_val_str = tz_suffix_str
             else:
                 tz_suffix_str = raw_tz_str
-                raw_tz_val_str = tz_suffix_str
             val_str = val_str[:tz_match_obj.start()].strip()
 
         datetime_part_str: Optional[str] = None
@@ -1415,21 +1269,6 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
 
         if not datetime_part_str:
             return None
-
-        if self.kst_as_utc_timestamp_bool:
-            # KST-as-UTC 모드: BigQuery 콘솔에서 KST 시간 숫자가 그대로 보이도록 UTC(+00:00)로 저장
-            if has_explicit_tz_bool and raw_tz_val_str:
-                try:
-                    dt_with_tz_obj: datetime = datetime.fromisoformat(f"{datetime_part_str}{raw_tz_val_str}")
-                    kst_tz_obj: timezone = TimeUtils.resolve_timezone("KST")
-                    kst_dt_obj: datetime = dt_with_tz_obj.astimezone(kst_tz_obj)
-                    kst_time_str: str = kst_dt_obj.strftime("%Y-%m-%d %H:%M:%S")
-                    return f"{kst_time_str}+00:00"
-                except (ValueError, TypeError):
-                    return f"{datetime_part_str}+00:00"
-            else:
-                # 원천 naive 일시는 한국 현지 시각(KST)이므로 수치 그대로 +00:00(UTC) 부여
-                return f"{datetime_part_str}+00:00"
 
         return f"{datetime_part_str}{tz_suffix_str}"
 
