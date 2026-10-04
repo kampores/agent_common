@@ -1,6 +1,6 @@
 # 5.2. Multithreaded Progress Tracking & Milestone Telemetry (`ProgressTracker`)
 
-> **Module**: `agent_common.utils.ProgressTracker`  
+> **Module**: `agent_common.progress_tracker.ProgressTracker`  
 > **Key Methods**: `update()`  
 > **Integration**: `agent_common.logger.ProjectLogger`, `agent_common.config_loader.config`
 
@@ -85,7 +85,7 @@ def update(
 
 ### 4.1. File Ingestion Tracking
 ```python
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 import time
 
@@ -110,7 +110,7 @@ for f in files:
 ### 4.2. Multithreaded Batch Worker Tracking
 ```python
 from concurrent.futures import ThreadPoolExecutor
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("WorkerPool")

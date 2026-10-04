@@ -2,7 +2,7 @@
 
 > **Module**: `agent_common.tool.date.DateTimeUtils`  
 > **Key Methods**: `get_today_yyyymmdd()`, `get_now_timestamp()`, `get_now_no_tz()`, `get_now_compact()`, `parse_datetime()`  
-> **Core Infrastructure Utility**: `agent_common.utils.TimeUtils` (handles system timezone detection and datetime parsing)
+> **Core Infrastructure Utility**: `agent_common.time_utils.TimeUtils` (handles system timezone detection and datetime parsing)
 
 ---
 
@@ -36,7 +36,7 @@ flowchart TD
         DTUtils["DateTimeUtils<br/>(Generates business-ready formatted strings)"]
     end
 
-    subgraph CoreLayer["[Core Util Layer] agent_common.utils"]
+    subgraph CoreLayer["[Core Util Layer] agent_common.time_utils"]
         TUtils["TimeUtils<br/>(OS timezone detection, global abbreviation lookup,<br/>ISO offset math, timezone-aware datetime parsing)"]
     end
 
@@ -118,7 +118,7 @@ def parse_datetime(cls, dt_input_any: Any, default_tz_obj: Optional[timezone] = 
 ### 4.1. Direct Python Invocations
 ```python
 from agent_common.tool.date import DateTimeUtils
-from agent_common.utils import TimeUtils
+from agent_common import TimeUtils
 
 # 1. Generate system-timezone strings
 today = DateTimeUtils.get_today_yyyymmdd()

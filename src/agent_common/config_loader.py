@@ -423,7 +423,7 @@ class ConfigLoader:
     # agent_common 패키지 자체의 루트 디렉토리 경로를 계산합니다.
     PACKAGE_DIR: Path = Path(__file__).resolve().parent
 
-    # 전역 런타임 언어 강제 설정값 ('KR', 'EN', 'ZH', 'JP')
+    # 전역 런타임 언어 강제 설정값 ('KO', 'EN', 'ZH', 'JA')
     _global_language_override_str: Optional[str] = None
     _global_cli_overrides_dict: dict[str, Any] = {}
     _global_registered_schemas_dict: dict[str, Any] = {}
@@ -443,7 +443,7 @@ class ConfigLoader:
     def set_language(cls, lang_str: str) -> None:
         """전역 로그 메시지 언어 설정을 지정합니다.
 
-        :param lang_str: 설정할 언어 코드 ('KR', 'EN', 'ZH', 'JP', 대소문자 무관)
+        :param lang_str: 설정할 언어 코드 ('KO', 'EN', 'ZH', 'JA', 대소문자 무관)
         """
         clean_lang_str: str = Localizer.normalize_language(lang_str)
         cls._global_language_override_str = clean_lang_str
@@ -464,16 +464,16 @@ class ConfigLoader:
 
     @property
     def language(self) -> str:
-        """현재 적용 중인 로그 메시지 언어 코드 ('KR', 'EN', 'ZH', 'JP')를 반환합니다 (Getter)."""
+        """현재 적용 중인 로그 메시지 언어 코드 ('KO', 'EN', 'ZH', 'JA')를 반환합니다 (Getter)."""
         settings_dict: dict[str, Any] = self.get_settings()
-        cfg_lang_str: Any = settings_dict.get("logging", {}).get("language_str") or settings_dict.get("logging", {}).get("language", "KR")
+        cfg_lang_str: Any = settings_dict.get("logging", {}).get("language_str") or settings_dict.get("logging", {}).get("language", "KO")
         return Localizer.normalize_language(str(cfg_lang_str))
 
     @language.setter
     def language(self, lang_str: str) -> None:
         """로그 메시지 언어 코드를 동적으로 설정합니다 (Setter).
 
-        :param lang_str: 설정할 언어 코드 ('KR', 'EN', 'ZH', 'JP', 대소문자 무관)
+        :param lang_str: 설정할 언어 코드 ('KO', 'EN', 'ZH', 'JA', 대소문자 무관)
         """
         self.set_language(lang_str)
         self._cached_settings = None
@@ -637,7 +637,7 @@ class ConfigLoader:
         logging 설정 섹션을 우선순위에 따라 해석하며, 언어 코드 정규화는 Localizer에 위임합니다.
 
         :param settings_dict: 현재 로드된 설정 딕셔너리
-        :return: 정규화된 언어 코드 ('KR', 'EN', 'ZH', 'JP')
+        :return: 정규화된 언어 코드 ('KO', 'EN', 'ZH', 'JA')
         """
         if self._global_language_override_str:
             return Localizer.normalize_language(self._global_language_override_str)
@@ -663,7 +663,7 @@ class ConfigLoader:
         """(하위 호환) _resolve_logging_language로 위임합니다.
 
         :param settings_dict: 현재 로드된 설정 딕셔너리
-        :return: 정규화된 언어 코드 ('KR', 'EN', 'ZH', 'JP')
+        :return: 정규화된 언어 코드 ('KO', 'EN', 'ZH', 'JA')
         """
         return self._resolve_logging_language(settings_dict)
 
@@ -699,7 +699,7 @@ class ConfigLoader:
         1차: agent_common 패키지 내부 기본 설정 (agent_common/config)
         2차: 등록된 도메인 스키마 기본값 (register_schema)
         3차: 개별 프로젝트 config 디렉토리의 YAML 파일들 (Deep Merge Override)
-        4차: 언어(KR/EN/ZH/JP)에 대응하는 logging_messages 템플릿 사전 병합
+        4차: 언어(KO/EN/ZH/JA)에 대응하는 logging_messages 템플릿 사전 병합
         """
         if getattr(self, "_cached_settings", None) is not None:
             expected_lang_str: str = self._resolve_logging_language(self._cached_settings)  # type: ignore
@@ -735,7 +735,7 @@ class ConfigLoader:
                 loaded_files.append(f"{path.name}:{list(mapping.keys())}")
                 self._deep_merge(settings, mapping)
 
-        # 4. 언어 판별 (KR, EN, ZH, JP, 기본값: KR)
+        # 4. 언어 판별 (KO, EN, ZH, JA, 기본값: KO)
         selected_lang_str: str = self._resolve_logging_language(settings)
         if "logging" not in settings or not isinstance(settings["logging"], dict):
             settings["logging"] = {}

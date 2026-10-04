@@ -1,6 +1,6 @@
 # 5.3. Unicode East Asian Width Alignment & Markdown Table Formatter (`TableFormatter`)
 
-> **Module**: `agent_common.utils.TableFormatter`  
+> **Module**: `agent_common.table_formatter.TableFormatter`  
 > **Key Methods**: `calculate_display_width()`, `format_markdown_table()`, `format_row()`, `format_separator()`, `pad_cell()`  
 > **Dependencies**: `unicodedata` (Python Standard Library), `agent_common.config_loader.config`  
 > **Introduced**: `v0.4.63`
@@ -108,7 +108,7 @@ def pad_cell(
 
 ### 5.1. Aligning Tables with Mixed Korean & English Text
 ```python
-from agent_common.utils import TableFormatter
+from agent_common import TableFormatter
 
 headers = ["Stage", "Target File", "Records", "Elapsed", "Status"]
 rows = [

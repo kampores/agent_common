@@ -1,6 +1,21 @@
 # 版本变更历史 (Changelog)
 
-> [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
+> [ 🇰🇷 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+
+### v0.4.96 (2026-10-04)
+
+- **将语言标识统一为 ISO 639-1 语言代码 (遵循规则 1.1.3, 4.2，兼容性变更)**:
+  - 将国家代码形式的 `KR`、`JP` 改为语言代码 `KO`、`JA`。`EN`、`ZH` 保持不变，支持的语言为 `KO`、`EN`、`ZH`、`JA`。
+  - 默认语言及 `logging.language_str` 默认值由 `KR` 改为 `KO`。
+  - 从 `Localizer` 中删除国家代码别名 (`KR`, `JP`, `CN`, `US`) 以及文件后缀交叉查找 (`kr`↔`ko`, `jp`↔`ja`, `zh`↔`cn`)。无法识别的值仍按原有方式回退到默认语言 `KO`，因此配置中使用 `JP` 的需改为 `JA`。
+  - 文件名变更: `logging_messages_kr.yml` → `logging_messages_ko.yml`，`logging_messages_jp.yml` → `logging_messages_ja.yml`。
+  - 文档路径变更: `manual/kr` → `manual/ko`，`manual/jp` → `manual/ja`（文件后缀 `_kr.md` → `_ko.md`，`_jp.md` → `_ja.md`），`CHANGELOG_KR.md` → `CHANGELOG_KO.md`，`CHANGELOG_JP.md` → `CHANGELOG_JA.md`，`AGENTS_KR.md` → `AGENTS_KO.md`，`AGENTS_DOCS_ENV_KR.md` → `AGENTS_DOCS_ENV_KO.md`。README 与 `pyproject.toml` 中的链接已同步更新。
+- **新增 `Localizer` 手册并完善多语言文档 (遵循规则 4.2)**:
+  - 以 4 国语言新增手册 `8.1 语言代码规范化与多语言资源文件查找` (`manual/*/localizer/01_language_codes_and_resource_lookup_*.md`)，并在 README 主要功能中新增 `8. 语言本地化器` 章节及手册目录条目。
+  - 在手册 `2.3 多语言日志消息模板字典` 中补充 4 种语言的字典文件与日志语言决定优先级。
+- **将文档中的 `agent_common.utils` 更正为实际模块路径 (遵循规则 4.2)**:
+  - 将 README 与手册中指向不存在的 `agent_common.utils` 模块的写法改为 `agent_common.time_utils`、`agent_common.progress_tracker`、`agent_common.table_formatter`。
+  - 将示例代码中运行时会引发 `ModuleNotFoundError` 的 `from agent_common.utils import ...` 改为 `from agent_common import ...`。
 
 ### v0.4.95 (2026-10-04)
 

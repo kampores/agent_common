@@ -1,6 +1,6 @@
 # 5.2. 多线程实时进度跟踪与里程碑告警 (`ProgressTracker`)
 
-> **所属模块**: `agent_common.utils.ProgressTracker`  
+> **所属模块**: `agent_common.progress_tracker.ProgressTracker`  
 > **核心方法**: `update()`  
 > **关联模块**: `agent_common.logger.ProjectLogger`, `agent_common.config_loader.config`
 
@@ -81,7 +81,7 @@ def update(
 ### 4.1. 海量文件传输进度监听
 
 ```python
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 import time
 
@@ -110,7 +110,7 @@ for file_info in file_list:
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("BatchWorker")

@@ -22,34 +22,30 @@ class Localizer:
     전담하는 중앙 언어 로컬라이저 클래스입니다.
     """
 
-    DEFAULT_LANGUAGE_STR: str = "KR"
-    SUPPORTED_LANGUAGES_LIST: list[str] = ["KR", "EN", "ZH", "JP"]
+    DEFAULT_LANGUAGE_STR: str = "KO"
+    SUPPORTED_LANGUAGES_LIST: list[str] = ["KO", "EN", "ZH", "JA"]
     LANGUAGE_ALIAS_DICT: dict[str, str] = {
-        "KR": "KR",
-        "KO": "KR",
-        "KOR": "KR",
-        "KOREAN": "KR",
+        "KO": "KO",
+        "KOR": "KO",
+        "KOREAN": "KO",
         "EN": "EN",
         "ENG": "EN",
         "ENGLISH": "EN",
-        "US": "EN",
         "ZH": "ZH",
-        "CN": "ZH",
         "CHI": "ZH",
         "CHINESE": "ZH",
-        "JP": "JP",
-        "JA": "JP",
-        "JPN": "JP",
-        "JAPANESE": "JP",
+        "JA": "JA",
+        "JPN": "JA",
+        "JAPANESE": "JA",
     }
 
     _global_language_override_str: Optional[str] = None
 
-    def __init__(self, language_str: str = "KR") -> None:
+    def __init__(self, language_str: str = "KO") -> None:
         """
         Localizer 인스턴스를 초기화합니다.
 
-        :param language_str: 기본 적용 언어 코드 문자열 (기본값: 'KR')
+        :param language_str: 기본 적용 언어 코드 문자열 (기본값: 'KO')
         """
         self.language_str: str = self.normalize_language(language_str)
 
@@ -84,11 +80,11 @@ class Localizer:
     @classmethod
     def normalize_language(cls, language_str: str) -> str:
         """
-        입력된 언어 문자열을 공식 표준 언어 코드('KR', 'EN', 'ZH', 'JP')로 정규화합니다.
-        'KO'/'KR' -> 'KR', 'JA'/'JP' -> 'JP', 'ZH'/'CN' -> 'ZH', 'EN'/'US' -> 'EN'
+        입력된 언어 문자열을 ISO 639-1 언어 코드('KO', 'EN', 'ZH', 'JA')로 정규화합니다.
+        'KOR'/'KOREAN' -> 'KO', 'ENG'/'ENGLISH' -> 'EN', 'CHI'/'CHINESE' -> 'ZH', 'JPN'/'JAPANESE' -> 'JA'
 
         :param language_str: 입력 언어 문자열
-        :return: 정규화된 대문자 언어 코드 (미식별 시 기본 언어 'KR' 반환)
+        :return: 정규화된 대문자 언어 코드 (미식별 시 기본 언어 'KO' 반환)
         """
         if not language_str:
             return cls.DEFAULT_LANGUAGE_STR
@@ -99,7 +95,7 @@ class Localizer:
     def resolve_language(
         cls,
         explicit_lang_str: Optional[str] = None,
-        default_lang_str: str = "KR",
+        default_lang_str: str = "KO",
     ) -> str:
         """
         명시적 오버라이드, 전역 오버라이드, 범용 환경 변수를 평가하여 최종 언어 코드를 결정합니다.
@@ -109,11 +105,11 @@ class Localizer:
         1. 명시적 인자 (explicit_lang_str)
         2. 전역 오버라이드 (_global_language_override_str)
         3. 범용 환경 변수 (AGENT_LANGUAGE, APP_LANGUAGE, LANGUAGE, LANG)
-        4. 기본값 (default_lang_str, 정규화 후 'KR')
+        4. 기본값 (default_lang_str, 정규화 후 'KO')
 
         :param explicit_lang_str: 명시적 우선 지정 언어 코드
-        :param default_lang_str: 대체 기본 언어 코드 (기본값: 'KR')
-        :return: 최종 결정된 정규화 언어 코드 ('KR', 'EN', 'ZH', 'JP')
+        :param default_lang_str: 대체 기본 언어 코드 (기본값: 'KO')
+        :return: 최종 결정된 정규화 언어 코드 ('KO', 'EN', 'ZH', 'JA')
         """
         if explicit_lang_str:
             return cls.normalize_language(explicit_lang_str)
@@ -154,20 +150,11 @@ class Localizer:
         clean_lang_str: str = cls.normalize_language(language_str).lower()
         exts_list: list[str] = extensions_list or [".yml", ".yaml"]
 
-        # 언어 코드별 호환 대체 접미사 구성 ('kr' <-> 'ko', 'jp' <-> 'ja', 'zh' <-> 'cn')
+        # 대상 언어 파일이 없으면 기본 언어 파일로 대체
         lang_candidates_list: list[str] = [clean_lang_str]
-        if clean_lang_str == "kr":
-            lang_candidates_list.append("ko")
-        elif clean_lang_str == "jp":
-            lang_candidates_list.append("ja")
-        elif clean_lang_str == "zh":
-            lang_candidates_list.append("cn")
-
         default_lang_lower_str: str = cls.DEFAULT_LANGUAGE_STR.lower()
         if default_lang_lower_str not in lang_candidates_list:
             lang_candidates_list.append(default_lang_lower_str)
-            if default_lang_lower_str == "kr":
-                lang_candidates_list.append("ko")
 
         # 1. 언어별 파일 탐색 ({prefix}_{lang}.ext)
         for lang_suffix_str in lang_candidates_list:
@@ -200,28 +187,9 @@ class Localizer:
         :return: 선택된 파일 Path 객체 (미발견 시 None)
         """
         clean_lang_str: str = cls.normalize_language(language_str).lower()
-        lang_candidates_list: list[str] = [clean_lang_str]
-        if clean_lang_str == "kr":
-            lang_candidates_list.append("ko")
-        elif clean_lang_str == "jp":
-            lang_candidates_list.append("ja")
-        elif clean_lang_str == "zh":
-            lang_candidates_list.append("cn")
 
-        # 1. 언어별 일치 파일 우선 탐색
-        target_prefixes_list: list[str] = [f"{prefix_str}_{c}" for c in lang_candidates_list]
-        for candidate_prefix_str in target_prefixes_list:
-            for file_path in file_paths_list:
-                file_stem_lower_str: str = file_path.stem.lower()
-                if file_stem_lower_str == candidate_prefix_str:
-                    return file_path
-
-        # 2. 기본 언어(KR/KO) 파일 탐색
-        default_prefixes_list: list[str] = [
-            f"{prefix_str}_{cls.DEFAULT_LANGUAGE_STR.lower()}",
-            f"{prefix_str}_ko",
-        ]
-        for candidate_prefix_str in default_prefixes_list:
+        # 1. 대상 언어 파일 우선 탐색, 2. 기본 언어 파일 탐색
+        for candidate_prefix_str in (f"{prefix_str}_{clean_lang_str}", f"{prefix_str}_{cls.DEFAULT_LANGUAGE_STR.lower()}"):
             for file_path in file_paths_list:
                 if file_path.stem.lower() == candidate_prefix_str:
                     return file_path

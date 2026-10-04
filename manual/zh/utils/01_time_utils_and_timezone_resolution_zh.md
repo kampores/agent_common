@@ -1,6 +1,6 @@
 # 5.1. 宿主系统时区识别、全球标准时间解析与时间规范化 (`TimeUtils`)
 
-> **所属模块**: `agent_common.utils.TimeUtils`  
+> **所属模块**: `agent_common.time_utils.TimeUtils`  
 > **核心方法**: `get_system_timezone()`, `get_system_timezone_offset_str()`, `resolve_timezone()`, `format_timezone_offset()`, `parse_datetime()`  
 > **核心数据**: `WORLD_TIMEZONE_OFFSETS_DICT` (涵盖全球 30+ 主流时区偏移映射字典)  
 > **引入版本**: `v0.4.69` (核心工具解耦), `v0.4.74` (支持 `parse_datetime`)
@@ -118,7 +118,7 @@ def parse_datetime(cls, dt_input_any: Any, default_tz_obj: Optional[timezone] = 
 ## 5. 实战代码示例
 
 ```python
-from agent_common.utils import TimeUtils
+from agent_common import TimeUtils
 from datetime import datetime
 
 # 1. 动态识别本地时区

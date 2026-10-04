@@ -2,7 +2,7 @@
 
 > **所属模块**: `agent_common.logger.ProjectLogger`  
 > **核心函数/方法**: `ProjectLogger.get_log_msg()`, `ProjectLogger.log_msg()`, `ProjectLogger.set_language()`, `get_log_msg()`  
-> **消息字典文件**: `agent_common/config/logging_messages_ko.yml`, `logging_messages_en.yml`
+> **消息字典文件**: `agent_common/config/logging_messages_ko.yml`, `logging_messages_en.yml`, `logging_messages_zh.yml`, `logging_messages_ja.yml`
 
 ---
 
@@ -23,11 +23,9 @@
 ```mermaid
 flowchart TD
     A["调用 logger.info('task_start', task_name='迁移')"] --> B{"判定当前语言"}
-    B -->|"KO"| C["logging_messages_ko.yml"]
-    B -->|"EN"| D["logging_messages_en.yml"]
+    B -->|"KO / EN / ZH / JA"| C["logging_messages_*.yml"]
     
     C --> E["_search_template_in_level(当前级别, 消息代码)"]
-    D --> E
     E --> F{"当前级别中是否存在?"}
     F -->|"是"| G["获取对应模板"]
     F -->|"否"| H{"遍历其它日志级别节点"}
@@ -103,6 +101,15 @@ safe_kwargs_dict = {
 - 类方法: `ProjectLogger.set_language("EN")` 或 `ProjectLogger.set_language("KO")`
 - 实例方法 (Setter): `logger.language_set("EN")`
 - 查询当前语言 (Getter): `logger.language` (➔ `"EN"` 或 `"KO"`)
+
+支持的语言代码为 `KO`、`EN`、`ZH`、`JA`，日志语言按以下优先级决定：
+
+1. 通过 `ProjectLogger.set_language()` 或 `ConfigLoader.set_language()` 指定的值
+2. 环境变量 `AGENT_LOG_LANGUAGE`、`LOGGING_LANGUAGE`、`AGENT_LANGUAGE` 中按顺序第一个有值的
+3. `config.yml` 中的 `logging.language_str`
+4. 默认语言 `KO`
+
+语言代码规范化规则与多语言文件查找方式请参阅 [8.1. 语言代码规范化与多语言资源文件查找 (`Localizer`)](../localizer/01_language_codes_and_resource_lookup_zh.md)。
 
 ---
 

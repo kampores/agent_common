@@ -2,7 +2,7 @@
 
 > **所属模块**: `agent_common.logger.ProjectLogger`  
 > **核心方法**: `ProjectLogger.log_summary()`, `ProjectLogger.get_log_id_description()`  
-> **关联模块**: `agent_common.utils.ProgressTracker`
+> **关联模块**: `agent_common.progress_tracker.ProgressTracker`
 
 ---
 
@@ -120,7 +120,7 @@ logger.log_summary(
 
 ```python
 from agent_common.logger import ProjectLogger
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 
 logger = ProjectLogger("DataPipeline")
 tracker = ProgressTracker(total_items_int=50000, logger_obj=logger, item_name_str="条记录")

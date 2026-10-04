@@ -1,6 +1,21 @@
 # Version History (Changelog)
 
-> [ 🇰🇷 한국어 (CHANGELOG_KR.md) ](CHANGELOG_KR.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JP.md) ](CHANGELOG_JP.md)
+> [ 🇰🇷 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+
+### v0.4.96 (2026-10-04)
+
+- **Unified Language Identifiers on ISO 639-1 Language Codes (Rules 1.1.3, 4.2, Breaking Change)**:
+  - Replaced the country-style codes `KR` and `JP` with the language codes `KO` and `JA`. `EN` and `ZH` are unchanged, so the supported languages are `KO`, `EN`, `ZH`, `JA`.
+  - Changed the default language and the `logging.language_str` default from `KR` to `KO`.
+  - Removed country-code aliases (`KR`, `JP`, `CN`, `US`) and cross-code file suffix lookup (`kr`↔`ko`, `jp`↔`ja`, `zh`↔`cn`) from `Localizer`. Unrecognized values still fall back to the default language `KO`, so a setting that used `JP` must be changed to `JA`.
+  - Renamed files: `logging_messages_kr.yml` → `logging_messages_ko.yml`, `logging_messages_jp.yml` → `logging_messages_ja.yml`.
+  - Renamed documentation paths: `manual/kr` → `manual/ko`, `manual/jp` → `manual/ja` (file suffixes `_kr.md` → `_ko.md`, `_jp.md` → `_ja.md`), `CHANGELOG_KR.md` → `CHANGELOG_KO.md`, `CHANGELOG_JP.md` → `CHANGELOG_JA.md`, `AGENTS_KR.md` → `AGENTS_KO.md`, `AGENTS_DOCS_ENV_KR.md` → `AGENTS_DOCS_ENV_KO.md`. Links in the README and `pyproject.toml` were updated accordingly.
+- **Added the `Localizer` Manual and Updated Multilingual Documentation (Rule 4.2)**:
+  - Added manual `8.1 Language Code Normalization & Localized Resource Lookup` (`manual/*/localizer/01_language_codes_and_resource_lookup_*.md`) in 4 languages, with a new `8. Language Localizer` section in the README feature list and a manual index entry.
+  - Updated manual `2.3 Multilingual Message Catalog` with the catalog files for all 4 languages and the log language precedence.
+- **Corrected `agent_common.utils` References in the Documentation to the Real Module Paths (Rule 4.2)**:
+  - Changed README and manual references that pointed at the non-existent `agent_common.utils` module to `agent_common.time_utils`, `agent_common.progress_tracker`, and `agent_common.table_formatter`.
+  - Changed `from agent_common.utils import ...` in example code, which raised `ModuleNotFoundError` when run, to `from agent_common import ...`.
 
 ### v0.4.95 (2026-10-04)
 

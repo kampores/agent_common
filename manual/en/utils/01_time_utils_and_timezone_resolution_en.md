@@ -1,6 +1,6 @@
 # 5.1. System Timezone Detection, Global Timezone Resolution & Datetime Normalization (`TimeUtils`)
 
-> **Module**: `agent_common.utils.TimeUtils`  
+> **Module**: `agent_common.time_utils.TimeUtils`  
 > **Key Methods**: `get_system_timezone()`, `get_system_timezone_offset_str()`, `resolve_timezone()`, `format_timezone_offset()`, `parse_datetime()`  
 > **Key Data Structure**: `WORLD_TIMEZONE_OFFSETS_DICT` (Pre-compiled map of 30+ global timezone offsets)  
 > **Introduced**: `v0.4.69` (core util separation), `v0.4.74` (`parse_datetime` support)
@@ -132,7 +132,7 @@ def parse_datetime(cls, dt_input_any: Any, default_tz_obj: Optional[timezone] = 
 
 ### 5.1. Resolving Timezones & Extracting Offsets
 ```python
-from agent_common.utils import TimeUtils
+from agent_common import TimeUtils
 
 # 1. Automatic host timezone detection
 local_tz = TimeUtils.resolve_timezone()
@@ -155,7 +155,7 @@ iso_tz = TimeUtils.resolve_timezone("-04:00") # UTC-04:00
 
 ### 5.2. Normalizing Heterogeneous Datetime Inputs
 ```python
-from agent_common.utils import TimeUtils
+from agent_common import TimeUtils
 from datetime import datetime
 
 raw_inputs = [

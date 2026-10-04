@@ -30,7 +30,7 @@ __all__ = [
 # ==============================================================================
 APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
     "logging": {
-        "language_str": "KR",
+        "language_str": "KO",
         "level_str": "INFO",
         "format_str": "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller_str)s] %(message)s",
         "datefmt_str": "%Y-%m-%d %H:%M:%S",
@@ -313,7 +313,7 @@ class ProjectLogger:
     def set_language(cls, lang_str: str) -> None:
         """전역 로그 메시지 언어를 설정합니다.
 
-        :param lang_str: 설정할 언어 코드 ('KR', 'EN', 'ZH', 'JP', 대소문자 무관)
+        :param lang_str: 설정할 언어 코드 ('KO', 'EN', 'ZH', 'JA', 대소문자 무관)
         """
         from agent_common.config_loader import ConfigLoader
         ConfigLoader.set_language(lang_str)
@@ -321,7 +321,7 @@ class ProjectLogger:
     def language_set(self, lang_str: str) -> None:
         """로그 메시지 언어를 설정합니다 (Setter).
 
-        :param lang_str: 설정할 언어 코드 ('KR', 'EN', 'ZH', 'JP', 대소문자 무관)
+        :param lang_str: 설정할 언어 코드 ('KO', 'EN', 'ZH', 'JA', 대소문자 무관)
         """
         self.set_language(lang_str)
 

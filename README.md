@@ -15,9 +15,9 @@
 ### 📌 주요 제공 기능
 
 #### 1. 설정 로더 및 불변 설정 객체 (`agent_common.config_loader`)
-- **1.1. [계층적 YAML 설정 해석 및 병합 (Deep Merge)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/01_hierarchical_yaml_merge_kr.md)**: 패키지 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정(`config/*.yml`) 동적 병합.
-- **1.2. [불변 점 표기법 조회 (`ReadOnlyConfig`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/02_readonly_dot_notation_kr.md)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 형태로 직관적 속성 접근 및 런타임 변조 방지.
-- **1.3. [타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/03_type_coercion_and_guarantee_kr.md)**:
+- **1.1. [계층적 YAML 설정 해석 및 병합 (Deep Merge)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/01_hierarchical_yaml_merge_ko.md)**: 패키지 기본 설정(`agent_common/config/*.yml`)과 개별 프로젝트 설정(`config/*.yml`) 동적 병합.
+- **1.2. [불변 점 표기법 조회 (`ReadOnlyConfig`)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/02_readonly_dot_notation_ko.md)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 형태로 직관적 속성 접근 및 런타임 변조 방지.
+- **1.3. [타입 접미사 자동 형 변환 및 타입 보증 (Type Guarantee & Coercion)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/03_type_coercion_and_guarantee_ko.md)**:
   - `_int`: `int` 정수형 자동 형 변환 및 보증
   - `_float`: `float` 실수형 자동 형 변환 및 보증
   - `_bool`: `bool` 불리언형 자동 변환 및 타입 보증 (파이썬 `bool` 또는 대소문자 무관 `"true"`, `"false"` 지원, `0`, `1` 등 비지원 값 유입 시 Fail-Fast 차단)
@@ -25,51 +25,54 @@
   - `_list` / `_dict`: 리스트 / 불변 딕셔너리(`ReadOnlyConfig`) 래핑 보증
   - 범용 함수 `coerce_type_by_key_suffix` 및 중첩 딕셔너리 일괄 변환 `coerce_dict_by_key_suffix` 제공으로 임의의 외부 설정 파일(`rule.yml`, `mapping.yml` 등) 및 데이터 파이프라인 완벽 지원
   - 타입 불일치 시 침묵하지 않고 상세 안내와 함께 즉시 조기 실패(Fail-Fast, `ValueError`/`TypeError`) 발생 보증
-- **1.4. [Fail-Fast 필수 설정 검증 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/04_fail_fast_require_setting_kr.md)**: 프로그램 시작 시 필수 설정값 누락 시 상세 원인 출력 후 프로세스 즉시 종료.
-- **1.5. [네트워크 프록시 제어 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/05_network_proxy_control_kr.md)**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
-- **1.6. [모든 상수의 설정 파일화 및 템플릿 보정 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/06_ensure_config_self_healing_kr.md)**: 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정.
+- **1.4. [Fail-Fast 필수 설정 검증 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/04_fail_fast_require_setting_ko.md)**: 프로그램 시작 시 필수 설정값 누락 시 상세 원인 출력 후 프로세스 즉시 종료.
+- **1.5. [네트워크 프록시 제어 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/05_network_proxy_control_ko.md)**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
+- **1.6. [모든 상수의 설정 파일화 및 템플릿 보정 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/06_ensure_config_self_healing_ko.md)**: 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정.
 
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
-- **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter_kr.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 로거 팩토리 기반 호출자/클래스명(`%(caller_str)s`, `%(class_name_str)s`) 자동 결합 및 프로그램 로거 이름(`%(name)s`) 통일 지원.
-- **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure_kr.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 실행 로그 레벨별 디렉터리 자동 분기(`{log_level_str}` 기반 `log_file_str` 단일화).
-- **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog_kr.md)**: `config.yml`의 `logging.language_str` (`KR`, `EN`, `ZH`, `JP`) 설정에 따라 다국어 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환.
-- **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking_kr.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계.
-- **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation_kr.md)**: '전체 = 성공 + 실패 + 제외' 정합성 보장, `TableFormatter` 기반 세로줄 자동 맞춤, 소요 시간, 처리 속도, 전송량이 포함된 표준 마크다운 표(Table) 자동 출력.
+- **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/01_single_line_flatten_formatter_ko.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 로거 팩토리 기반 호출자/클래스명(`%(caller_str)s`, `%(class_name_str)s`) 자동 결합 및 프로그램 로거 이름(`%(name)s`) 통일 지원.
+- **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/02_project_logger_configure_ko.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 실행 로그 레벨별 디렉터리 자동 분기(`{log_level_str}` 기반 `log_file_str` 단일화).
+- **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/03_multilingual_message_catalog_ko.md)**: `config.yml`의 `logging.language_str` (`KO`, `EN`, `ZH`, `JA`) 설정에 따라 다국어 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환.
+- **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/04_execution_result_and_error_tracking_ko.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계.
+- **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/05_summary_report_generation_ko.md)**: '전체 = 성공 + 실패 + 제외' 정합성 보장, `TableFormatter` 기반 세로줄 자동 맞춤, 소요 시간, 처리 속도, 전송량이 포함된 표준 마크다운 표(Table) 자동 출력.
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
-- **3.1. [AWS S3 및 Dell ECS 오브젝트 스토리지 클라이언트 (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/01_s3_ecs_storage_client_kr.md)**: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 초기화 즉시 `head_bucket` Fail-Fast 검증, 대용량 페이징 제너레이터(`list_objects`), 메타데이터 빠른 조회(`get_object_size`), 메모리 스트리밍 획득(`get_object_stream`), GCS 실시간 파일 전송 및 동일 파일 스마트 스킵(`transfer_to_gcs`).
-- **3.2. [Google Cloud Storage 스트리밍 클라이언트 및 멀티 계층 인증 (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/02_gcs_cloud_storage_client_kr.md)**: 4단계 GCP 인증 우선순위(`GOOGLE_APPLICATION_CREDENTIALS_JSON` 인메모리 JSON -> `GOOGLE_APPLICATION_CREDENTIALS` 파일 -> `credentials_path_str` -> Google ADC) 지원, 연결 및 버킷 권한 조기 검증, 블롭 메타데이터 및 크기 조회(`get_blob_size`), 메모리 낭비 없는 청크 단위 스트림 직접 업로드(`upload_stream`).
-- **3.3. [BigQuery 배치 및 스트리밍 적재 클라이언트 (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/03_bigquery_batch_and_streaming_load_kr.md)**: 연결 및 테이블 스키마 사전 캐싱(`get_table`), JSON 배치 로드 Job(`load_table_from_json_data`) 및 중첩 에러(`errors`, `location`, `reason`) 상세 분해, 실시간 스트리밍 인서트(`insert_rows_json_data`), 범용 동기 SQL 쿼리(`query`), 중복 전송 방지용 기존 키 집합 추출(`get_existing_keys`), 기존 레코드 메타데이터 일괄 조회(`get_existing_records_metadata`).
-- **3.4. [BigQuery 고성능 인라인 MERGE (Upsert) 쿼리 엔진 (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/04_bigquery_inline_merge_upsert_kr.md)**: 스테이징 임시 테이블 생성 없이 직접 `UNNEST(JSON_QUERY_ARRAY(@json_payload))` 기반 인라인 MERGE INTO 수행, 기본키(PK) 기준 자동 UPDATE/INSERT 분기, 생성일시 등 최초 값 보존(`preserve_columns_list`), 컬럼 데이터 타입 자동 추론 및 명시적 캐스팅(`column_types_dict`), 한글/특수문자/예약어 백틱(`` ` ``) 완벽 보호, HTTP 413 페이로드 초과 방지 기본 100건 청크 자동 분할.
-- **3.5. [BigQuery TIMESTAMP·DATETIME 일시 문자열 변환 (`convert_to_bigquery_timestamp`, `convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_datetime_conversion_kr.md)**: ISO 8601, 공백 구분, 14자리/8자리 숫자 등 다양한 원천 날짜 문자열을 `TIMESTAMP` 컬럼용(타임존 오프셋 포함, 우선순위 `timezone_offset_str`)과 `DATETIME` 컬럼용(오프셋 없는 벽시계 시각 `YYYY-MM-DD HH:MM:SS`) 표준 문자열로 정규화.
-- **3.6. [GCP 서비스 계정 인증 해석기 (`GcpCredentialResolver`)](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/06_gcp_credential_resolver_kr.md)**: 4단계 우선순위(환경변수 JSON → 환경변수 파일 경로 → 설정 파일 경로 → ADC)에 따른 GCP 인증 해석을 전담하는 독립 클래스. `GcsClient`·`BigQueryClient`가 합성(Composition)으로 사용하며, 그 외 GCP 서비스에서도 단독으로 재사용 가능.
+- **3.1. [AWS S3 및 Dell ECS 오브젝트 스토리지 클라이언트 (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/01_s3_ecs_storage_client_ko.md)**: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 초기화 즉시 `head_bucket` Fail-Fast 검증, 대용량 페이징 제너레이터(`list_objects`), 메타데이터 빠른 조회(`get_object_size`), 메모리 스트리밍 획득(`get_object_stream`), GCS 실시간 파일 전송 및 동일 파일 스마트 스킵(`transfer_to_gcs`).
+- **3.2. [Google Cloud Storage 스트리밍 클라이언트 및 멀티 계층 인증 (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/02_gcs_cloud_storage_client_ko.md)**: 4단계 GCP 인증 우선순위(`GOOGLE_APPLICATION_CREDENTIALS_JSON` 인메모리 JSON -> `GOOGLE_APPLICATION_CREDENTIALS` 파일 -> `credentials_path_str` -> Google ADC) 지원, 연결 및 버킷 권한 조기 검증, 블롭 메타데이터 및 크기 조회(`get_blob_size`), 메모리 낭비 없는 청크 단위 스트림 직접 업로드(`upload_stream`).
+- **3.3. [BigQuery 배치 및 스트리밍 적재 클라이언트 (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/03_bigquery_batch_and_streaming_load_ko.md)**: 연결 및 테이블 스키마 사전 캐싱(`get_table`), JSON 배치 로드 Job(`load_table_from_json_data`) 및 중첩 에러(`errors`, `location`, `reason`) 상세 분해, 실시간 스트리밍 인서트(`insert_rows_json_data`), 범용 동기 SQL 쿼리(`query`), 중복 전송 방지용 기존 키 집합 추출(`get_existing_keys`), 기존 레코드 메타데이터 일괄 조회(`get_existing_records_metadata`).
+- **3.4. [BigQuery 고성능 인라인 MERGE (Upsert) 쿼리 엔진 (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/04_bigquery_inline_merge_upsert_ko.md)**: 스테이징 임시 테이블 생성 없이 직접 `UNNEST(JSON_QUERY_ARRAY(@json_payload))` 기반 인라인 MERGE INTO 수행, 기본키(PK) 기준 자동 UPDATE/INSERT 분기, 생성일시 등 최초 값 보존(`preserve_columns_list`), 컬럼 데이터 타입 자동 추론 및 명시적 캐스팅(`column_types_dict`), 한글/특수문자/예약어 백틱(`` ` ``) 완벽 보호, HTTP 413 페이로드 초과 방지 기본 100건 청크 자동 분할.
+- **3.5. [BigQuery TIMESTAMP·DATETIME 일시 문자열 변환 (`convert_to_bigquery_timestamp`, `convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/05_bigquery_timestamp_and_datetime_conversion_ko.md)**: ISO 8601, 공백 구분, 14자리/8자리 숫자 등 다양한 원천 날짜 문자열을 `TIMESTAMP` 컬럼용(타임존 오프셋 포함, 우선순위 `timezone_offset_str`)과 `DATETIME` 컬럼용(오프셋 없는 벽시계 시각 `YYYY-MM-DD HH:MM:SS`) 표준 문자열로 정규화.
+- **3.6. [GCP 서비스 계정 인증 해석기 (`GcpCredentialResolver`)](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/06_gcp_credential_resolver_ko.md)**: 4단계 우선순위(환경변수 JSON → 환경변수 파일 경로 → 설정 파일 경로 → ADC)에 따른 GCP 인증 해석을 전담하는 독립 클래스. `GcsClient`·`BigQueryClient`가 합성(Composition)으로 사용하며, 그 외 GCP 서비스에서도 단독으로 재사용 가능.
 
 #### 4. 동적 도구 로더 및 템플릿 평가기 (`agent_common.tool_parser`) & 내장 도구 (`agent_common.tool`)
-- **4.1. [이원화된 Tool 디렉터리 계층 탐색 및 동적 로딩 (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/01_dual_tool_hierarchy_discovery_kr.md)**:
+- **4.1. [이원화된 Tool 디렉터리 계층 탐색 및 동적 로딩 (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/ko/tool_parser/01_dual_tool_hierarchy_discovery_ko.md)**:
   - **1순위 (내장 도구)**: `agent_common/tool/` 하위 모듈 (전사 표준 내장 도구)
   - **2순위 (프로젝트 도구)**: `config.yml`의 `transfer.tool_dir_str`에 지정된 로컬 경로 (예: `medallion/tool/`)
-- **4.2. [선언적 템플릿 치환 및 표현식 평가 (`ToolParser.eval`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/02_declarative_template_eval_kr.md)**:
+- **4.2. [선언적 템플릿 치환 및 표현식 평가 (`ToolParser.eval`)](https://github.com/kampores/agent_common/blob/main/manual/ko/tool_parser/02_declarative_template_eval_ko.md)**:
   - 변수 네임스페이스 바인딩: `{ecs.key}`, `{sys.today}`, `{json.title}`
   - 동적 도구 함수 호출: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`
   - 파이프(`|`) 우선순위 폴백 및 기본값: `"{meta.title|json.title|'기본제목'}"`
-- **4.3. [안전한 네임스페이스 탐색 (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/03_safe_namespace_navigation_kr.md)**: 점(`.`) 및 인덱스 통합 접근, 대소문자 무관 탐색, 누락 필드 `""` 반환, 중첩 딕셔너리/리스트 안전 재귀 래핑.
-- **4.4. [내장 공통 일시 도구 (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/04_builtin_datetime_utils_kr.md)**: 테이블 규칙 및 템플릿 평가 전용 날짜/시간 도구, 코어 타임존 해석은 `TimeUtils`에 위임하여 역할 분담.
+- **4.3. [안전한 네임스페이스 탐색 (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/ko/tool_parser/03_safe_namespace_navigation_ko.md)**: 점(`.`) 및 인덱스 통합 접근, 대소문자 무관 탐색, 누락 필드 `""` 반환, 중첩 딕셔너리/리스트 안전 재귀 래핑.
+- **4.4. [내장 공통 일시 도구 (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/ko/tool_parser/04_builtin_datetime_utils_ko.md)**: 테이블 규칙 및 템플릿 평가 전용 날짜/시간 도구, 코어 타임존 해석은 `TimeUtils`에 위임하여 역할 분담.
 
-#### 5. 진행률 트래커, 테이블 포매터 및 시간 유틸리티 (`agent_common.utils`)
-- **5.1. [호스트 시스템 타임존 감지, 전 세계 표준시 해석 및 일시 정규화 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/01_time_utils_and_timezone_resolution_kr.md)**: 호스트 시스템 타임존 동적 자동 감지, 전 세계 30여 개 주요 표준 타임존 해석, ISO 8601 오프셋 계산, 일시 객체/문자열을 timezone-aware datetime으로 정규화하는 `parse_datetime`.
-- **5.2. [멀티스레드 실시간 진행률 추적 및 마일스톤 경고 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/02_progress_tracker_and_milestones_kr.md)**: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도 및 남은 시간(ETA) 예측, 일반 진행 `INFO` vs 10% 단위 마일스톤 `WARNING` 승격 로깅.
-- **5.3. [유니코드 전각 문자 폭 계산 및 마크다운/콘솔 테이블 칼맞춤 포매터 (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/03_unicode_table_formatter_kr.md)**: 유니코드 동아시아 문자 폭(`unicodedata.east_asian_width`) 정밀 계산 기반 한글/한자(2칸) vs 영문(1칸) 모노스페이스 콘솔 및 마크다운 테이블 세로줄 자동 맞춤 포매터.
+#### 5. 진행률 트래커, 테이블 포매터 및 시간 유틸리티 (`agent_common.progress_tracker`, `agent_common.table_formatter`, `agent_common.time_utils`)
+- **5.1. [호스트 시스템 타임존 감지, 전 세계 표준시 해석 및 일시 정규화 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/ko/utils/01_time_utils_and_timezone_resolution_ko.md)**: 호스트 시스템 타임존 동적 자동 감지, 전 세계 30여 개 주요 표준 타임존 해석, ISO 8601 오프셋 계산, 일시 객체/문자열을 timezone-aware datetime으로 정규화하는 `parse_datetime`.
+- **5.2. [멀티스레드 실시간 진행률 추적 및 마일스톤 경고 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/ko/utils/02_progress_tracker_and_milestones_ko.md)**: 멀티스레드 실시간 진행률 추적(`[N/Total] (P%)`), 처리 속도 및 남은 시간(ETA) 예측, 일반 진행 `INFO` vs 10% 단위 마일스톤 `WARNING` 승격 로깅.
+- **5.3. [유니코드 전각 문자 폭 계산 및 마크다운/콘솔 테이블 칼맞춤 포매터 (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/ko/utils/03_unicode_table_formatter_ko.md)**: 유니코드 동아시아 문자 폭(`unicodedata.east_asian_width`) 정밀 계산 기반 한글/한자(2칸) vs 영문(1칸) 모노스페이스 콘솔 및 마크다운 테이블 세로줄 자동 맞춤 포매터.
 
 #### 6. 공용 에러 및 예외 핸들러 (`agent_common.error_handler`)
 - 네트워크 장애, 설정 오류, 런타임 예외에 대한 일관된 로깅 및 핸들링 제공.
 
 #### 7. 통합 LLM 클라이언트 및 추론 엔진 (`agent_common.llm`)
-- **7.1. [모델 프로필 관리 및 텍스트 생성](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/01_model_profiles_and_generation_kr.md)**
-- **7.2. [외부 채팅 API 및 Fabrix 연동](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/02_external_api_and_fabrix_kr.md)**
-- **7.3. [로컬 GGUF 추론 및 모델 캐싱](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/03_local_gguf_inference_kr.md)**
-- **7.4. [실행 모드 및 조건부 로컬 전환](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/04_provider_and_local_fallback_kr.md)**
-- **7.5. [추론 결과 및 예외 처리](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/05_inference_results_and_errors_kr.md)**
-- **7.6. [Groq 감독관 AI 및 Antigravity Stop 훅](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/06_groq_supervisor_and_stop_hook_kr.md)**
+- **7.1. [모델 프로필 관리 및 텍스트 생성](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/01_model_profiles_and_generation_ko.md)**
+- **7.2. [외부 채팅 API 및 Fabrix 연동](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/02_external_api_and_fabrix_ko.md)**
+- **7.3. [로컬 GGUF 추론 및 모델 캐싱](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/03_local_gguf_inference_ko.md)**
+- **7.4. [실행 모드 및 조건부 로컬 전환](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/04_provider_and_local_fallback_ko.md)**
+- **7.5. [추론 결과 및 예외 처리](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/05_inference_results_and_errors_ko.md)**
+- **7.6. [Groq 감독관 AI 및 Antigravity Stop 훅](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/06_groq_supervisor_and_stop_hook_ko.md)**
+
+#### 8. 언어 로컬라이저 (`agent_common.localizer`)
+- **8.1. [언어 코드 정규화 및 언어별 리소스 파일 탐색 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/ko/localizer/01_language_codes_and_resource_lookup_ko.md)**: ISO 639-1 언어 코드(`KO`, `EN`, `ZH`, `JA`) 정규화, 명시 인자·전역 설정·환경변수 기반 언어 결정, `{접두사}_{언어}.yml` 형태의 언어별 리소스 파일 탐색. 로깅과 분리되어 라벨·안내문 등 임의의 다국어 리소스에 재사용 가능.
 
 ---
 
@@ -110,7 +113,7 @@ today_val = tool_parser.eval("{sys.today}", context_dict)
 
 #### 3. ProgressTracker 실시간 진행률 추적
 ```python
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("MyTask")
@@ -184,36 +187,37 @@ publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
 
 | 번호 | 모듈 / 주제 | 상세 매뉴얼 링크 | 주요 내용 요약 |
 | :---: | :--- | :---: | :--- |
-| **1.1** | **계층적 YAML 해석 & 딥 머지** | [01_hierarchical_yaml_merge_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/01_hierarchical_yaml_merge_kr.md) | 5단계 계층 병합 순서, `_deep_merge` 재귀 알고리즘, 루트 디렉터리 자동 탐색 |
-| **1.2** | **불변 점 표기법 조회 (`ReadOnlyConfig`)** | [02_readonly_dot_notation_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/02_readonly_dot_notation_kr.md) | 점 표기법 속성 접근, 런타임 변조 원천 차단(Read-Only), 불변 객체 설계 |
-| **1.3** | **타입 접미사 자동 형 변환 & 타입 보증** | [03_type_coercion_and_guarantee_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/03_type_coercion_and_guarantee_kr.md) | `_int`, `_float`, `_bool`, `_str`, `_list`, `_dict` 런타임 자동 캐스팅 및 타입 안전성 보증 |
-| **1.4** | **Fail-Fast 필수 설정 검증** | [04_fail_fast_require_setting_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/04_fail_fast_require_setting_kr.md) | 기동 초기 필수 설정 누락 감지, 상세 진단 로그 및 프로세스 안전 조기 종료 |
-| **1.5** | **네트워크 프록시 제어** | [05_network_proxy_control_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/05_network_proxy_control_kr.md) | `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영 및 내부 통신 프록시 우회 |
-| **1.6** | **모든 상수의 설정 파일화 및 템플릿 보정** | [06_ensure_config_self_healing_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/config_loader/06_ensure_config_self_healing_kr.md) | 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정 |
-| **2.1** | **단일 행 평탄화 포매터 & 원천 추적** | [01_single_line_flatten_formatter_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/01_single_line_flatten_formatter_kr.md) | `SingleLineFlattenFormatter`, `[Origin: ...]` 프레임 추출, 중앙 로그 수집기 연동 최적화 |
-| **2.2** | **로깅 환경 일괄 구성 & 핸들러 제어** | [02_project_logger_configure_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/02_project_logger_configure_kr.md) | `ProjectLogger.configure()`, 콘솔/파일 핸들러 분기, 레벨별 파일 분리, 단일 표준 경로 템플릿 |
-| **2.3** | **다국어 메시지 사전 & 코드 기반 로깅** | [03_multilingual_message_catalog_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/03_multilingual_message_catalog_kr.md) | `logging_messages_*.yml`, 런타임 언어 전환, `safe_kwargs` 템플릿 치환 |
-| **2.4** | **작업 통계 & 에러/제외 실시간 집계** | [04_execution_result_and_error_tracking_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/04_execution_result_and_error_tracking_kr.md) | 성공/실패/제외(Skip) 3단계 상태 분류, 인스턴스 및 클래스 전역 멀티스레드 집계 |
-| **2.5** | **작업 결과 요약 리포트 자동 생성** | [05_summary_report_generation_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/logger/05_summary_report_generation_kr.md) | `ProjectLogger.log_summary()`, 80열 표준 요약 블록, 처리 속도/전송률, 에러 상세 해석 |
-| **3.1** | **AWS S3 & Dell ECS 스토리지 연동** | [01_s3_ecs_storage_client_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/01_s3_ecs_storage_client_kr.md) | S3/ECS 연결, Fail-Fast 검증, 페이징 목록 조회, GCS 스트리밍 전송 및 동일 파일 스킵 |
-| **3.2** | **GCS 스트리밍 업로드 & 4단계 인증** | [02_gcs_cloud_storage_client_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/02_gcs_cloud_storage_client_kr.md) | 4단계 서비스 계정 인증 우선순위, 연결 검증, 메타데이터 조회, 메모리 파이프라인 업로드 |
-| **3.3** | **BigQuery 배치 적재 & 스트리밍 인서트** | [03_bigquery_batch_and_streaming_load_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/03_bigquery_batch_and_streaming_load_kr.md) | JSON 배치 로드 Job vs 스트리밍 API, 중첩 에러 상세 분해, 중복 방지 키 집합 조회 |
-| **3.4** | **BigQuery 인라인 MERGE (Upsert) 엔진** | [04_bigquery_inline_merge_upsert_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/04_bigquery_inline_merge_upsert_kr.md) | 임시 테이블 없는 인라인 MERGE, UNNEST 파라미터 바인딩, 동적 타입 캐스팅, 100건 청크 분할 |
-| **3.5** | **BigQuery TIMESTAMP·DATETIME 변환** | [05_bigquery_timestamp_and_datetime_conversion_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/05_bigquery_timestamp_and_datetime_conversion_kr.md) | ISO/압축 일시 정규화, 타임존 오프셋 결정 우선순위, 컬럼 타입별 메서드 선택 기준 |
-| **3.6** | **GCP 서비스 계정 인증 해석기** | [06_gcp_credential_resolver_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/clients/06_gcp_credential_resolver_kr.md) | `GcpCredentialResolver`, 4단계 인증 우선순위, 다른 GCP 서비스에서의 단독 재사용, 합성(Composition) 구조 |
-| **4.1** | **이원화된 Tool 디렉터리 계층 탐색 & 동적 로딩** | [01_dual_tool_hierarchy_discovery_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/01_dual_tool_hierarchy_discovery_kr.md) | 내장(1순위) vs 로컬(2순위) 탐색 계층, 3단계 함수 탐색, `_tool_cache`, 사전 검증 |
-| **4.2** | **선언적 템플릿 치환 & 표현식 평가** | [02_declarative_template_eval_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/02_declarative_template_eval_kr.md) | `ToolParser.eval()`, 도구 함수 직통 호출, 점(.) 네임스페이스 바인딩, 파이프(`\|`) 폴백 |
-| **4.3** | **안전한 네임스페이스 탐색 (`_SafeNamespace`)** | [03_safe_namespace_navigation_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/03_safe_namespace_navigation_kr.md) | 점(.)/인덱스 통합 접근, 대소문자 무관 탐색, 누락 필드 `""` 반환, 중첩 래핑 |
-| **4.4** | **내장 공통 일시 도구 (`DateTimeUtils`)** | [04_builtin_datetime_utils_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/tool_parser/04_builtin_datetime_utils_kr.md) | 테이블 룰/템플릿 전용 날짜 도구, `YYYYMMDD`, ISO 타임스탬프, 압축 일시 생성 |
-| **5.1** | **호스트 타임존 감지 & 세계 표준시 해석** | [01_time_utils_and_timezone_resolution_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/01_time_utils_and_timezone_resolution_kr.md) | `TimeUtils`, OS/컨테이너 타임존 감지, 전 세계 30여 개 표준시 해석, datetime 정규화 |
-| **5.2** | **멀티스레드 실시간 진행률 추적 & 마일스톤** | [02_progress_tracker_and_milestones_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/02_progress_tracker_and_milestones_kr.md) | `ProgressTracker`, 실시간 진행률(`%`), 처리 속도, ETA 계산, `WARNING` 승격 로깅 |
-| **5.3** | **유니코드 전각 폭 계산 & 마크다운 표 칼맞춤** | [03_unicode_table_formatter_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/utils/03_unicode_table_formatter_kr.md) | `TableFormatter`, 동아시아 문자 폭(`east_asian_width`) 정밀 계산, 마크다운 표 정렬 |
-| **7.1** | **모델 프로필 관리 및 텍스트 생성** | [01_model_profiles_and_generation_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/01_model_profiles_and_generation_kr.md) | `agent_common.llm` |
-| **7.2** | **외부 채팅 API 및 Fabrix 연동** | [02_external_api_and_fabrix_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/02_external_api_and_fabrix_kr.md) | `agent_common.llm` |
-| **7.3** | **로컬 GGUF 추론 및 모델 캐싱** | [03_local_gguf_inference_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/03_local_gguf_inference_kr.md) | `agent_common.llm` |
-| **7.4** | **실행 모드 및 조건부 로컬 전환** | [04_provider_and_local_fallback_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/04_provider_and_local_fallback_kr.md) | `agent_common.llm` |
-| **7.5** | **추론 결과 및 예외 처리** | [05_inference_results_and_errors_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/05_inference_results_and_errors_kr.md) | `agent_common.llm` |
-| **7.6** | **Groq 감독관 AI 및 Antigravity Stop 훅** | [06_groq_supervisor_and_stop_hook_kr.md](https://github.com/kampores/agent_common/blob/main/manual/kr/llm/06_groq_supervisor_and_stop_hook_kr.md) | `agent_common.llm` |
+| **1.1** | **계층적 YAML 해석 & 딥 머지** | [01_hierarchical_yaml_merge_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/01_hierarchical_yaml_merge_ko.md) | 5단계 계층 병합 순서, `_deep_merge` 재귀 알고리즘, 루트 디렉터리 자동 탐색 |
+| **1.2** | **불변 점 표기법 조회 (`ReadOnlyConfig`)** | [02_readonly_dot_notation_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/02_readonly_dot_notation_ko.md) | 점 표기법 속성 접근, 런타임 변조 원천 차단(Read-Only), 불변 객체 설계 |
+| **1.3** | **타입 접미사 자동 형 변환 & 타입 보증** | [03_type_coercion_and_guarantee_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/03_type_coercion_and_guarantee_ko.md) | `_int`, `_float`, `_bool`, `_str`, `_list`, `_dict` 런타임 자동 캐스팅 및 타입 안전성 보증 |
+| **1.4** | **Fail-Fast 필수 설정 검증** | [04_fail_fast_require_setting_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/04_fail_fast_require_setting_ko.md) | 기동 초기 필수 설정 누락 감지, 상세 진단 로그 및 프로세스 안전 조기 종료 |
+| **1.5** | **네트워크 프록시 제어** | [05_network_proxy_control_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/05_network_proxy_control_ko.md) | `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영 및 내부 통신 프록시 우회 |
+| **1.6** | **모든 상수의 설정 파일화 및 템플릿 보정** | [06_ensure_config_self_healing_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/06_ensure_config_self_healing_ko.md) | 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정 |
+| **2.1** | **단일 행 평탄화 포매터 & 원천 추적** | [01_single_line_flatten_formatter_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/01_single_line_flatten_formatter_ko.md) | `SingleLineFlattenFormatter`, `[Origin: ...]` 프레임 추출, 중앙 로그 수집기 연동 최적화 |
+| **2.2** | **로깅 환경 일괄 구성 & 핸들러 제어** | [02_project_logger_configure_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/02_project_logger_configure_ko.md) | `ProjectLogger.configure()`, 콘솔/파일 핸들러 분기, 레벨별 파일 분리, 단일 표준 경로 템플릿 |
+| **2.3** | **다국어 메시지 사전 & 코드 기반 로깅** | [03_multilingual_message_catalog_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/03_multilingual_message_catalog_ko.md) | `logging_messages_*.yml`, 런타임 언어 전환, `safe_kwargs` 템플릿 치환 |
+| **2.4** | **작업 통계 & 에러/제외 실시간 집계** | [04_execution_result_and_error_tracking_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/04_execution_result_and_error_tracking_ko.md) | 성공/실패/제외(Skip) 3단계 상태 분류, 인스턴스 및 클래스 전역 멀티스레드 집계 |
+| **2.5** | **작업 결과 요약 리포트 자동 생성** | [05_summary_report_generation_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/05_summary_report_generation_ko.md) | `ProjectLogger.log_summary()`, 80열 표준 요약 블록, 처리 속도/전송률, 에러 상세 해석 |
+| **3.1** | **AWS S3 & Dell ECS 스토리지 연동** | [01_s3_ecs_storage_client_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/01_s3_ecs_storage_client_ko.md) | S3/ECS 연결, Fail-Fast 검증, 페이징 목록 조회, GCS 스트리밍 전송 및 동일 파일 스킵 |
+| **3.2** | **GCS 스트리밍 업로드 & 4단계 인증** | [02_gcs_cloud_storage_client_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/02_gcs_cloud_storage_client_ko.md) | 4단계 서비스 계정 인증 우선순위, 연결 검증, 메타데이터 조회, 메모리 파이프라인 업로드 |
+| **3.3** | **BigQuery 배치 적재 & 스트리밍 인서트** | [03_bigquery_batch_and_streaming_load_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/03_bigquery_batch_and_streaming_load_ko.md) | JSON 배치 로드 Job vs 스트리밍 API, 중첩 에러 상세 분해, 중복 방지 키 집합 조회 |
+| **3.4** | **BigQuery 인라인 MERGE (Upsert) 엔진** | [04_bigquery_inline_merge_upsert_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/04_bigquery_inline_merge_upsert_ko.md) | 임시 테이블 없는 인라인 MERGE, UNNEST 파라미터 바인딩, 동적 타입 캐스팅, 100건 청크 분할 |
+| **3.5** | **BigQuery TIMESTAMP·DATETIME 변환** | [05_bigquery_timestamp_and_datetime_conversion_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/05_bigquery_timestamp_and_datetime_conversion_ko.md) | ISO/압축 일시 정규화, 타임존 오프셋 결정 우선순위, 컬럼 타입별 메서드 선택 기준 |
+| **3.6** | **GCP 서비스 계정 인증 해석기** | [06_gcp_credential_resolver_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/06_gcp_credential_resolver_ko.md) | `GcpCredentialResolver`, 4단계 인증 우선순위, 다른 GCP 서비스에서의 단독 재사용, 합성(Composition) 구조 |
+| **4.1** | **이원화된 Tool 디렉터리 계층 탐색 & 동적 로딩** | [01_dual_tool_hierarchy_discovery_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/tool_parser/01_dual_tool_hierarchy_discovery_ko.md) | 내장(1순위) vs 로컬(2순위) 탐색 계층, 3단계 함수 탐색, `_tool_cache`, 사전 검증 |
+| **4.2** | **선언적 템플릿 치환 & 표현식 평가** | [02_declarative_template_eval_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/tool_parser/02_declarative_template_eval_ko.md) | `ToolParser.eval()`, 도구 함수 직통 호출, 점(.) 네임스페이스 바인딩, 파이프(`\|`) 폴백 |
+| **4.3** | **안전한 네임스페이스 탐색 (`_SafeNamespace`)** | [03_safe_namespace_navigation_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/tool_parser/03_safe_namespace_navigation_ko.md) | 점(.)/인덱스 통합 접근, 대소문자 무관 탐색, 누락 필드 `""` 반환, 중첩 래핑 |
+| **4.4** | **내장 공통 일시 도구 (`DateTimeUtils`)** | [04_builtin_datetime_utils_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/tool_parser/04_builtin_datetime_utils_ko.md) | 테이블 룰/템플릿 전용 날짜 도구, `YYYYMMDD`, ISO 타임스탬프, 압축 일시 생성 |
+| **5.1** | **호스트 타임존 감지 & 세계 표준시 해석** | [01_time_utils_and_timezone_resolution_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/utils/01_time_utils_and_timezone_resolution_ko.md) | `TimeUtils`, OS/컨테이너 타임존 감지, 전 세계 30여 개 표준시 해석, datetime 정규화 |
+| **5.2** | **멀티스레드 실시간 진행률 추적 & 마일스톤** | [02_progress_tracker_and_milestones_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/utils/02_progress_tracker_and_milestones_ko.md) | `ProgressTracker`, 실시간 진행률(`%`), 처리 속도, ETA 계산, `WARNING` 승격 로깅 |
+| **5.3** | **유니코드 전각 폭 계산 & 마크다운 표 칼맞춤** | [03_unicode_table_formatter_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/utils/03_unicode_table_formatter_ko.md) | `TableFormatter`, 동아시아 문자 폭(`east_asian_width`) 정밀 계산, 마크다운 표 정렬 |
+| **7.1** | **모델 프로필 관리 및 텍스트 생성** | [01_model_profiles_and_generation_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/01_model_profiles_and_generation_ko.md) | `agent_common.llm` |
+| **7.2** | **외부 채팅 API 및 Fabrix 연동** | [02_external_api_and_fabrix_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/02_external_api_and_fabrix_ko.md) | `agent_common.llm` |
+| **7.3** | **로컬 GGUF 추론 및 모델 캐싱** | [03_local_gguf_inference_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/03_local_gguf_inference_ko.md) | `agent_common.llm` |
+| **7.4** | **실행 모드 및 조건부 로컬 전환** | [04_provider_and_local_fallback_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/04_provider_and_local_fallback_ko.md) | `agent_common.llm` |
+| **7.5** | **추론 결과 및 예외 처리** | [05_inference_results_and_errors_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/05_inference_results_and_errors_ko.md) | `agent_common.llm` |
+| **7.6** | **Groq 감독관 AI 및 Antigravity Stop 훅** | [06_groq_supervisor_and_stop_hook_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/06_groq_supervisor_and_stop_hook_ko.md) | `agent_common.llm` |
+| **8.1** | **언어 코드 정규화 & 언어별 리소스 탐색** | [01_language_codes_and_resource_lookup_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/localizer/01_language_codes_and_resource_lookup_ko.md) | `Localizer`, 지원 언어 코드와 별칭, 언어 결정 우선순위, 언어별 파일 탐색 및 기본 언어 대체 규칙 |
 
 ---
 
@@ -249,7 +253,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.95-py3-none-any.whl
+pip install dist/agent_common-0.4.96-py3-none-any.whl
 ```
 
 #### 🌐 PyPI 공식 배포 (관리자 전용)
@@ -264,14 +268,14 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.95*
+python -m twine upload dist/agent_common-0.4.96*
 ```
 
 ---
 
 ### 📋 버전 변경 이력 (Changelog)
 
-전체 상세 버전 변경 이력은 [CHANGELOG_KR.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG_KR.md) 파일을 참고하세요.
+전체 상세 버전 변경 이력은 [CHANGELOG_KO.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG_KO.md) 파일을 참고하세요.
 
 ---
 
@@ -301,7 +305,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 #### 2. Single-Line Log Formatter & Project Logger (`agent_common.logger`)
 - **2.1. [Single-Line Flatten Formatter & Origin Tracking (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/01_single_line_flatten_formatter_en.md)**: Flattens log records, extracts `[Origin: ...]` caller frames, and optimizes for centralized log aggregators (Logstash, Fluentd, CloudWatch).
 - **2.2. [Batch Logging Configuration & Handler Control (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/02_project_logger_configure_en.md)**: Dynamic console/file handler initialization, date-based directories, and level-based directory creation (`log_file_str` with `{log_level_str}`).
-- **2.3. [Multilingual Message Catalog & Code-Based Logging (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog_en.md)**: Dynamic multilingual dictionary loading (`KR`, `EN`, `ZH`, `JP`), runtime language switching, and safe template parameter substitution.
+- **2.3. [Multilingual Message Catalog & Code-Based Logging (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog_en.md)**: Dynamic multilingual dictionary loading (`KO`, `EN`, `ZH`, `JA`), runtime language switching, and safe template parameter substitution.
 - **2.4. [Real-Time Metric Tracking & Error/Exclusion Classification (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/04_execution_result_and_error_tracking_en.md)**: Three-tier outcome model (Success, Failure, Excluded/Skip) and dual instance/class-global multithreaded telemetry.
 - **2.5. [Automatic Summary Report Generation (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation_en.md)**: Emits structured 80-column execution summary reports with duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
 
@@ -324,7 +328,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **4.3. [Safe Namespace Lookup & Case-Insensitive Access (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/03_safe_namespace_navigation_en.md)**: Unified dot-notation and bracket indexing, resilient case-insensitive key resolution, empty string (`""`) fallback on missing keys, recursive nested collection wrapping.
 - **4.4. [Built-in DateTime Tool (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/en/tool_parser/04_builtin_datetime_utils_en.md)**: Business rule and template formatting tool delegating core timezone calculations to `TimeUtils`.
 
-#### 5. Progress Tracker & Common Utilities (`agent_common.utils`)
+#### 5. Progress Tracker & Common Utilities (`agent_common.progress_tracker`, `agent_common.table_formatter`, `agent_common.time_utils`)
 - **5.1. [System Timezone Detection, Global Timezone Resolution & Datetime Normalization (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/01_time_utils_and_timezone_resolution_en.md)**: Dynamic host OS system timezone detection, 30+ world timezone parsing, ISO 8601 offset calculation, and `parse_datetime` normalization core utility.
 - **5.2. [Multithreaded Progress Tracking & Milestone Telemetry (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/02_progress_tracker_and_milestones_en.md)**: Real-time multithreaded progress tracking (`[N/Total] (P%)`), throughput/ETA calculation, and tiered logging (standard `INFO` vs 10% milestone `WARNING` level elevation).
 - **5.3. [Unicode East Asian Width Alignment & Table Formatter (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/utils/03_unicode_table_formatter_en.md)**: Precision terminal and Markdown table column width alignment utility calculating Unicode East Asian character display widths (`unicodedata.east_asian_width`).
@@ -339,6 +343,9 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **7.4. [Provider Selection and Conditional Local Fallback](https://github.com/kampores/agent_common/blob/main/manual/en/llm/04_provider_and_local_fallback_en.md)**
 - **7.5. [Inference Results and Error Handling](https://github.com/kampores/agent_common/blob/main/manual/en/llm/05_inference_results_and_errors_en.md)**
 - **7.6. [Groq Supervisor and Antigravity Stop Hook](https://github.com/kampores/agent_common/blob/main/manual/en/llm/06_groq_supervisor_and_stop_hook_en.md)**
+
+#### 8. Language Localizer (`agent_common.localizer`)
+- **8.1. [Language Code Normalization & Localized Resource Lookup (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/en/localizer/01_language_codes_and_resource_lookup_en.md)**: Normalizes ISO 639-1 language codes (`KO`, `EN`, `ZH`, `JA`), decides the language from an explicit argument, the global setting, and environment variables, and finds per-language resource files named `{prefix}_{language}.yml`. Separate from logging, so it can be reused for any multilingual resource such as labels and notices.
 
 ---
 
@@ -376,7 +383,7 @@ today_val = tool_parser.eval("{sys.today}", context_dict)
 
 #### 3. Real-time Progress Tracking with ProgressTracker
 ```python
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("MyTask")
@@ -481,6 +488,7 @@ publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
 | **7.4** | **Provider Selection and Conditional Local Fallback** | [04_provider_and_local_fallback_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/04_provider_and_local_fallback_en.md) | `agent_common.llm` |
 | **7.5** | **Inference Results and Error Handling** | [05_inference_results_and_errors_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/05_inference_results_and_errors_en.md) | `agent_common.llm` |
 | **7.6** | **Groq Supervisor and Antigravity Stop Hook** | [06_groq_supervisor_and_stop_hook_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/llm/06_groq_supervisor_and_stop_hook_en.md) | `agent_common.llm` |
+| **8.1** | **Language Code Normalization & Localized Resource Lookup** | [01_language_codes_and_resource_lookup_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/localizer/01_language_codes_and_resource_lookup_en.md) | `Localizer`, supported language codes and aliases, language precedence, per-language file lookup with default-language fallback |
 
 ---
 
@@ -504,7 +512,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.95-py3-none-any.whl
+pip install dist/agent_common-0.4.96-py3-none-any.whl
 ```
 
 #### 🌐 Official PyPI Distribution (Maintainers Only)
@@ -519,7 +527,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.95*
+python -m twine upload dist/agent_common-0.4.96*
 ```
 
 ---
@@ -579,7 +587,7 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
 - **4.3. [安全命名空间导航 (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/zh/tool_parser/03_safe_namespace_navigation_zh.md)**: 点 (.) 与中括号索引统一访问，不区分大小写，缺失键返回 `""` 避免 `KeyError`，嵌套集合安全递归包装。
 - **4.4. [内置通用日期时间工具 (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/zh/tool_parser/04_builtin_datetime_utils_zh.md)**: 表规则与模板评估专用日期工具，时区核心运算委托给 `TimeUtils` 协同分工。
 
-#### 5. 进度跟踪器、表格格式化器与时间工具 (`agent_common.utils`)
+#### 5. 进度跟踪器、表格格式化器与时间工具 (`agent_common.progress_tracker`, `agent_common.table_formatter`, `agent_common.time_utils`)
 - **5.1. [主机系统时区探测、全球标准时区解析与日期规范化 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/zh/utils/01_time_utils_and_timezone_resolution_zh.md)**: 动态自动探测主机系统时区，解析全球 30+ 常见标准时区缩写，计算 ISO 8601 偏移量，提供时区感知转换核心 `parse_datetime`。
 - **5.2. [多线程实时进度跟踪与里程碑警报 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/zh/utils/02_progress_tracker_and_milestones_zh.md)**: 多线程实时进度跟踪 (`[N/Total] (P%)`)，处理吞吐量与预计剩余时间 (ETA) 计算，常规 `INFO` 与 10% 整数倍里程碑 `WARNING` 升级记录。
 - **5.3. [Unicode 全角字符宽度计算与 Markdown/控制台表格对齐格式化器 (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/zh/utils/03_unicode_table_formatter_zh.md)**: 基于东亚字符宽度 (`unicodedata.east_asian_width`) 精确计算，实现汉字/全角(2格)与英文(1格)在控制台与 Markdown 表格中的对齐。
@@ -594,6 +602,9 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
 - **7.4. [执行模式与条件化本地切换](https://github.com/kampores/agent_common/blob/main/manual/zh/llm/04_provider_and_local_fallback_zh.md)**
 - **7.5. [推理结果与异常处理](https://github.com/kampores/agent_common/blob/main/manual/zh/llm/05_inference_results_and_errors_zh.md)**
 - **7.6. [Groq 监督员 AI 与 Antigravity Stop 钩子](https://github.com/kampores/agent_common/blob/main/manual/zh/llm/06_groq_supervisor_and_stop_hook_zh.md)**
+
+#### 8. 语言本地化器 (`agent_common.localizer`)
+- **8.1. [语言代码规范化与多语言资源文件查找 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/zh/localizer/01_language_codes_and_resource_lookup_zh.md)**: 规范化 ISO 639-1 语言代码 (`KO`, `EN`, `ZH`, `JA`)，基于显式参数、全局设置与环境变量决定语言，并查找 `{前缀}_{语言}.yml` 形式的多语言资源文件。与日志功能相互独立，可复用于标签、提示文案等任意多语言资源。
 
 ---
 
@@ -631,7 +642,7 @@ today_val = tool_parser.eval("{sys.today}", context_dict)
 
 #### 3. 使用 ProgressTracker 实时追踪进度
 ```python
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("MyTask")
@@ -736,6 +747,7 @@ publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
 | **7.4** | **执行模式与条件化本地切换** | [04_provider_and_local_fallback_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/llm/04_provider_and_local_fallback_zh.md) | `agent_common.llm` |
 | **7.5** | **推理结果与异常处理** | [05_inference_results_and_errors_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/llm/05_inference_results_and_errors_zh.md) | `agent_common.llm` |
 | **7.6** | **Groq 监督员 AI 与 Antigravity Stop 钩子** | [06_groq_supervisor_and_stop_hook_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/llm/06_groq_supervisor_and_stop_hook_zh.md) | `agent_common.llm` |
+| **8.1** | **语言代码规范化 & 多语言资源查找** | [01_language_codes_and_resource_lookup_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/localizer/01_language_codes_and_resource_lookup_zh.md) | `Localizer`、支持的语言代码与别名、语言决定优先级、多语言文件查找及默认语言回退规则 |
 
 ---
 
@@ -759,7 +771,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 生产环境 (安装 Wheel 包)
-pip install dist/agent_common-0.4.95-py3-none-any.whl
+pip install dist/agent_common-0.4.96-py3-none-any.whl
 ```
 
 #### 🌐 官方 PyPI 镜像分发（仅限维护者）
@@ -774,7 +786,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. 上传至 PyPI
-python -m twine upload dist/agent_common-0.4.95*
+python -m twine upload dist/agent_common-0.4.96*
 ```
 
 ---
@@ -794,9 +806,9 @@ python -m twine upload dist/agent_common-0.4.95*
 ### 📌 主な機能
 
 #### 1. 設定ローダーおよび不変設定オブジェクト (`agent_common.config_loader`)
-- **1.1. [階層型 YAML 解析およびディープマージ (Deep Merge)](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/01_hierarchical_yaml_merge_jp.md)**: パッケージ組み込みデフォルト設定 (`agent_common/config/*.yml`) とプロジェクト固有設定 (`config/*.yml`) を動的にマージ。
-- **1.2. [不変ドット記法アクセス (`ReadOnlyConfig`)](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/02_readonly_dot_notation_jp.md)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 形式の直感的な属性アクセスとランタイム改ざん防止。
-- **1.3. [型サフィックス自動型変換および型保証](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/03_type_coercion_and_guarantee_jp.md)**:
+- **1.1. [階層型 YAML 解析およびディープマージ (Deep Merge)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/01_hierarchical_yaml_merge_ja.md)**: パッケージ組み込みデフォルト設定 (`agent_common/config/*.yml`) とプロジェクト固有設定 (`config/*.yml`) を動的にマージ。
+- **1.2. [不変ドット記法アクセス (`ReadOnlyConfig`)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/02_readonly_dot_notation_ja.md)**: `config.ecs.endpoint_url`, `config.transfer.max_workers_int` 形式の直感的な属性アクセスとランタイム改ざん防止。
+- **1.3. [型サフィックス自動型変換および型保証](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/03_type_coercion_and_guarantee_ja.md)**:
   - `_int`: 自動整数変換および型保証。
   - `_float`: 自動浮動小数点数変換および型保証。
   - `_bool`: 厳格なブール型変換および型保証（Python `bool` または大文字小文字不問の `"true"`, `"false"` をサポートし、`0`, `1` など非ブール値流入時は Fail-Fast 遮断）。
@@ -804,51 +816,54 @@ python -m twine upload dist/agent_common-0.4.95*
   - `_list` / `_dict`: リスト / 不変辞書 (`ReadOnlyConfig`) ラッピング保証。
   - 汎用関数 `coerce_type_by_key_suffix` およびネスト辞書一括変換 `coerce_dict_by_key_suffix` により、外部設定ファイル (`rule.yml`, `mapping.yml`) やデータパイプラインを完全サポート。
   - 厳格な Fail-Fast 保証: 型不一致時は詳細な診断例外 (`ValueError`/`TypeError`) を即座に発生。
-- **1.4. [Fail-Fast 必須設定検証 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/04_fail_fast_require_setting_jp.md)**: プログラム起動時に必須設定値が欠落している場合、詳細原因を出力してプロセスを即座に終了。
-- **1.5. [ネットワークプロキシ制御 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/05_network_proxy_control_jp.md)**: `proxy.no_proxy` 設定を `NO_PROXY` 環境変数に自動反映し、内部通信プロキシをバイパス。
-- **1.6. [全定数の設定ファイル外部化および自己修復テンプレート補正 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/06_ensure_config_self_healing_jp.md)**: コード内の全定数を設定ファイル化、`config.yml` の自動生成および欠落キーの強制補正。
+- **1.4. [Fail-Fast 必須設定検証 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/04_fail_fast_require_setting_ja.md)**: プログラム起動時に必須設定値が欠落している場合、詳細原因を出力してプロセスを即座に終了。
+- **1.5. [ネットワークプロキシ制御 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/05_network_proxy_control_ja.md)**: `proxy.no_proxy` 設定を `NO_PROXY` 環境変数に自動反映し、内部通信プロキシをバイパス。
+- **1.6. [全定数の設定ファイル外部化および自己修復テンプレート補正 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/06_ensure_config_self_healing_ja.md)**: コード内の全定数を設定ファイル化、`config.yml` の自動生成および欠落キーの強制補正。
 
 #### 2. 単一行ログフォーマッターおよびロガー (`agent_common.logger`)
-- **2.1. [単一行フラット化フォーマッターおよび例外発生源追跡 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/01_single_line_flatten_formatter_jp.md)**: 全ログおよびトレースバックを1行にフラット化し、`[Origin: ...]` 発生源位置を抽出。集中ログ収集基盤（Logstash, Fluentd, CloudWatch）に最適化。
-- **2.2. [一括ロギング構成およびハンドラー制御 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/02_project_logger_configure_jp.md)**: コンソールおよびファイルハンドラーを動的構成、日付別ディレクトリ分離、ログレベル別ディレクトリ自動振り分け。
-- **2.3. [多言語メッセージカタログおよびコードベースロギング (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/03_multilingual_message_catalog_jp.md)**: 設定に基づき日本語/英語/韓国語/中国語メッセージ辞書を自動連動、動的言語切り替えおよび安全なテンプレート変数置換。
-- **2.4. [タスク進捗統計およびエラー/除外リアルタイム集計 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/04_execution_result_and_error_tracking_jp.md)**: 成功、失敗、除外 (Skip) の3段階分類とマルチスレッド集計。
-- **2.5. [タスク結果要約レポート自動生成 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/05_summary_report_generation_jp.md)**: 「全体 = 成功 + 失敗 + 除外」整合性保証、処理スループット、転送速度、エラー診断を含む標準 Markdown 表を出力。
+- **2.1. [単一行フラット化フォーマッターおよび例外発生源追跡 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/01_single_line_flatten_formatter_ja.md)**: 全ログおよびトレースバックを1行にフラット化し、`[Origin: ...]` 発生源位置を抽出。集中ログ収集基盤（Logstash, Fluentd, CloudWatch）に最適化。
+- **2.2. [一括ロギング構成およびハンドラー制御 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/02_project_logger_configure_ja.md)**: コンソールおよびファイルハンドラーを動的構成、日付別ディレクトリ分離、ログレベル別ディレクトリ自動振り分け。
+- **2.3. [多言語メッセージカタログおよびコードベースロギング (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/03_multilingual_message_catalog_ja.md)**: 設定に基づき日本語/英語/韓国語/中国語メッセージ辞書を自動連動、動的言語切り替えおよび安全なテンプレート変数置換。
+- **2.4. [タスク進捗統計およびエラー/除外リアルタイム集計 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/04_execution_result_and_error_tracking_ja.md)**: 成功、失敗、除外 (Skip) の3段階分類とマルチスレッド集計。
+- **2.5. [タスク結果要約レポート自動生成 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/05_summary_report_generation_ja.md)**: 「全体 = 成功 + 失敗 + 除外」整合性保証、処理スループット、転送速度、エラー診断を含む標準 Markdown 表を出力。
 
 #### 3. ストレージおよびデータベースクライアント (`agent_common.clients`)
-- **3.1. [AWS S3 および Dell ECS オブジェクトストレージクライアント (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/01_s3_ecs_storage_client_jp.md)**: AWS S3 および Dell ECS (S3互換) 接続、起動時 `head_bucket` 検証、ページネーション一覧取得 (`list_objects`)、メタデータ高速取得 (`get_object_size`)、ストリーミング読み込み (`get_object_stream`)、GCS リアルタイム転送と重複スキップ (`transfer_to_gcs`)。
-- **3.2. [Google Cloud Storage ストリーミングクライアントおよび多層認証 (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/02_gcs_cloud_storage_client_jp.md)**: 4段階 GCP 認証階層 (`GOOGLE_APPLICATION_CREDENTIALS_JSON` メモリ JSON -> `GOOGLE_APPLICATION_CREDENTIALS` ファイル -> `credentials_path_str` -> Google ADC)、バケット疎通検証、チャンク単位ストリーム直接アップロード (`upload_stream`)。
-- **3.3. [BigQuery バッチロードおよびストリーミング挿入クライアント (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/03_bigquery_batch_and_streaming_load_jp.md)**: テーブルメタデータキャッシュ (`get_table`)、JSON バッチロード Job (`load_table_from_json_data`)、リアルタイムストリーミング挿入 (`insert_rows_json_data`)、同期 SQL クエリ (`query`)、重複防止キー抽出 (`get_existing_keys`)。
-- **3.4. [BigQuery 高性能インライン MERGE (Upsert) エンジン (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/04_bigquery_inline_merge_upsert_jp.md)**: 一時テーブル不要で `UNNEST(JSON_QUERY_ARRAY(@json_payload))` によるインライン MERGE INTO 実行、主キー基準の自動 UPDATE/INSERT、作成日時等の初期値保護 (`preserve_columns_list`)、100件チャンク自動分割。
-- **3.5. [BigQuery TIMESTAMP・DATETIME 日時文字列変換 (`convert_to_bigquery_timestamp`, `convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/05_bigquery_timestamp_and_datetime_conversion_jp.md)**: ISO 8601、空白区切り、14桁/8桁の数字など多様な日時文字列を、`TIMESTAMP` 列向け（タイムゾーンオフセット付き、優先順位 `timezone_offset_str`）および `DATETIME` 列向け（オフセットなしの壁時計時刻 `YYYY-MM-DD HH:MM:SS`）の標準文字列へ正規化。
-- **3.6. [GCP サービスアカウント認証リゾルバー (`GcpCredentialResolver`)](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/06_gcp_credential_resolver_jp.md)**: 4段階の優先順位（環境変数 JSON → 環境変数のファイルパス → 設定ファイルのパス → ADC）による GCP 認証解決を専任する独立クラス。`GcsClient`・`BigQueryClient` がコンポジションで利用し、その他の GCP サービスでも単独で再利用可能。
+- **3.1. [AWS S3 および Dell ECS オブジェクトストレージクライアント (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/01_s3_ecs_storage_client_ja.md)**: AWS S3 および Dell ECS (S3互換) 接続、起動時 `head_bucket` 検証、ページネーション一覧取得 (`list_objects`)、メタデータ高速取得 (`get_object_size`)、ストリーミング読み込み (`get_object_stream`)、GCS リアルタイム転送と重複スキップ (`transfer_to_gcs`)。
+- **3.2. [Google Cloud Storage ストリーミングクライアントおよび多層認証 (`GcsClient`)](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/02_gcs_cloud_storage_client_ja.md)**: 4段階 GCP 認証階層 (`GOOGLE_APPLICATION_CREDENTIALS_JSON` メモリ JSON -> `GOOGLE_APPLICATION_CREDENTIALS` ファイル -> `credentials_path_str` -> Google ADC)、バケット疎通検証、チャンク単位ストリーム直接アップロード (`upload_stream`)。
+- **3.3. [BigQuery バッチロードおよびストリーミング挿入クライアント (`BigQueryClient`)](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/03_bigquery_batch_and_streaming_load_ja.md)**: テーブルメタデータキャッシュ (`get_table`)、JSON バッチロード Job (`load_table_from_json_data`)、リアルタイムストリーミング挿入 (`insert_rows_json_data`)、同期 SQL クエリ (`query`)、重複防止キー抽出 (`get_existing_keys`)。
+- **3.4. [BigQuery 高性能インライン MERGE (Upsert) エンジン (`merge_table_from_json_data`)](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/04_bigquery_inline_merge_upsert_ja.md)**: 一時テーブル不要で `UNNEST(JSON_QUERY_ARRAY(@json_payload))` によるインライン MERGE INTO 実行、主キー基準の自動 UPDATE/INSERT、作成日時等の初期値保護 (`preserve_columns_list`)、100件チャンク自動分割。
+- **3.5. [BigQuery TIMESTAMP・DATETIME 日時文字列変換 (`convert_to_bigquery_timestamp`, `convert_to_bigquery_datetime`)](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/05_bigquery_timestamp_and_datetime_conversion_ja.md)**: ISO 8601、空白区切り、14桁/8桁の数字など多様な日時文字列を、`TIMESTAMP` 列向け（タイムゾーンオフセット付き、優先順位 `timezone_offset_str`）および `DATETIME` 列向け（オフセットなしの壁時計時刻 `YYYY-MM-DD HH:MM:SS`）の標準文字列へ正規化。
+- **3.6. [GCP サービスアカウント認証リゾルバー (`GcpCredentialResolver`)](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/06_gcp_credential_resolver_ja.md)**: 4段階の優先順位（環境変数 JSON → 環境変数のファイルパス → 設定ファイルのパス → ADC）による GCP 認証解決を専任する独立クラス。`GcsClient`・`BigQueryClient` がコンポジションで利用し、その他の GCP サービスでも単独で再利用可能。
 
 #### 4. 動的ツールローダーおよびテンプレート評価器 (`agent_common.tool_parser`) & 組み込みツール (`agent_common.tool`)
-- **4.1. [二元化 Tool ディレクトリ階層探索および動的ロード (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/01_dual_tool_hierarchy_discovery_jp.md)**:
+- **4.1. [二元化 Tool ディレクトリ階層探索および動的ロード (`ToolParser.load_tool_function`)](https://github.com/kampores/agent_common/blob/main/manual/ja/tool_parser/01_dual_tool_hierarchy_discovery_ja.md)**:
   - **優先度 1 (組み込みツール)**: `agent_common/tool/` 配下モジュール（標準組み込みツール）。
   - **優先度 2 (プロジェクトツール)**: `config.yml` 内の `transfer.tool_dir_str` 指定パス（例: `medallion/tool/`）。
-- **4.2. [宣言的テンプレート置換および式評価 (`ToolParser.eval`)](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/02_declarative_template_eval_jp.md)**:
+- **4.2. [宣言的テンプレート置換および式評価 (`ToolParser.eval`)](https://github.com/kampores/agent_common/blob/main/manual/ja/tool_parser/02_declarative_template_eval_ja.md)**:
   - 名前空間バインディング: `{ecs.key}`, `{sys.today}`, `{json.title}`。
   - 動的ツール関数呼び出し: `"{code.date_check_to_code(contentInfo.enddate)}"`, `"{path.get_json_name(ecs.key)}"`.
   - パイプ (`|`) フォールバック連鎖とデフォルト値: `"{meta.title|json.title|'デフォルトタイトル'}"`.
-- **4.3. [安全な名前空間探索 (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/03_safe_namespace_navigation_jp.md)**: ドットおよびブラケットアクセス統合、大文字小文字不問探索、欠落キー `""` 返却、ネスト辞書/リストの安全ラッピング。
-- **4.4. [組み込み共通日時ツール (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/04_builtin_datetime_utils_jp.md)**: テーブルルールおよびテンプレート専用日時ツール。タイムゾーン中核計算は `TimeUtils` に委譲。
+- **4.3. [安全な名前空間探索 (`_SafeNamespace`)](https://github.com/kampores/agent_common/blob/main/manual/ja/tool_parser/03_safe_namespace_navigation_ja.md)**: ドットおよびブラケットアクセス統合、大文字小文字不問探索、欠落キー `""` 返却、ネスト辞書/リストの安全ラッピング。
+- **4.4. [組み込み共通日時ツール (`DateTimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/ja/tool_parser/04_builtin_datetime_utils_ja.md)**: テーブルルールおよびテンプレート専用日時ツール。タイムゾーン中核計算は `TimeUtils` に委譲。
 
-#### 5. 進捗トラッカー、テーブルフォーマッターおよび時間ユーティリティ (`agent_common.utils`)
-- **5.1. [ホストシステムタイムゾーン検出、世界標準時解決および日時正規化 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/jp/utils/01_time_utils_and_timezone_resolution_jp.md)**: ホストシステムタイムゾーン自動検出、世界30以上の標準時解決、ISO 8601 オフセット計算、`parse_datetime` による正規化。
-- **5.2. [マルチスレッドリアルタイム進捗追跡およびマイルストーン警告 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/jp/utils/02_progress_tracker_and_milestones_jp.md)**: リアルタイム進捗率表示 (`[N/Total] (P%)`)、スループットおよび予測残り時間 (ETA) 計算、通常 `INFO` と10%単位マイルストーン `WARNING` 昇格ログ。
-- **5.3. [Unicode 全角文字幅計算およびテーブル位置合わせフォーマッター (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/jp/utils/03_unicode_table_formatter_jp.md)**: 東アジア文字幅 (`unicodedata.east_asian_width`) 計算による全角・半角混在時の Markdown / コンソール表縦罫線位置合わせ。
+#### 5. 進捗トラッカー、テーブルフォーマッターおよび時間ユーティリティ (`agent_common.progress_tracker`, `agent_common.table_formatter`, `agent_common.time_utils`)
+- **5.1. [ホストシステムタイムゾーン検出、世界標準時解決および日時正規化 (`TimeUtils`)](https://github.com/kampores/agent_common/blob/main/manual/ja/utils/01_time_utils_and_timezone_resolution_ja.md)**: ホストシステムタイムゾーン自動検出、世界30以上の標準時解決、ISO 8601 オフセット計算、`parse_datetime` による正規化。
+- **5.2. [マルチスレッドリアルタイム進捗追跡およびマイルストーン警告 (`ProgressTracker`)](https://github.com/kampores/agent_common/blob/main/manual/ja/utils/02_progress_tracker_and_milestones_ja.md)**: リアルタイム進捗率表示 (`[N/Total] (P%)`)、スループットおよび予測残り時間 (ETA) 計算、通常 `INFO` と10%単位マイルストーン `WARNING` 昇格ログ。
+- **5.3. [Unicode 全角文字幅計算およびテーブル位置合わせフォーマッター (`TableFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/ja/utils/03_unicode_table_formatter_ja.md)**: 東アジア文字幅 (`unicodedata.east_asian_width`) 計算による全角・半角混在時の Markdown / コンソール表縦罫線位置合わせ。
 
 #### 6. 共通エラーおよび例外ハンドラー (`agent_common.error_handler`)
 - ネットワーク障害、設定エラー、実行時例外の一貫したログ記録と標準処理を提供。
 
 #### 7. 統合 LLM クライアントおよび推論エンジン (`agent_common.llm`)
-- **7.1. [モデルプロファイル管理およびテキスト生成](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/01_model_profiles_and_generation_jp.md)**
-- **7.2. [外部チャット API および Fabrix 連携](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/02_external_api_and_fabrix_jp.md)**
-- **7.3. [ローカル GGUF 推論およびモデルキャッシュ](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/03_local_gguf_inference_jp.md)**
-- **7.4. [実行モードおよび条件付きローカル切り替え](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/04_provider_and_local_fallback_jp.md)**
-- **7.5. [推論結果および例外処理](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/05_inference_results_and_errors_jp.md)**
-- **7.6. [Groq 監督官 AI および Antigravity Stop フック](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/06_groq_supervisor_and_stop_hook_jp.md)**
+- **7.1. [モデルプロファイル管理およびテキスト生成](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/01_model_profiles_and_generation_ja.md)**
+- **7.2. [外部チャット API および Fabrix 連携](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/02_external_api_and_fabrix_ja.md)**
+- **7.3. [ローカル GGUF 推論およびモデルキャッシュ](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/03_local_gguf_inference_ja.md)**
+- **7.4. [実行モードおよび条件付きローカル切り替え](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/04_provider_and_local_fallback_ja.md)**
+- **7.5. [推論結果および例外処理](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/05_inference_results_and_errors_ja.md)**
+- **7.6. [Groq 監督官 AI および Antigravity Stop フック](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/06_groq_supervisor_and_stop_hook_ja.md)**
+
+#### 8. 言語ローカライザー (`agent_common.localizer`)
+- **8.1. [言語コードの正規化と言語別リソースファイル探索 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/ja/localizer/01_language_codes_and_resource_lookup_ja.md)**: ISO 639-1 言語コード (`KO`, `EN`, `ZH`, `JA`) の正規化、明示引数・グローバル設定・環境変数に基づく言語決定、`{接頭辞}_{言語}.yml` 形式の言語別リソースファイル探索。ロギングから分離されており、ラベルや案内文など任意の多言語リソースに再利用可能。
 
 ---
 
@@ -886,7 +901,7 @@ today_val = tool_parser.eval("{sys.today}", context_dict)
 
 #### 3. ProgressTracker リアルタイム進捗追跡
 ```python
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("MyTask")
@@ -961,36 +976,37 @@ publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
 
 | 番号 | モジュール / テーマ | マニュアルリンク | 主な内容要約 |
 | :---: | :--- | :---: | :--- |
-| **1.1** | **階層型 YAML 解析 & ディープマージ** | [01_hierarchical_yaml_merge_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/01_hierarchical_yaml_merge_jp.md) | 5段階マージ順序、再帰 `_deep_merge` アルゴリズム、ルート自動探索 |
-| **1.2** | **不変ドット記法アクセス (`ReadOnlyConfig`)** | [02_readonly_dot_notation_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/02_readonly_dot_notation_jp.md) | ドット記法アクセス、ランタイム改ざん防止 (Read-Only)、不変オブジェクト設計 |
-| **1.3** | **型サフィックス自動型変換 & 型保証** | [03_type_coercion_and_guarantee_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/03_type_coercion_and_guarantee_jp.md) | `_int`, `_float`, `_bool`, `_str`, `_list`, `_dict` 自動キャストおよび安全性保証 |
-| **1.4** | **Fail-Fast 必須設定検証** | [04_fail_fast_require_setting_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/04_fail_fast_require_setting_jp.md) | 起動時必須設定の欠落検知、診断ログおよびプロセスの安全な早期終了 |
-| **1.5** | **ネットワークプロキシ制御** | [05_network_proxy_control_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/05_network_proxy_control_jp.md) | `proxy.no_proxy` 設定の `NO_PROXY` 環境変数自動反映とプロキシバイパス |
-| **1.6** | **全定数の設定ファイル外部化とテンプレート補正** | [06_ensure_config_self_healing_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/config_loader/06_ensure_config_self_healing_jp.md) | コード内全定数の外部化、`config.yml` 自動生成および欠落設定の強制補正 |
-| **2.1** | **単一行フラット化フォーマッター & 発生源追跡** | [01_single_line_flatten_formatter_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/01_single_line_flatten_formatter_jp.md) | `SingleLineFlattenFormatter`、`[Origin: ...]` 抽出、集中ログ収集最適化 |
-| **2.2** | **一括ロギング構成 & ハンドラー制御** | [02_project_logger_configure_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/02_project_logger_configure_jp.md) | `ProjectLogger.configure()`、コンソール/ファイル振り分け、レベル別ディレクトリ分離 |
-| **2.3** | **多言語メッセージカタログ & コードベースロギング** | [03_multilingual_message_catalog_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/03_multilingual_message_catalog_jp.md) | `logging_messages_*.yml`、ランタイム言語切り替え、安全な変数置換 |
-| **2.4** | **タスク統計 & エラー/除外リアルタイム集計** | [04_execution_result_and_error_tracking_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/04_execution_result_and_error_tracking_jp.md) | 成功/失敗/除外の3段階分類、マルチスレッド環境での指標集計 |
-| **2.5** | **タスク結果要約レポート自動生成** | [05_summary_report_generation_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/logger/05_summary_report_generation_jp.md) | `ProjectLogger.log_summary()`、80列整形要約ブロック、スループットとエラー診断 |
-| **3.1** | **AWS S3 & Dell ECS ストレージ連携** | [01_s3_ecs_storage_client_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/01_s3_ecs_storage_client_jp.md) | S3/ECS 接続検証、ページネーション一覧取得、GCS ストリーミング転送と重複スキップ |
-| **3.2** | **GCS ストリーミングアップロード & 4段階認証** | [02_gcs_cloud_storage_client_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/02_gcs_cloud_storage_client_jp.md) | 4段階認証優先順位、バケット検証、メモリパイプラインによるゼロディスク転送 |
-| **3.3** | **BigQuery バッチロード & ストリーミング挿入** | [03_bigquery_batch_and_streaming_load_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/03_bigquery_batch_and_streaming_load_jp.md) | JSON バッチロード vs ストリーミング API、ネストエラー展開、既存キー重複防止 |
-| **3.4** | **BigQuery インライン MERGE (Upsert) エンジン** | [04_bigquery_inline_merge_upsert_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/04_bigquery_inline_merge_upsert_jp.md) | 一時テーブル不要のインライン MERGE、UNNEST パラメータバインディング、100件分割 |
-| **3.5** | **BigQuery TIMESTAMP・DATETIME 変換** | [05_bigquery_timestamp_and_datetime_conversion_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/05_bigquery_timestamp_and_datetime_conversion_jp.md) | ISO/圧縮日時の正規化、タイムゾーンオフセットの決定優先順位、列の型ごとのメソッド選択基準 |
-| **3.6** | **GCP サービスアカウント認証リゾルバー** | [06_gcp_credential_resolver_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/clients/06_gcp_credential_resolver_jp.md) | `GcpCredentialResolver`、4段階の認証優先順位、他の GCP サービスでの単独再利用、コンポジション構造 |
-| **4.1** | **二元化 Tool ディレクトリ探索 & 動的ロード** | [01_dual_tool_hierarchy_discovery_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/01_dual_tool_hierarchy_discovery_jp.md) | 組み込み(優先1) vs ローカル(優先2) 探索、3段階関数内省、キャッシュ機構 |
-| **4.2** | **宣言的テンプレート置換 & 式評価** | [02_declarative_template_eval_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/02_declarative_template_eval_jp.md) | `ToolParser.eval()`、関数直接呼び出し、名前空間バインド、パイプ (`\|`) フォールバック |
-| **4.3** | **安全な名前空間探索 (`_SafeNamespace`)** | [03_safe_namespace_navigation_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/03_safe_namespace_navigation_jp.md) | ドット/インデックス統一、大文字小文字不問、欠落時 `""` 返却、再帰ラッピング |
-| **4.4** | **組み込み共通日時ツール (`DateTimeUtils`)** | [04_builtin_datetime_utils_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/tool_parser/04_builtin_datetime_utils_jp.md) | ルール/テンプレート専用日時ツール、`TimeUtils` 連携、ISO タイムスタンプ生成 |
-| **5.1** | **ホストタイムゾーン検出 & 世界標準時解決** | [01_time_utils_and_timezone_resolution_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/utils/01_time_utils_and_timezone_resolution_jp.md) | `TimeUtils`、OS/コンテナタイムゾーン検出、30+標準時解析、datetime 正規化 |
-| **5.2** | **マルチスレッド進捗追跡 & マイルストーン** | [02_progress_tracker_and_milestones_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/utils/02_progress_tracker_and_milestones_jp.md) | `ProgressTracker`、進捗率 (`%`)、スループット、ETA 計算、`WARNING` 昇格ログ |
-| **5.3** | **Unicode 全角幅計算 & テーブル縦線整列** | [03_unicode_table_formatter_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/utils/03_unicode_table_formatter_jp.md) | `TableFormatter`、`east_asian_width` に基づく全角(2幅)・半角(1幅)整列 |
-| **7.1** | **モデルプロファイル管理およびテキスト生成** | [01_model_profiles_and_generation_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/01_model_profiles_and_generation_jp.md) | `agent_common.llm` |
-| **7.2** | **外部チャット API および Fabrix 連携** | [02_external_api_and_fabrix_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/02_external_api_and_fabrix_jp.md) | `agent_common.llm` |
-| **7.3** | **ローカル GGUF 推論およびモデルキャッシュ** | [03_local_gguf_inference_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/03_local_gguf_inference_jp.md) | `agent_common.llm` |
-| **7.4** | **実行モードおよび条件付きローカル切り替え** | [04_provider_and_local_fallback_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/04_provider_and_local_fallback_jp.md) | `agent_common.llm` |
-| **7.5** | **推論結果および例外処理** | [05_inference_results_and_errors_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/05_inference_results_and_errors_jp.md) | `agent_common.llm` |
-| **7.6** | **Groq 監督官 AI および Antigravity Stop フック** | [06_groq_supervisor_and_stop_hook_jp.md](https://github.com/kampores/agent_common/blob/main/manual/jp/llm/06_groq_supervisor_and_stop_hook_jp.md) | `agent_common.llm` |
+| **1.1** | **階層型 YAML 解析 & ディープマージ** | [01_hierarchical_yaml_merge_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/01_hierarchical_yaml_merge_ja.md) | 5段階マージ順序、再帰 `_deep_merge` アルゴリズム、ルート自動探索 |
+| **1.2** | **不変ドット記法アクセス (`ReadOnlyConfig`)** | [02_readonly_dot_notation_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/02_readonly_dot_notation_ja.md) | ドット記法アクセス、ランタイム改ざん防止 (Read-Only)、不変オブジェクト設計 |
+| **1.3** | **型サフィックス自動型変換 & 型保証** | [03_type_coercion_and_guarantee_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/03_type_coercion_and_guarantee_ja.md) | `_int`, `_float`, `_bool`, `_str`, `_list`, `_dict` 自動キャストおよび安全性保証 |
+| **1.4** | **Fail-Fast 必須設定検証** | [04_fail_fast_require_setting_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/04_fail_fast_require_setting_ja.md) | 起動時必須設定の欠落検知、診断ログおよびプロセスの安全な早期終了 |
+| **1.5** | **ネットワークプロキシ制御** | [05_network_proxy_control_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/05_network_proxy_control_ja.md) | `proxy.no_proxy` 設定の `NO_PROXY` 環境変数自動反映とプロキシバイパス |
+| **1.6** | **全定数の設定ファイル外部化とテンプレート補正** | [06_ensure_config_self_healing_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/06_ensure_config_self_healing_ja.md) | コード内全定数の外部化、`config.yml` 自動生成および欠落設定の強制補正 |
+| **2.1** | **単一行フラット化フォーマッター & 発生源追跡** | [01_single_line_flatten_formatter_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/01_single_line_flatten_formatter_ja.md) | `SingleLineFlattenFormatter`、`[Origin: ...]` 抽出、集中ログ収集最適化 |
+| **2.2** | **一括ロギング構成 & ハンドラー制御** | [02_project_logger_configure_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/02_project_logger_configure_ja.md) | `ProjectLogger.configure()`、コンソール/ファイル振り分け、レベル別ディレクトリ分離 |
+| **2.3** | **多言語メッセージカタログ & コードベースロギング** | [03_multilingual_message_catalog_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/03_multilingual_message_catalog_ja.md) | `logging_messages_*.yml`、ランタイム言語切り替え、安全な変数置換 |
+| **2.4** | **タスク統計 & エラー/除外リアルタイム集計** | [04_execution_result_and_error_tracking_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/04_execution_result_and_error_tracking_ja.md) | 成功/失敗/除外の3段階分類、マルチスレッド環境での指標集計 |
+| **2.5** | **タスク結果要約レポート自動生成** | [05_summary_report_generation_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/05_summary_report_generation_ja.md) | `ProjectLogger.log_summary()`、80列整形要約ブロック、スループットとエラー診断 |
+| **3.1** | **AWS S3 & Dell ECS ストレージ連携** | [01_s3_ecs_storage_client_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/01_s3_ecs_storage_client_ja.md) | S3/ECS 接続検証、ページネーション一覧取得、GCS ストリーミング転送と重複スキップ |
+| **3.2** | **GCS ストリーミングアップロード & 4段階認証** | [02_gcs_cloud_storage_client_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/02_gcs_cloud_storage_client_ja.md) | 4段階認証優先順位、バケット検証、メモリパイプラインによるゼロディスク転送 |
+| **3.3** | **BigQuery バッチロード & ストリーミング挿入** | [03_bigquery_batch_and_streaming_load_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/03_bigquery_batch_and_streaming_load_ja.md) | JSON バッチロード vs ストリーミング API、ネストエラー展開、既存キー重複防止 |
+| **3.4** | **BigQuery インライン MERGE (Upsert) エンジン** | [04_bigquery_inline_merge_upsert_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/04_bigquery_inline_merge_upsert_ja.md) | 一時テーブル不要のインライン MERGE、UNNEST パラメータバインディング、100件分割 |
+| **3.5** | **BigQuery TIMESTAMP・DATETIME 変換** | [05_bigquery_timestamp_and_datetime_conversion_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/05_bigquery_timestamp_and_datetime_conversion_ja.md) | ISO/圧縮日時の正規化、タイムゾーンオフセットの決定優先順位、列の型ごとのメソッド選択基準 |
+| **3.6** | **GCP サービスアカウント認証リゾルバー** | [06_gcp_credential_resolver_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/06_gcp_credential_resolver_ja.md) | `GcpCredentialResolver`、4段階の認証優先順位、他の GCP サービスでの単独再利用、コンポジション構造 |
+| **4.1** | **二元化 Tool ディレクトリ探索 & 動的ロード** | [01_dual_tool_hierarchy_discovery_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/tool_parser/01_dual_tool_hierarchy_discovery_ja.md) | 組み込み(優先1) vs ローカル(優先2) 探索、3段階関数内省、キャッシュ機構 |
+| **4.2** | **宣言的テンプレート置換 & 式評価** | [02_declarative_template_eval_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/tool_parser/02_declarative_template_eval_ja.md) | `ToolParser.eval()`、関数直接呼び出し、名前空間バインド、パイプ (`\|`) フォールバック |
+| **4.3** | **安全な名前空間探索 (`_SafeNamespace`)** | [03_safe_namespace_navigation_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/tool_parser/03_safe_namespace_navigation_ja.md) | ドット/インデックス統一、大文字小文字不問、欠落時 `""` 返却、再帰ラッピング |
+| **4.4** | **組み込み共通日時ツール (`DateTimeUtils`)** | [04_builtin_datetime_utils_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/tool_parser/04_builtin_datetime_utils_ja.md) | ルール/テンプレート専用日時ツール、`TimeUtils` 連携、ISO タイムスタンプ生成 |
+| **5.1** | **ホストタイムゾーン検出 & 世界標準時解決** | [01_time_utils_and_timezone_resolution_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/utils/01_time_utils_and_timezone_resolution_ja.md) | `TimeUtils`、OS/コンテナタイムゾーン検出、30+標準時解析、datetime 正規化 |
+| **5.2** | **マルチスレッド進捗追跡 & マイルストーン** | [02_progress_tracker_and_milestones_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/utils/02_progress_tracker_and_milestones_ja.md) | `ProgressTracker`、進捗率 (`%`)、スループット、ETA 計算、`WARNING` 昇格ログ |
+| **5.3** | **Unicode 全角幅計算 & テーブル縦線整列** | [03_unicode_table_formatter_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/utils/03_unicode_table_formatter_ja.md) | `TableFormatter`、`east_asian_width` に基づく全角(2幅)・半角(1幅)整列 |
+| **7.1** | **モデルプロファイル管理およびテキスト生成** | [01_model_profiles_and_generation_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/01_model_profiles_and_generation_ja.md) | `agent_common.llm` |
+| **7.2** | **外部チャット API および Fabrix 連携** | [02_external_api_and_fabrix_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/02_external_api_and_fabrix_ja.md) | `agent_common.llm` |
+| **7.3** | **ローカル GGUF 推論およびモデルキャッシュ** | [03_local_gguf_inference_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/03_local_gguf_inference_ja.md) | `agent_common.llm` |
+| **7.4** | **実行モードおよび条件付きローカル切り替え** | [04_provider_and_local_fallback_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/04_provider_and_local_fallback_ja.md) | `agent_common.llm` |
+| **7.5** | **推論結果および例外処理** | [05_inference_results_and_errors_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/05_inference_results_and_errors_ja.md) | `agent_common.llm` |
+| **7.6** | **Groq 監督官 AI および Antigravity Stop フック** | [06_groq_supervisor_and_stop_hook_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/06_groq_supervisor_and_stop_hook_ja.md) | `agent_common.llm` |
+| **8.1** | **言語コード正規化 & 言語別リソース探索** | [01_language_codes_and_resource_lookup_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/localizer/01_language_codes_and_resource_lookup_ja.md) | `Localizer`、対応言語コードと別名、言語決定の優先順位、言語別ファイル探索とデフォルト言語への代替ルール |
 
 ---
 
@@ -1014,7 +1030,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 本番環境（Wheel パッケージのインストール）
-pip install dist/agent_common-0.4.95-py3-none-any.whl
+pip install dist/agent_common-0.4.96-py3-none-any.whl
 ```
 
 #### 🌐 公式 PyPI 配布（管理者専用）
@@ -1029,11 +1045,11 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI アップロード
-python -m twine upload dist/agent_common-0.4.95*
+python -m twine upload dist/agent_common-0.4.96*
 ```
 
 ---
 
 ### 📋 バージョン変更履歴 (Changelog)
 
-詳細なバージョン変更履歴は [CHANGELOG_JP.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG_JP.md) をご参照ください。
+詳細なバージョン変更履歴は [CHANGELOG_JA.md](https://github.com/kampores/agent_common/blob/main/CHANGELOG_JA.md) をご参照ください。

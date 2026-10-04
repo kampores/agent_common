@@ -1,6 +1,6 @@
 # 5.3. Unicode 全角字符宽度计算与 Markdown/控制台表格精准对齐器 (`TableFormatter`)
 
-> **所属模块**: `agent_common.utils.TableFormatter`  
+> **所属模块**: `agent_common.table_formatter.TableFormatter`  
 > **核心方法**: `calculate_display_width()`, `format_markdown_table()`, `format_row()`, `format_separator()`, `pad_cell()`  
 > **依赖模块**: `unicodedata` (Python 标准库), `agent_common.config_loader.config`  
 > **引入版本**: `v0.4.63`
@@ -97,7 +97,7 @@ def pad_cell(
 ## 5. 实战代码示例
 
 ```python
-from agent_common.utils import TableFormatter
+from agent_common import TableFormatter
 
 headers = ["阶段环节", "目标实体/文件", "数据条数", "运行耗时", "最终状态"]
 rows = [

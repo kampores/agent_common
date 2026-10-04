@@ -2,7 +2,7 @@
 
 > **Module**: `agent_common.logger.ProjectLogger`  
 > **Key Methods**: `ProjectLogger.get_log_msg()`, `ProjectLogger.log_msg()`, `ProjectLogger.set_language()`, `get_log_msg()`  
-> **Catalog Files**: `agent_common/config/logging_messages_ko.yml`, `logging_messages_en.yml`
+> **Catalog Files**: `agent_common/config/logging_messages_ko.yml`, `logging_messages_en.yml`, `logging_messages_zh.yml`, `logging_messages_ja.yml`
 
 ---
 
@@ -23,11 +23,9 @@ Hardcoding log messages directly inside application code creates several challen
 ```mermaid
 flowchart TD
     A["logger.info('task_start', task_name='sync')"] --> B{"Resolve Language"}
-    B -->|"KO"| C["logging_messages_ko.yml"]
-    B -->|"EN"| D["logging_messages_en.yml"]
+    B -->|"KO / EN / ZH / JA"| C["logging_messages_*.yml"]
     
     C --> E["_search_template_in_level(level, code)"]
-    D --> E
     E --> F{"Found in Level?"}
     F -->|"Yes"| G["Obtain Template"]
     F -->|"No"| H{"Search Other Level Categories"}
@@ -86,6 +84,15 @@ Supports in-process language switching without restarts:
 - Class method: `ProjectLogger.set_language("EN")`
 - Instance setter: `logger.language_set("EN")`
 - Getter property: `logger.language`
+
+The supported language codes are `KO`, `EN`, `ZH`, and `JA`. The log language is decided in this order:
+
+1. The value set with `ProjectLogger.set_language()` or `ConfigLoader.set_language()`
+2. The first of the environment variables `AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`, `AGENT_LANGUAGE` that has a value
+3. `logging.language_str` in `config.yml`
+4. The default language `KO`
+
+For language code normalization rules and per-language file lookup, see [8.1. Language Code Normalization & Localized Resource Lookup (`Localizer`)](../localizer/01_language_codes_and_resource_lookup_en.md).
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **所属模块**: `agent_common.tool.date.DateTimeUtils`  
 > **核心方法**: `get_today_yyyymmdd()`, `get_now_timestamp()`, `get_now_no_tz()`, `get_now_compact()`, `parse_datetime()`  
-> **底层核心支持**: `agent_common.utils.TimeUtils` (专责系统时区识别与时间解析)
+> **底层核心支持**: `agent_common.time_utils.TimeUtils` (专责系统时区识别与时间解析)
 
 ---
 
@@ -36,7 +36,7 @@ flowchart TD
         DTUtils["DateTimeUtils<br/>(专责业务规范字符串快速生成)"]
     end
 
-    subgraph CoreLayer["[Util 核心层] agent_common.utils"]
+    subgraph CoreLayer["[Util 核心层] agent_common.time_utils"]
         TUtils["TimeUtils<br/>(底层系统时区探测、全球标准时区识别、<br/>ISO 偏移量解析、timezone-aware datetime 转换)"]
     end
 
@@ -115,7 +115,7 @@ def parse_datetime(cls, dt_input_any: Any, default_tz_obj: Optional[timezone] = 
 
 ```python
 from agent_common.tool.date import DateTimeUtils
-from agent_common.utils import TimeUtils
+from agent_common import TimeUtils
 
 # 1. 依据系统时区生成各类字符串
 today_str = DateTimeUtils.get_today_yyyymmdd()

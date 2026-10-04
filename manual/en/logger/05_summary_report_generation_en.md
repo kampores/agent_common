@@ -2,7 +2,7 @@
 
 > **Module**: `agent_common.logger.ProjectLogger`  
 > **Key Methods**: `ProjectLogger.log_summary()`, `ProjectLogger.get_log_id_description()`  
-> **Related Class**: `agent_common.utils.ProgressTracker`
+> **Related Class**: `agent_common.progress_tracker.ProgressTracker`
 
 ---
 
@@ -118,7 +118,7 @@ logger.log_summary(
 
 ```python
 from agent_common.logger import ProjectLogger
-from agent_common.utils import ProgressTracker
+from agent_common import ProgressTracker
 
 logger = ProjectLogger("DataPipeline")
 tracker = ProgressTracker(total_items_int=50000, logger_obj=logger, item_name_str="records")
