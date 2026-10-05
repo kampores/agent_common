@@ -2,6 +2,26 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.98 (2026-10-06)
+
+- **`GcsClient`、`BigQueryClient` の認証段階と接続段階を分離 (ルール 1.6.4, 4.2 準拠、互換性変更)**:
+  - コンストラクタで先に `GcpCredentialResolver.resolve()` による認証を行い、その結果を `_connect(credentials_obj)` に渡して接続するよう変更。`_connect()` の `try` ブロックにはクライアント生成とバケット・テーブル照会のみが残る。
+  - 互換性: 認証段階の例外 (`ImportError`、`ValueError`、`FileNotFoundError` など) は `ConnectionError` にラップされず、元の型のまま送出される。認証失敗を `ConnectionError` として捕捉していたコードは修正が必要。
+  - 認証失敗のログを、クライアントではなく `GcpCredentialResolver` が例外の発生箇所で 1 回記録するよう変更。リゾルバを単独で使用する場合も同じログが残り、クライアントが再度記録することはない。このためリゾルバに `self.logger` を追加し、`_get_service_account` をクラスメソッドからインスタンスメソッドに変更 (モジュールキャッシュはクラス変数のまま)。
+  - ソースコードに韓国語で書かれていたリゾルバの例外メッセージをログメッセージ辞書へ移動 (4 言語): `credential_package_missing` (`ImportError`)、`credential_json_invalid` (`ValueError`)、`credential_file_not_found` (`FileNotFoundError`)。例外メッセージはログ言語設定に従い、認証失敗のログ ID は `connection_failed` からこの 3 つのいずれかに変わる。
+  - キーファイル不在メッセージの出所表記を `config.yml 설정값` から引数名 `credentials_path_str` に変更。
+  - マニュアル `3.6` の例外処理ガイドを 4 言語で更新。
+- **`S3Client.transfer_to_gcs` の所要時間ログを結果ログに統合 (ルール 1.1.1, 3.2, 4.2 準拠)**:
+  - ファイルごとに結果ログの後へ別途出力していた `elapsed_time` ログを削除し、区間別の所要時間 (`details_str`) と転送コンテキスト (`context_info_str`) を結果ログの 1 行にまとめて記録。ファイル 1 件あたりのログが 2 行から 1 行に減少。
+  - ソースコードに韓国語で書かれていた `action_name_str` の値 ("GCS 파일 검사"、"GCS 파일 전송"、"GCS 파일 전송 오류") を削除。ログ言語を `EN`、`ZH`、`JA` に設定してもこの部分だけ韓国語で出力されていた問題を解消。
+  - 既存の文の末尾に `{details_str} {context_info_str}` スロットを付けたテンプレート `transfer_completed_with_elapsed_time`、`transfer_skipped_with_elapsed_time`、`transfer_failed_with_elapsed_time` を追加 (4 言語)。`transfer_to_gcs` はこの 3 つのログ ID を使用。
+  - 既存の `transfer_completed`、`transfer_skipped`、`transfer_failed` テンプレートは変更なし。
+  - スキップログの `Status=Skipped` トークンはメッセージ本文と重複するため削除。
+  - 転送失敗 1 件につき `transfer_to_gcs` が出力する ERROR ログが 2 件から 1 件に減るため失敗累計件数がその分減少し、エラー種別ごとの集計には `elapsed_time` の代わりに `transfer_failed_with_elapsed_time` が表示される。
+  - `elapsed_time` テンプレート自体は維持。
+- **マニュアル `3.1` の補完 (ルール 4.2 準拠)**:
+  - 転送パイプラインのフロー図にあるスキップ段階の表記を新しいログ構造に合わせて修正 (韓国語、英語、日本語)。
+
 ### v0.4.97 (2026-10-05)
 
 - **設定ファイルの自動生成・自動補正の書き込み対象をクラス単位で選択 (ルール 1.7.5、4.2 準拠、互換性変更)**:

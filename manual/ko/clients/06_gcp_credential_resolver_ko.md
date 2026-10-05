@@ -105,10 +105,14 @@ class SecretManagerClient:
 
 ## 5. 예외 처리 가이드
 
-| 발생 예외 | 주요 발생 원인 | 조치 방안 |
-| :--- | :--- | :--- |
-| `ImportError: 'google-auth' 패키지가 필요합니다` | `google-auth` 미설치 상태 | `pip install agent_common[clients]` 또는 `pip install google-auth` 실행 |
-| `ValueError: GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다` | 환경변수의 JSON 문법 오류 또는 필수 키 누락 | 환경변수에 주입된 JSON 문자열과 이스케이프 상태 점검 |
-| `FileNotFoundError: 인증키 파일을 찾을 수 없습니다` | 2순위 또는 3순위 경로에 파일이 없음 | 메시지에 표시된 경로와 원천(환경변수 / `config.yml`) 확인 |
+예외 메시지는 로그 언어 설정(`KO`, `EN`, `ZH`, `JA`)에 따른 언어로 출력됩니다. 아래 표의 메시지는 한국어 기준이며, 로그 ID는 언어와 무관하게 같습니다.
 
-`GcsClient`, `BigQueryClient`를 통해 호출될 때는 위 예외가 연결 단계에서 `ConnectionError`로 감싸져 전달되며, 원래 예외는 `__cause__`와 로그의 트레이스백에서 확인할 수 있습니다.
+| 발생 예외 | 로그 ID | 주요 발생 원인 | 조치 방안 |
+| :--- | :--- | :--- | :--- |
+| `ImportError: ... 'google-auth' 패키지가 필요합니다` | `credential_package_missing` | `google-auth` 미설치 상태 | `pip install agent_common[clients]` 또는 `pip install google-auth` 실행 |
+| `ValueError: GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다` | `credential_json_invalid` | 환경변수의 JSON 문법 오류 또는 필수 키 누락 | 환경변수에 주입된 JSON 문자열과 이스케이프 상태 점검 |
+| `FileNotFoundError: 인증키 파일을 찾을 수 없습니다` | `credential_file_not_found` | 2순위 또는 3순위 경로에 파일이 없음 | 메시지에 표시된 경로와 원천(`GOOGLE_APPLICATION_CREDENTIALS` / `credentials_path_str`) 확인 |
+
+리졸버는 위 예외를 던지기 전에 해당 로그 ID로 ERROR 로그를 한 번 기록합니다. 단독으로 사용할 때와 `GcsClient`, `BigQueryClient`를 통해 호출될 때 모두 같습니다.
+
+`GcsClient`, `BigQueryClient`는 생성자에서 인증(`resolve()`)을 먼저 수행한 뒤 연결합니다. 인증 단계의 예외는 `ConnectionError`로 감싸지 않고 원래 타입 그대로 전달되며, 클라이언트는 이를 다시 기록하지 않습니다. `ConnectionError`는 클라이언트 생성과 버킷·테이블 조회 등 연결 단계의 실패에만 발생합니다.

@@ -253,7 +253,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.97-py3-none-any.whl
+pip install dist/agent_common-0.4.98-py3-none-any.whl
 ```
 
 #### 🌐 PyPI 공식 배포 (관리자 전용)
@@ -268,7 +268,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.97*
+python -m twine upload dist/agent_common-0.4.98*
 ```
 
 ---
@@ -512,7 +512,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.97-py3-none-any.whl
+pip install dist/agent_common-0.4.98-py3-none-any.whl
 ```
 
 #### 🌐 Official PyPI Distribution (Maintainers Only)
@@ -527,7 +527,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.97*
+python -m twine upload dist/agent_common-0.4.98*
 ```
 
 ---
@@ -771,7 +771,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 生产环境 (安装 Wheel 包)
-pip install dist/agent_common-0.4.97-py3-none-any.whl
+pip install dist/agent_common-0.4.98-py3-none-any.whl
 ```
 
 #### 🌐 官方 PyPI 镜像分发（仅限维护者）
@@ -786,7 +786,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. 上传至 PyPI
-python -m twine upload dist/agent_common-0.4.97*
+python -m twine upload dist/agent_common-0.4.98*
 ```
 
 ---
@@ -1030,7 +1030,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 本番環境（Wheel パッケージのインストール）
-pip install dist/agent_common-0.4.97-py3-none-any.whl
+pip install dist/agent_common-0.4.98-py3-none-any.whl
 ```
 
 #### 🌐 公式 PyPI 配布（管理者専用）
@@ -1045,7 +1045,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI アップロード
-python -m twine upload dist/agent_common-0.4.97*
+python -m twine upload dist/agent_common-0.4.98*
 ```
 
 ---

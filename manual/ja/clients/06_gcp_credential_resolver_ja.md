@@ -105,12 +105,14 @@ class SecretManagerClient:
 
 ## 5. 例外処理ガイド
 
-例外メッセージは韓国語で出力されます。下表は実際に出力される先頭の文言です。
+例外メッセージはログ言語設定 (`KO`、`EN`、`ZH`、`JA`) に応じた言語で出力されます。下表のメッセージは日本語のもので、ログ ID はどの言語でも同じです。
 
-| 発生例外 | 主な発生原因 | 対処方法 |
-| :--- | :--- | :--- |
-| `ImportError: ... 'google-auth' 패키지가 필요합니다` | `google-auth` が未インストール | `pip install agent_common[clients]` または `pip install google-auth` を実行 |
-| `ValueError: GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다` | 環境変数の JSON 構文エラー、または必須キーの欠落 | 環境変数に注入した JSON 文字列とエスケープ状態を確認 |
-| `FileNotFoundError: 인증키 파일을 찾을 수 없습니다` | 2位または3位のパスにファイルが存在しない | メッセージに表示されたパスとソース（環境変数 / `config.yml`）を確認 |
+| 発生例外 | ログ ID | 主な発生原因 | 対処方法 |
+| :--- | :--- | :--- | :--- |
+| `ImportError: GCP サービスアカウント認証機能を使用するには 'google-auth' パッケージが必要です` | `credential_package_missing` | `google-auth` が未インストール | `pip install agent_common[clients]` または `pip install google-auth` を実行 |
+| `ValueError: GOOGLE_APPLICATION_CREDENTIALS_JSON のインメモリ JSON から認証オブジェクトを生成できませんでした` | `credential_json_invalid` | 環境変数の JSON 構文エラー、または必須キーの欠落 | 環境変数に注入した JSON 文字列とエスケープ状態を確認 |
+| `FileNotFoundError: 認証キーファイルが見つかりません` | `credential_file_not_found` | 2位または3位のパスにファイルが存在しない | メッセージに表示されたパスとソース (`GOOGLE_APPLICATION_CREDENTIALS` / `credentials_path_str`) を確認 |
 
-`GcsClient`、`BigQueryClient` 経由で呼び出された場合、上記の例外は接続段階で `ConnectionError` にラップされて送出されます。元の例外は `__cause__` およびログのトレースバックで確認できます。
+リゾルバは上記の例外を送出する前に、対応するログ ID で ERROR ログを 1 回記録します。単独で使用する場合も、`GcsClient`、`BigQueryClient` 経由で呼び出される場合も同じです。
+
+`GcsClient`、`BigQueryClient` はコンストラクタで先に認証 (`resolve()`) を行い、その後に接続します。認証段階の例外は `ConnectionError` にラップされず元の型のまま送出され、クライアントが再度記録することはありません。`ConnectionError` は、クライアント生成やバケット・テーブル照会など接続段階の失敗でのみ発生します。

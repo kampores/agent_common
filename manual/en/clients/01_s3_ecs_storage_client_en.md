@@ -31,7 +31,7 @@ flowchart TD
     D --> E["gcs_client.get_blob_size(gcs_blob)"]
     E --> F{"GCS Object Exists &<br/>Size Matches?"}
     
-    F -->|"Match (Identical)"| G["Skip Transfer (SKIPPED)<br/>Log elapsed_time"]
+    F -->|"Match (Identical)"| G["Skip Transfer (SKIPPED)<br/>Log with CheckTime"]
     F -->|"Mismatch or Not Found"| H["get_object_stream()<br/>Fetch S3/ECS StreamingBody"]
     H --> I["gcs_client.upload_stream()<br/>Direct In-Memory Pipe Upload"]
     I --> J["Transfer Complete (UPLOADED)<br/>Log Sub-stage Latencies"]

@@ -31,7 +31,7 @@ flowchart TD
     D --> E["gcs_client.get_blob_size(gcs_blob)"]
     E --> F{"GCS ファイルの存在および<br/>サイズ一致確認"}
     
-    F -->|"一致 (同一ファイル)"| G["転送スキップ (SKIPPED)<br/>elapsed_time のログ記録"]
+    F -->|"一致 (同一ファイル)"| G["転送スキップ (SKIPPED)<br/>CheckTime を含めてログ記録"]
     F -->|"不一致または未存在"| H["get_object_stream()<br/>S3/ECS StreamingBody の取得"]
     H --> I["gcs_client.upload_stream()<br/>リアルタイムメモリパイプラインアップロード"]
     I --> J["転送完了 (UPLOADED)<br/>各区間レイテンシの精密ロギング"]

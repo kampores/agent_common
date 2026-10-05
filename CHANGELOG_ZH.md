@@ -2,6 +2,26 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.98 (2026-10-06)
+
+- **分离 `GcsClient`、`BigQueryClient` 的认证阶段与连接阶段 (遵循规则 1.6.4、4.2，兼容性变更)**:
+  - 构造函数先通过 `GcpCredentialResolver.resolve()` 完成认证，再把结果传给 `_connect(credentials_obj)` 进行连接。`_connect()` 的 `try` 块中只保留客户端创建以及存储桶、数据表的查询。
+  - 兼容性: 认证阶段的异常 (`ImportError`、`ValueError`、`FileNotFoundError` 等) 不再被包装为 `ConnectionError`，而是以原始类型抛出。此前以 `ConnectionError` 捕获认证失败的代码需要修改。
+  - 认证失败日志改由 `GcpCredentialResolver` 在抛出异常处记录一次，而不再由客户端记录。单独使用解析器时也会留下同样的日志，客户端不会重复记录。为此在解析器中新增 `self.logger`，并把 `_get_service_account` 由类方法改为实例方法 (模块缓存仍为类变量)。
+  - 把源代码中以韩文书写的解析器异常消息移入日志消息字典 (4 种语言): `credential_package_missing` (`ImportError`)、`credential_json_invalid` (`ValueError`)、`credential_file_not_found` (`FileNotFoundError`)。异常消息随日志语言设置输出，认证失败的日志 ID 由 `connection_failed` 变为这三者之一。
+  - 密钥文件不存在消息中的来源标注由 `config.yml 설정값` 改为参数名 `credentials_path_str`。
+  - 以 4 种语言更新手册 `3.6` 的异常处理指南。
+- **将 `S3Client.transfer_to_gcs` 的耗时日志合并到结果日志 (遵循规则 1.1.1、3.2、4.2)**:
+  - 删除每个文件在结果日志之后单独输出的 `elapsed_time` 日志，把各阶段耗时 (`details_str`) 与传输上下文 (`context_info_str`) 一并写入结果日志。每个文件的日志由 2 行减为 1 行。
+  - 删除源代码中以韩文书写的 `action_name_str` 值 ("GCS 파일 검사"、"GCS 파일 전송"、"GCS 파일 전송 오류")。此前即使日志语言设为 `EN`、`ZH`、`JA`，这一部分仍以韩文输出。
+  - 新增模板 `transfer_completed_with_elapsed_time`、`transfer_skipped_with_elapsed_time`、`transfer_failed_with_elapsed_time`，即在原有句子末尾加上 `{details_str} {context_info_str}` 占位符 (4 种语言)。`transfer_to_gcs` 使用这三个日志 ID。
+  - 原有的 `transfer_completed`、`transfer_skipped`、`transfer_failed` 模板保持不变。
+  - 跳过日志中的 `Status=Skipped` 与消息正文重复，已删除。
+  - 每次传输失败时 `transfer_to_gcs` 输出的 ERROR 日志由 2 条减为 1 条，失败累计次数相应减少；按错误类型的统计中显示 `transfer_failed_with_elapsed_time` 而不再是 `elapsed_time`。
+  - `elapsed_time` 模板本身保留。
+- **补充手册 `3.1` (遵循规则 4.2)**:
+  - 按新的日志结构修改传输流程图中跳过步骤的说明 (韩文、英文、日文)。
+
 ### v0.4.97 (2026-10-05)
 
 - **按类选择配置文件自动生成与自动补全的写入对象 (遵循规则 1.7.5、4.2，兼容性变更)**:

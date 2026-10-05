@@ -218,11 +218,11 @@ class S3Client:
 
             # 이미 GCS에 존재하고 용량이 동일한 경우 복사 건너뛰기
             if existing_size_int is not None and existing_size_int == size_int:
-                self.logger.info("transfer_skipped", file_name_str=s3_key_str, dst_type_str="GCS")
                 self.logger.info(
-                    "elapsed_time",
-                    action_name_str="GCS 파일 검사",
-                    details_str=f"[CheckTime={check_elapsed_float:.2f}s Status=Skipped]",
+                    "transfer_skipped_with_elapsed_time",
+                    file_name_str=s3_key_str,
+                    dst_type_str="GCS",
+                    details_str=f"[CheckTime={check_elapsed_float:.2f}s]",
                     context_info_str=context_info_str,
                 )
                 return "SKIPPED"
@@ -238,10 +238,10 @@ class S3Client:
             upload_elapsed_float: float = time.time() - upload_start_float
 
             total_elapsed_float: float = time.time() - total_start_float
-            self.logger.info("transfer_completed", file_name_str=s3_key_str, size_bytes_int=size_int)
             self.logger.info(
-                "elapsed_time",
-                action_name_str="GCS 파일 전송",
+                "transfer_completed_with_elapsed_time",
+                file_name_str=s3_key_str,
+                size_bytes_int=size_int,
                 details_str=(
                     f"[TotalElapsed={total_elapsed_float:.2f}s CheckTime={check_elapsed_float:.2f}s "
                     f"S3StreamTime={stream_elapsed_float:.2f}s GCSUploadTime={upload_elapsed_float:.2f}s]"
@@ -251,10 +251,10 @@ class S3Client:
             return "UPLOADED"
         except Exception as exc:
             total_elapsed_float = time.time() - total_start_float
-            self.logger.exception("transfer_failed", file_name_str=s3_key_str, error_str=str(exc))
-            self.logger.error(
-                "elapsed_time",
-                action_name_str="GCS 파일 전송 오류",
+            self.logger.exception(
+                "transfer_failed_with_elapsed_time",
+                file_name_str=s3_key_str,
+                error_str=str(exc),
                 details_str=f"[TotalElapsed={total_elapsed_float:.2f}s]",
                 context_info_str=context_info_str,
             )
@@ -274,25 +274,6 @@ class GcpCredentialResolver:
 
     _service_account_module: Any = None
 
-    @classmethod
-    def _get_service_account(cls) -> Any:
-        """
-        google.oauth2.service_account 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
-
-        :return: service_account 모듈
-        :raises ImportError: google-auth 패키지가 설치되어 있지 않은 경우 발생
-        """
-        if cls._service_account_module is None:
-            try:
-                from google.oauth2 import service_account
-                cls._service_account_module = service_account
-            except ImportError as exc:
-                raise ImportError(
-                    "GCP 서비스 계정 인증 기능을 사용하려면 'google-auth' 패키지가 필요합니다. "
-                    "'pip install google-auth' 또는 'pip install agent_common[clients]'로 설치해 주십시오."
-                ) from exc
-        return cls._service_account_module
-
     def __init__(self, credentials_path_str: str, config_loader_obj: ConfigLoader):
         """
         인증 자격 증명 해석에 필요한 키 파일 경로와 설정 로더를 보관합니다.
@@ -302,6 +283,24 @@ class GcpCredentialResolver:
         """
         self.credentials_path_str: str = credentials_path_str
         self.config_loader: ConfigLoader = config_loader_obj
+        # logger: 인증 해석 실패를 발생 지점에서 한 번만 기록하는 로거
+        self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
+
+    def _get_service_account(self) -> Any:
+        """
+        google.oauth2.service_account 모듈을 지연 임포트(Lazy Load)하여 반환합니다.
+        임포트한 모듈은 클래스 변수에 캐시하여 모든 인스턴스가 공유합니다.
+
+        :return: service_account 모듈
+        :raises ImportError: google-auth 패키지가 설치되어 있지 않은 경우 발생
+        """
+        if GcpCredentialResolver._service_account_module is None:
+            try:
+                from google.oauth2 import service_account
+                GcpCredentialResolver._service_account_module = service_account
+            except ImportError as exc:
+                raise ImportError(self.logger.exception("credential_package_missing")) from exc
+        return GcpCredentialResolver._service_account_module
 
     def resolve(self) -> Any:
         """
@@ -326,7 +325,7 @@ class GcpCredentialResolver:
                 return service_account_module.Credentials.from_service_account_info(key_info_dict)
             except Exception as credentials_error:
                 raise ValueError(
-                    f"GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다: {credentials_error}"
+                    self.logger.exception("credential_json_invalid", error_str=str(credentials_error))
                 ) from credentials_error
 
         # 2순위: Google 공식 표준 환경변수(GOOGLE_APPLICATION_CREDENTIALS) 파일 경로 검사
@@ -338,7 +337,12 @@ class GcpCredentialResolver:
                 credentials_file_path = self.config_loader.project_path(credentials_file_path)
             if not credentials_file_path.exists():
                 raise FileNotFoundError(
-                    f"인증키 파일을 찾을 수 없습니다: {credentials_file_path} (GOOGLE_APPLICATION_CREDENTIALS: '{env_credentials_path_str}')"
+                    self.logger.error(
+                        "credential_file_not_found",
+                        credentials_file_path_str=str(credentials_file_path),
+                        source_name_str="GOOGLE_APPLICATION_CREDENTIALS",
+                        configured_path_str=env_credentials_path_str,
+                    )
                 )
             return service_account_module.Credentials.from_service_account_file(str(credentials_file_path))
 
@@ -349,7 +353,12 @@ class GcpCredentialResolver:
                 credentials_file_path = self.config_loader.project_path(credentials_file_path)
             if not credentials_file_path.exists():
                 raise FileNotFoundError(
-                    f"인증키 파일을 찾을 수 없습니다: {credentials_file_path} (config.yml 설정값: '{self.credentials_path_str}')"
+                    self.logger.error(
+                        "credential_file_not_found",
+                        credentials_file_path_str=str(credentials_file_path),
+                        source_name_str="credentials_path_str",
+                        configured_path_str=self.credentials_path_str,
+                    )
                 )
             return service_account_module.Credentials.from_service_account_file(str(credentials_file_path))
 
@@ -428,17 +437,21 @@ class GcsClient:
         self.client: Any = None
         # bucket: 연결 완료된 GCS Bucket 객체
         self.bucket: Any = None
-        self._connect()
 
-    def _connect(self) -> None:
+        # 인증과 연결을 분리: 인증 단계 예외는 리졸버가 기록하며, ConnectionError로 감싸지 않고 원래 타입 그대로 전달
+        self._connect(self.credential_resolver.resolve())
+
+    def _connect(self, credentials_obj: Any) -> None:
         """
         Google Cloud Storage 클라이언트를 초기화하고 해당 버킷의 연결/접근 권한 상태를 검증합니다 (Fail-Fast).
+
+        :param credentials_obj: GcpCredentialResolver.resolve()가 반환한 인증 자격 증명 (None이면 ADC 사용)
+        :raises ConnectionError: 클라이언트 생성 실패 또는 버킷 접근 권한 검증 실패 시 발생
         """
         storage_module = self._get_gcs()
         try:
-            credentials = self.credential_resolver.resolve()
-            if credentials is not None:
-                self.client = storage_module.Client(credentials=credentials)
+            if credentials_obj is not None:
+                self.client = storage_module.Client(credentials=credentials_obj)
             else:
                 self.client = storage_module.Client()
 
@@ -665,7 +678,9 @@ class BigQueryClient:
 
         # client: google-cloud-bigquery 클라이언트 인스턴스
         self.client: Any = None
-        self._connect()
+
+        # 인증과 연결을 분리: 인증 단계 예외는 리졸버가 기록하며, ConnectionError로 감싸지 않고 원래 타입 그대로 전달
+        self._connect(self.credential_resolver.resolve())
 
     @property
     def logger(self) -> ProjectLogger:
@@ -678,18 +693,20 @@ class BigQueryClient:
     def logger(self, val_logger_obj: ProjectLogger) -> None:
         self._logger = val_logger_obj
 
-    def _connect(self) -> None:
+    def _connect(self, credentials_obj: Any) -> None:
         """
         Google Cloud BigQuery 클라이언트를 초기화하고 연결 및 테이블 스키마 상태를 검증합니다 (Fail-Fast).
+
+        :param credentials_obj: GcpCredentialResolver.resolve()가 반환한 인증 자격 증명 (None이면 ADC 사용)
+        :raises ConnectionError: 클라이언트 생성 실패 또는 테이블 조회 실패 시 발생
         """
         bigquery_module = self._get_bigquery()
         try:
             effective_project_id_str: str = (
                 os.environ.get("GOOGLE_CLOUD_PROJECT") or self.project_id_str
             )
-            credentials = self.credential_resolver.resolve()
-            if credentials is not None:
-                self.client = bigquery_module.Client(credentials=credentials, project=effective_project_id_str)
+            if credentials_obj is not None:
+                self.client = bigquery_module.Client(credentials=credentials_obj, project=effective_project_id_str)
             else:
                 self.client = bigquery_module.Client(project=effective_project_id_str)
             

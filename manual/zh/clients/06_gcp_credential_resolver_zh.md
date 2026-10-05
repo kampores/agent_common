@@ -105,12 +105,14 @@ class SecretManagerClient:
 
 ## 5. 异常处理指南
 
-异常消息以韩语输出，下表按实际输出的开头文字列出。
+异常消息按日志语言设置 (`KO`、`EN`、`ZH`、`JA`) 对应的语言输出。下表中的消息为中文，日志 ID 在各语言中相同。
 
-| 异常 | 主要原因 | 处理方法 |
-| :--- | :--- | :--- |
-| `ImportError: ... 'google-auth' 패키지가 필요합니다` | 未安装 `google-auth` | 执行 `pip install agent_common[clients]` 或 `pip install google-auth` |
-| `ValueError: GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다` | 环境变量中的 JSON 语法错误或缺少必需字段 | 检查注入环境变量的 JSON 字符串及其转义 |
-| `FileNotFoundError: 인증키 파일을 찾을 수 없습니다` | 第 2 级或第 3 级路径下不存在文件 | 确认消息中显示的路径及来源（环境变量 / `config.yml`） |
+| 异常 | 日志 ID | 主要原因 | 处理方法 |
+| :--- | :--- | :--- | :--- |
+| `ImportError: 使用 GCP 服务账号认证功能需要 'google-auth' 包` | `credential_package_missing` | 未安装 `google-auth` | 执行 `pip install agent_common[clients]` 或 `pip install google-auth` |
+| `ValueError: 根据 GOOGLE_APPLICATION_CREDENTIALS_JSON 的内存 JSON 创建认证对象失败` | `credential_json_invalid` | 环境变量中的 JSON 语法错误或缺少必需字段 | 检查注入环境变量的 JSON 字符串及其转义 |
+| `FileNotFoundError: 未找到认证密钥文件` | `credential_file_not_found` | 第 2 级或第 3 级路径下不存在文件 | 确认消息中显示的路径及来源 (`GOOGLE_APPLICATION_CREDENTIALS` / `credentials_path_str`) |
 
-通过 `GcsClient`、`BigQueryClient` 调用时，上述异常会在连接阶段被包装为 `ConnectionError` 抛出，原始异常可通过 `__cause__` 及日志中的堆栈信息查看。
+解析器在抛出上述异常之前，会以对应的日志 ID 记录一条 ERROR 日志。单独使用时与通过 `GcsClient`、`BigQueryClient` 调用时均相同。
+
+`GcsClient`、`BigQueryClient` 在构造函数中先完成认证 (`resolve()`)，再进行连接。认证阶段的异常不会被包装为 `ConnectionError`，而是以原始类型抛出，客户端不会重复记录。`ConnectionError` 仅在创建客户端、查询存储桶或数据表等连接阶段失败时抛出。

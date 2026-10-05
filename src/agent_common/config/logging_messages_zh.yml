@@ -124,8 +124,14 @@ logging_messages:
       # 示例: logger.info("transfer_completed", file_name_str="sample.pdf", size_bytes_int=102400)
       transfer_completed: "文件传输完成: {file_name_str}, 大小: {size_bytes_int} 字节"
 
+      # 示例: logger.info("transfer_completed_with_elapsed_time", file_name_str="sample.pdf", size_bytes_int=102400, details_str="[TotalElapsed=1.20s]", context_info_str="[Key=...]")
+      transfer_completed_with_elapsed_time: "文件传输完成: {file_name_str}, 大小: {size_bytes_int} 字节 {details_str} {context_info_str}"
+
       # 示例: logger.info("transfer_skipped", file_name_str="sample.pdf", dst_type_str="存储")
       transfer_skipped: "相同文件已存在于 {dst_type_str}，跳过复制: {file_name_str}"
+
+      # 示例: logger.info("transfer_skipped_with_elapsed_time", file_name_str="sample.pdf", dst_type_str="存储", details_str="[CheckTime=0.05s]", context_info_str="[Key=...]")
+      transfer_skipped_with_elapsed_time: "相同文件已存在于 {dst_type_str}，跳过复制: {file_name_str} {details_str} {context_info_str}"
 
       # 示例: logger.info("storage_clean_started", storage_type_str="GCS", prefix_str="PAK/newfile/20260804/")
       storage_clean_started: "{storage_type_str} 目标数据清理(删除)启动: [Prefix={prefix_str}]"
@@ -377,6 +383,15 @@ logging_messages:
       # 示例: logger.error("connection_failed", service_name_str="Storage", error_str="Connection timed out")
       connection_failed: "{service_name_str} 连接失败: {error_str}"
 
+      # 示例: logger.exception("credential_package_missing")
+      credential_package_missing: "使用 GCP 服务账号认证功能需要 'google-auth' 包。请通过 'pip install google-auth' 或 'pip install agent_common[clients]' 安装。"
+
+      # 示例: logger.exception("credential_json_invalid", error_str="Expecting value: line 1 column 1 (char 0)")
+      credential_json_invalid: "根据 GOOGLE_APPLICATION_CREDENTIALS_JSON 的内存 JSON 创建认证对象失败: {error_str}"
+
+      # 示例: logger.error("credential_file_not_found", credentials_file_path_str="/app/config/key.json", source_name_str="GOOGLE_APPLICATION_CREDENTIALS", configured_path_str="config/key.json")
+      credential_file_not_found: "未找到认证密钥文件: {credentials_file_path_str} ({source_name_str}: '{configured_path_str}')"
+
       # 示例: logger.error("list_failed", storage_type_str="Storage", error_str="Access Denied")
       list_failed: "查询 {storage_type_str} 对象列表失败: {error_str}"
 
@@ -388,6 +403,9 @@ logging_messages:
 
       # 示例: logger.error("transfer_failed", file_name_str="sample.pdf", error_str="Network dropped")
       transfer_failed: "文件传输失败: {file_name_str}, 错误: {error_str}"
+
+      # 示例: logger.exception("transfer_failed_with_elapsed_time", file_name_str="sample.pdf", error_str="Network dropped", details_str="[TotalElapsed=1.20s]", context_info_str="[Key=...]")
+      transfer_failed_with_elapsed_time: "文件传输失败: {file_name_str}, 错误: {error_str} {details_str} {context_info_str}"
 
       # 示例: logger.exception("storage_extract_failed", target_file_str="sample.json", error_str="KeyError")
       storage_extract_failed: "提取并转换存储文件({target_file_str})数据失败: {error_str}"

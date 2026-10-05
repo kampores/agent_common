@@ -2,6 +2,26 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.98 (2026-10-06)
+
+- **Separated Credential Resolution from Connection in `GcsClient` and `BigQueryClient` (Rules 1.6.4, 4.2, Breaking Change)**:
+  - The constructor now resolves credentials first with `GcpCredentialResolver.resolve()` and passes the result to `_connect(credentials_obj)`. The `try` block in `_connect()` now covers only client creation and the bucket or table lookup.
+  - Compatibility: exceptions raised during credential resolution (`ImportError`, `ValueError`, `FileNotFoundError`, and others) are no longer wrapped in `ConnectionError`; they propagate with their original type. Code that caught credential failures as `ConnectionError` must be updated.
+  - A credential failure is now logged once by `GcpCredentialResolver`, at the point where the exception is raised, instead of by the client. The same log is written when the resolver is used on its own, and the client does not log it again. To support this, the resolver now has `self.logger`, and `_get_service_account` changed from a class method to an instance method (the module cache remains a class variable).
+  - Moved the resolver's exception messages, which were written in Korean in the source code, into the log message catalog (four languages): `credential_package_missing` (`ImportError`), `credential_json_invalid` (`ValueError`), and `credential_file_not_found` (`FileNotFoundError`). Exception messages now follow the configured log language, and the log ID for a credential failure changes from `connection_failed` to one of these three.
+  - The source label in the missing key file message changed from `config.yml 설정값` to the argument name `credentials_path_str`.
+  - Updated the error handling guide in manual `3.6` in four languages.
+- **Merged the `S3Client.transfer_to_gcs` Elapsed-Time Log into the Result Log (Rules 1.1.1, 3.2, 4.2)**:
+  - Removed the separate `elapsed_time` log written after each result log. The per-stage timings (`details_str`) and the transfer context (`context_info_str`) are now part of the result log, so each file produces one log line instead of two.
+  - Deleted the Korean `action_name_str` values that were written in the source code ("GCS 파일 검사", "GCS 파일 전송", "GCS 파일 전송 오류"). They were printed in Korean even when the log language was `EN`, `ZH`, or `JA`.
+  - Added the templates `transfer_completed_with_elapsed_time`, `transfer_skipped_with_elapsed_time`, and `transfer_failed_with_elapsed_time`, which append the `{details_str} {context_info_str}` slots to the existing sentences (four languages). `transfer_to_gcs` uses these three log IDs.
+  - The existing `transfer_completed`, `transfer_skipped`, and `transfer_failed` templates are unchanged.
+  - Removed the `Status=Skipped` token from the skip log because it repeated the message text.
+  - `transfer_to_gcs` now writes one ERROR log per failed transfer instead of two, so the accumulated failure count drops accordingly, and the per-type error summary shows `transfer_failed_with_elapsed_time` instead of `elapsed_time`.
+  - The `elapsed_time` template itself is kept.
+- **Manual `3.1` Update (Rule 4.2)**:
+  - Updated the skip step in the transfer pipeline flowchart to match the new log structure (Korean, English, Japanese).
+
 ### v0.4.97 (2026-10-05)
 
 - **Per-Class Selection of What Configuration Auto-Creation and Auto-Repair Write (Rules 1.7.5, 4.2, Breaking Change)**:

@@ -31,7 +31,7 @@ flowchart TD
     D --> E["gcs_client.get_blob_size(gcs_blob)"]
     E --> F{"GCS 파일 존재 및<br/>용량 일치 여부?"}
     
-    F -->|"일치 (동일 파일)"| G["전송 생략 (SKIPPED)<br/>elapsed_time 로깅"]
+    F -->|"일치 (동일 파일)"| G["전송 생략 (SKIPPED)<br/>CheckTime 포함 단일 행 로깅"]
     F -->|"불일치 또는 미존재"| H["get_object_stream()<br/>S3/ECS StreamingBody 획득"]
     H --> I["gcs_client.upload_stream()<br/>실시간 메모리 파이프라인 업로드"]
     I --> J["전송 완료 (UPLOADED)<br/>구간별 레이턴시 정밀 로깅"]

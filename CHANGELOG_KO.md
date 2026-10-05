@@ -2,6 +2,26 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.98 (2026-10-06)
+
+- **`GcsClient`, `BigQueryClient`의 인증과 연결 단계 분리 (규칙 1.6.4, 4.2 준수, 호환성 변경)**:
+  - 생성자에서 `GcpCredentialResolver.resolve()`로 인증을 먼저 수행하고, 그 결과를 `_connect(credentials_obj)`에 넘겨 연결하도록 변경. `_connect()`의 `try` 블록에는 클라이언트 생성과 버킷·테이블 조회만 남음.
+  - 호환성: 인증 단계 예외(`ImportError`, `ValueError`, `FileNotFoundError` 등)가 더 이상 `ConnectionError`로 감싸지지 않고 원래 타입 그대로 전달됨. 인증 실패를 `ConnectionError`로 잡던 코드는 수정 필요.
+  - 인증 실패 로그를 클라이언트가 아닌 `GcpCredentialResolver`가 예외 발생 지점에서 한 번 기록하도록 변경. 리졸버를 단독으로 쓸 때도 같은 로그가 남으며, 클라이언트는 이를 다시 기록하지 않음. 이를 위해 리졸버에 `self.logger`를 추가하고 `_get_service_account`를 클래스 메서드에서 인스턴스 메서드로 변경 (모듈 캐시는 클래스 변수 유지).
+  - 소스 코드에 한글로 적혀 있던 리졸버의 예외 문장을 로그 메시지 사전으로 이동 (4개 언어): `credential_package_missing`(`ImportError`), `credential_json_invalid`(`ValueError`), `credential_file_not_found`(`FileNotFoundError`). 예외 메시지가 로그 언어 설정을 따르며, 인증 실패 로그 ID는 `connection_failed`에서 이 세 가지로 바뀜.
+  - 키 파일 미존재 메시지의 출처 표기를 `config.yml 설정값`에서 인자명 `credentials_path_str`로 변경.
+  - 매뉴얼 `3.6`의 예외 처리 가이드를 4개 언어로 갱신.
+- **`S3Client.transfer_to_gcs` 소요시간 로그를 결과 로그에 통합 (규칙 1.1.1, 3.2, 4.2 준수)**:
+  - 파일마다 결과 로그 뒤에 따로 남기던 `elapsed_time` 로그를 제거하고, 구간별 소요시간(`details_str`)과 전송 컨텍스트(`context_info_str`)를 결과 로그 한 줄에 함께 기록. 파일 1건당 로그가 2줄에서 1줄로 감소.
+  - 소스 코드에 한글로 적혀 있던 `action_name_str` 값("GCS 파일 검사", "GCS 파일 전송", "GCS 파일 전송 오류")을 삭제. 로그 언어를 `EN`, `ZH`, `JA`로 설정해도 이 부분만 한글로 출력되던 문제 해소.
+  - 기존 문장 끝에 `{details_str} {context_info_str}` 슬롯을 붙인 템플릿 `transfer_completed_with_elapsed_time`, `transfer_skipped_with_elapsed_time`, `transfer_failed_with_elapsed_time` 추가 (4개 언어). `transfer_to_gcs`는 이 세 로그 ID를 사용.
+  - 기존 `transfer_completed`, `transfer_skipped`, `transfer_failed` 템플릿은 변경 없음.
+  - 건너뜀 로그의 `Status=Skipped` 토큰은 메시지 본문과 중복되어 삭제.
+  - 전송 실패 1건당 `transfer_to_gcs`가 남기는 ERROR 로그가 2건에서 1건으로 줄어 실패 누적 건수가 그만큼 감소하고, 오류 유형별 집계에서 `elapsed_time` 대신 `transfer_failed_with_elapsed_time`이 표시됨.
+  - `elapsed_time` 템플릿은 그대로 유지.
+- **매뉴얼 `3.1` 보완 (규칙 4.2 준수)**:
+  - 전송 파이프라인 흐름도의 건너뜀 단계 표기를 변경된 로그 구조에 맞게 수정 (한국어, 영어, 일본어).
+
 ### v0.4.97 (2026-10-05)
 
 - **설정 파일 자동 생성·보정 대상을 클래스 단위로 선택 (규칙 1.7.5, 4.2 준수, 호환성 변경)**:

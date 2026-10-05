@@ -55,8 +55,8 @@ def coerce_type_by_key_suffix(key_str: str, val_any: Any) -> Any:
             ErrorHandler.raise_coercion_error(
                 key_str=key_str,
                 val_any=val_any,
-                expected_type_str="정수형(int)",
-                guide_msg_str="정수형 값으로 입력해 주십시오.",
+                expected_type_str="integer (int)",
+                guide_msg_str="Please provide an integer value.",
                 cause_exc=err,
             )
 
@@ -67,8 +67,8 @@ def coerce_type_by_key_suffix(key_str: str, val_any: Any) -> Any:
             ErrorHandler.raise_coercion_error(
                 key_str=key_str,
                 val_any=val_any,
-                expected_type_str="실수형(float)",
-                guide_msg_str="올바른 숫자형 값으로 입력해 주십시오.",
+                expected_type_str="floating-point number (float)",
+                guide_msg_str="Please provide a valid numeric value.",
                 cause_exc=err,
             )
 
@@ -84,15 +84,15 @@ def coerce_type_by_key_suffix(key_str: str, val_any: Any) -> Any:
             ErrorHandler.raise_coercion_error(
                 key_str=key_str,
                 val_any=val_any,
-                expected_type_str="불리언(bool)",
-                guide_msg_str="True 또는 False 값으로 입력해 주십시오.",
+                expected_type_str="boolean (bool)",
+                guide_msg_str="Please provide a True or False value.",
                 exc_cls=ValueError,
             )
         ErrorHandler.raise_coercion_error(
             key_str=key_str,
             val_any=val_any,
-            expected_type_str="불리언(bool)",
-            guide_msg_str="True 또는 False 값으로 입력해 주십시오.",
+            expected_type_str="boolean (bool)",
+            guide_msg_str="Please provide a True or False value.",
             exc_cls=TypeError,
         )
 
@@ -114,8 +114,8 @@ def coerce_type_by_key_suffix(key_str: str, val_any: Any) -> Any:
         ErrorHandler.raise_coercion_error(
             key_str=key_str,
             val_any=val_any,
-            expected_type_str="딕셔너리(dict)",
-            guide_msg_str="딕셔너리 매핑 구조로 입력해 주십시오.",
+            expected_type_str="dictionary (dict)",
+            guide_msg_str="Please provide a dictionary mapping structure.",
             exc_cls=TypeError,
         )
 
@@ -220,7 +220,7 @@ timeout_sec = mapping_cfg.timeout_float
 print(f"Timeout: {timeout_sec}")
 
 # Missing key produces exact diagnostic error:
-# AttributeError: mapping.yml에 정의되지 않은 설정 항목입니다: 'undefined_key'
+# AttributeError: Configuration item not defined in mapping.yml: 'undefined_key'
 ```
 
 #### C. Standalone Key-Value Coercion (`coerce_type_by_key_suffix`)

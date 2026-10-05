@@ -105,12 +105,14 @@ class SecretManagerClient:
 
 ## 5. Error Handling Guide
 
-Exception messages are emitted in Korean; the leading text is shown below as it appears.
+Exception messages are emitted in the configured log language (`KO`, `EN`, `ZH`, `JA`). The messages below are the English ones; the log IDs are the same in every language.
 
-| Exception | Common cause | Resolution |
-| :--- | :--- | :--- |
-| `ImportError: ... 'google-auth' 패키지가 필요합니다` | `google-auth` is not installed | Run `pip install agent_common[clients]` or `pip install google-auth` |
-| `ValueError: GOOGLE_APPLICATION_CREDENTIALS_JSON 인메모리 JSON 인증 객체 생성에 실패했습니다` | Malformed JSON or missing required keys in the environment variable | Check the JSON string and its escaping in the environment variable |
-| `FileNotFoundError: 인증키 파일을 찾을 수 없습니다` | No file at the tier 2 or tier 3 path | Check the path and source (environment variable / `config.yml`) shown in the message |
+| Exception | Log ID | Common cause | Resolution |
+| :--- | :--- | :--- | :--- |
+| `ImportError: The 'google-auth' package is required ...` | `credential_package_missing` | `google-auth` is not installed | Run `pip install agent_common[clients]` or `pip install google-auth` |
+| `ValueError: Failed to create credentials from the in-memory JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON` | `credential_json_invalid` | Malformed JSON or missing required keys in the environment variable | Check the JSON string and its escaping in the environment variable |
+| `FileNotFoundError: Credentials key file not found` | `credential_file_not_found` | No file at the tier 2 or tier 3 path | Check the path and source (`GOOGLE_APPLICATION_CREDENTIALS` / `credentials_path_str`) shown in the message |
 
-When called through `GcsClient` or `BigQueryClient`, these exceptions are wrapped in `ConnectionError` during the connection step. The original exception is available on `__cause__` and in the logged traceback.
+Before raising one of these exceptions, the resolver writes one ERROR log under the matching log ID. This is the same whether it is used on its own or called through `GcsClient` or `BigQueryClient`.
+
+`GcsClient` and `BigQueryClient` resolve credentials (`resolve()`) in the constructor before they connect. Exceptions from credential resolution are not wrapped in `ConnectionError`; they propagate with their original type, and the client does not log them again. `ConnectionError` is raised only for failures in the connection step, such as creating the client or looking up the bucket or table.
