@@ -53,9 +53,62 @@ def ensure_config_file(
 - **`default_schema` (dict | None)**: 启动入口处定义的默认常量 Schema 字典（若未指定，则使用通过 `register_schema` 注册的 Schema）
 - **返回值 (`Path`)**: 常量已完整写入并补全的目标配置文件绝对路径 `Path` 对象
 
+### 2.1. 选择性写入 `agent_common` 类的默认配置 (`config_loader.config_file_auto_repair_dict`)
+
+`ensure_config_file()` 写入配置文件的内容分为两类。
+
+| 类别 | 写入条件 |
+| :--- | :--- |
+| 调用程序的 Schema (通过 `register_schema()` 注册或以 `default_schema` 传入) | 始终写入 (全新生成及补全缺失键) |
+| `agent_common` 各类的默认配置 (各类的 `DEFAULT_SCHEMA_DICT`) | 仅写入在 `config_loader.config_file_auto_repair_dict` 中设为 `true` 的类 |
+
+很少有程序会用到 `agent_common` 的全部功能。为了避免未使用功能的配置填满 `config.yml`，所有类默认均为 `false`。例如只使用 BigQuery 的程序只需启用两个类。
+
+```yaml
+config_loader:
+  config_file_auto_repair_dict:
+    GcpCredentialResolver_bool: true
+    BigQueryClient_bool: true
+```
+
+| 字典的键 (`<类名>_bool`) | 启用后写入的配置 |
+| :--- | :--- |
+| `ConfigLoader_bool` | `config_loader.*`、`templates.*` |
+| `ProjectLogger_bool` | `logging.*` |
+| `S3Client_bool` | `transfer.timeout_seconds_int` |
+| `GcsClient_bool` | `transfer.timeout_seconds_int` |
+| `GcpCredentialResolver_bool` | 无 (仅使用环境变量) |
+| `BigQueryClient_bool` | `transfer.timeout_seconds_int`、`bigquery.ignore_unknown_values_bool`、`bigquery.timezone_offset_str` |
+| `ProgressTracker_bool` | `progress_tracker.*` |
+| `TableFormatter_bool` | `table_formatter.*` |
+| `ToolParser_bool` | `transfer.tool_dir_str` |
+| `LlmClient_bool` | `llm.*`、`llm_pool` |
+
+- 键的形式为 `<类名>_bool`。值按 `_bool` 后缀规则解析为布尔值 (`true`/`false`，包括字符串 `"true"`/`"false"`)，其他值将作为配置错误立即失败。
+- 若已启用的键在 `agent_common` 中找不到对应的类 (拼写错误或缺少 `_bool` 后缀)，将记录警告日志 `config_auto_repair_unknown_class` 并跳过。
+- 已启用类的默认配置在调用 `ensure_config_file()` 时也会注册为全局 Schema (`ConfigLoader.register_enabled_class_schemas_globally()`)。调用程序已注册的值不会被类默认值覆盖。
+- 未启用的类在运行时仍按包内置的默认配置正常工作。
+- 若要在 `config.yml` 尚不存在的首次运行时就生效，请把该配置写入通过 `register_schema()` 注册的程序 Schema 中。
+
+```python
+APP_DEFAULT_SCHEMA_DICT = {
+    "config_loader": {
+        "config_file_auto_repair_dict": {
+            "GcpCredentialResolver_bool": True,
+            "BigQueryClient_bool": True,
+        },
+    },
+    # ...
+}
+loader.register_schema(APP_DEFAULT_SCHEMA_DICT)
+loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA_DICT)
+```
+
 ---
 
 ## 3. 常量物理注入与配置补全流程
+
+下面流程中的“常量”是指调用程序的 Schema 加上在 2.1 节中启用的 `agent_common` 类的默认配置。
 
 ```mermaid
 flowchart TD

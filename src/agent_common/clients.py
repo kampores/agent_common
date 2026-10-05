@@ -27,26 +27,17 @@ from agent_common.config_loader import ConfigLoader, config
 from agent_common.logger import ProjectLogger
 from agent_common.time_utils import TimeUtils
 
-# ==============================================================================
-# 스토리지 및 데이터베이스 클라이언트 모듈 기본 설정 스키마 (No Hardcoding & Self-Healing 보장)
-# ==============================================================================
-APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
-    "transfer": {
-        "timeout_seconds_int": 120,
-        "chunk_size_int": 8388608,
-    },
-    "bigquery": {
-        "ignore_unknown_values_bool": True,
-        "timezone_offset_str": "+09:00",
-        "max_retries_int": 3,
-    },
-}
-
-
 class S3Client:
     """
     AWS S3 및 Dell ECS(S3 호환) 저장소와의 연결, 데이터 조회 및 전송을 담당하는 공용 클라이언트 클래스.
     """
+
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = {
+        "transfer": {
+            "timeout_seconds_int": 120,
+        },
+    }
 
     _boto3_module: Any = None
     _boto_config_cls: Any = None
@@ -278,6 +269,9 @@ class GcpCredentialResolver:
     그 외 GCP 서비스를 다루는 코드에서도 단독으로 재사용할 수 있습니다.
     """
 
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마 (환경변수만 사용하므로 설정 키 없음)
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = {}
+
     _service_account_module: Any = None
 
     @classmethod
@@ -367,6 +361,13 @@ class GcsClient:
     """
     Google Cloud Storage(GCS) 버킷 연결 및 파일 스트림 업로드를 담당하는 공용 클라이언트 클래스.
     """
+
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = {
+        "transfer": {
+            "timeout_seconds_int": 120,
+        },
+    }
 
     _storage_module: Any = None
 
@@ -572,6 +573,17 @@ class BigQueryClient:
     """
     Google Cloud BigQuery(BQ) 테이블 연결 및 JSON 데이터 스트리밍 적재를 담당하는 공용 클라이언트 클래스.
     """
+
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = {
+        "transfer": {
+            "timeout_seconds_int": 120,
+        },
+        "bigquery": {
+            "ignore_unknown_values_bool": True,
+            "timezone_offset_str": "+09:00",
+        },
+    }
 
     _bigquery_module: Any = None
 

@@ -196,6 +196,9 @@ logging_messages:
       # Example: logger.warning("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
       config_auto_repair_failed: "Error occurred while auto-repairing configuration file: {file_path_str}, error: {error_str}"
 
+      # Example: logger.warning("config_auto_repair_unknown_class", key_str="BigqueryClient_bool")
+      config_auto_repair_unknown_class: "No agent_common class matches the key ({key_str}) in config_loader.config_file_auto_repair_dict, so it is skipped. Keys must have the form '<ClassName>_bool'."
+
       # Example: logger.warning("config_default_fallback", key_str="timeout_seconds", default_val_any=30)
       config_default_fallback: "Configuration item (key: '{key_str}') does not exist. Falling back to system default value ({default_val_any})."
 

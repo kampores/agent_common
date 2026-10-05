@@ -84,6 +84,9 @@ class ToolParser:
     이원화된 도구(Tool) 계층 동적 로드 및 템플릿 치환 표현식 평가 전담 공용 클래스
     """
 
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = APP_DEFAULT_SCHEMA_DICT
+
     def __init__(
         self,
         config_loader_obj: Optional[ConfigLoader] = None,

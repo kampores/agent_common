@@ -53,9 +53,62 @@ def ensure_config_file(
 - **`default_schema` (dict | None)**: 코드 최초 실행단에 정의된 기본 상수 딕셔너리 스키마. (미지정 시 `register_schema`로 등록된 스키마 사용)
 - **반환값 (`Path`)**: 모든 상수가 파일화되어 보정 완료된 설정 파일의 절대 경로 `Path` 객체
 
+### 2.1. `agent_common` 클래스 기본 설정의 선택적 기록 (`config_loader.config_file_auto_repair_dict`)
+
+`ensure_config_file()`이 설정 파일에 기록하는 내용은 두 종류입니다.
+
+| 구분 | 기록 조건 |
+| :--- | :--- |
+| 호출 프로그램의 스키마 (`register_schema()` 등록분, `default_schema` 인자) | 항상 기록 (신규 생성 및 누락 키 보정) |
+| `agent_common` 클래스의 기본 설정 (각 클래스의 `DEFAULT_SCHEMA_DICT`) | `config_loader.config_file_auto_repair_dict`에서 `true`로 켠 클래스만 기록 |
+
+`agent_common`의 모든 기능을 쓰는 프로그램은 드뭅니다. 쓰지 않는 기능의 설정이 `config.yml`에 채워지지 않도록 클래스별 기본값은 전부 `false`입니다. 예를 들어 BigQuery만 쓰는 프로그램은 두 클래스만 켭니다.
+
+```yaml
+config_loader:
+  config_file_auto_repair_dict:
+    GcpCredentialResolver_bool: true
+    BigQueryClient_bool: true
+```
+
+| 사전의 키 (`<클래스명>_bool`) | 켰을 때 기록되는 설정 |
+| :--- | :--- |
+| `ConfigLoader_bool` | `config_loader.*`, `templates.*` |
+| `ProjectLogger_bool` | `logging.*` |
+| `S3Client_bool` | `transfer.timeout_seconds_int` |
+| `GcsClient_bool` | `transfer.timeout_seconds_int` |
+| `GcpCredentialResolver_bool` | 없음 (환경변수만 사용) |
+| `BigQueryClient_bool` | `transfer.timeout_seconds_int`, `bigquery.ignore_unknown_values_bool`, `bigquery.timezone_offset_str` |
+| `ProgressTracker_bool` | `progress_tracker.*` |
+| `TableFormatter_bool` | `table_formatter.*` |
+| `ToolParser_bool` | `transfer.tool_dir_str` |
+| `LlmClient_bool` | `llm.*`, `llm_pool` |
+
+- 키는 `<클래스명>_bool` 형식입니다. 값은 `_bool` 접미사 규칙에 따라 불리언으로 해석하며(`true`/`false`, 문자열 `"true"`/`"false"` 포함), 그 밖의 값은 설정 오류로 즉시 실패합니다.
+- 켠 키에 해당하는 클래스가 `agent_common`에 없으면(오타, `_bool` 접미사 누락 포함) 경고 로그 `config_auto_repair_unknown_class`를 남기고 건너뜁니다.
+- 켠 클래스의 기본 설정은 `ensure_config_file()` 호출 시 전역 스키마로도 등록됩니다(`ConfigLoader.register_enabled_class_schemas_globally()`). 호출 프로그램이 이미 등록한 값은 클래스 기본값으로 덮어쓰지 않습니다.
+- 꺼 둔 클래스도 실행 중에는 패키지에 내장된 기본 설정값으로 정상 동작합니다.
+- `config.yml`이 아직 없는 최초 실행부터 적용하려면, `register_schema()`로 등록하는 프로그램 스키마에 이 설정을 포함합니다.
+
+```python
+APP_DEFAULT_SCHEMA_DICT = {
+    "config_loader": {
+        "config_file_auto_repair_dict": {
+            "GcpCredentialResolver_bool": True,
+            "BigQueryClient_bool": True,
+        },
+    },
+    # ...
+}
+loader.register_schema(APP_DEFAULT_SCHEMA_DICT)
+loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA_DICT)
+```
+
 ---
 
 ## 3. 상수 강제 주입 및 파일 보정 흐름
+
+아래 흐름에서 '상수'는 호출 프로그램의 스키마와 2.1절에서 켠 `agent_common` 클래스의 기본 설정을 합친 것입니다.
 
 ```mermaid
 flowchart TD

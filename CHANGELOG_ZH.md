@@ -1,6 +1,30 @@
 # 版本变更历史 (Changelog)
 
-> [ 🇰🇷 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+> [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+
+### v0.4.97 (2026-10-05)
+
+- **按类选择配置文件自动生成与自动补全的写入对象 (遵循规则 1.7.5、4.2，兼容性变更)**:
+  - 新增配置 `config_loader.config_file_auto_repair_dict`: 以 `<类名>_bool` 形式的键 (例如 `BigQueryClient_bool`) 指定各类是否启用的字典。所有类默认均为 `false`，`ensure_config_file()` 仅把值为 `true` 的类的默认配置写入 `config.yml`。
+  - 支持的类: `ConfigLoader`, `ProjectLogger`, `S3Client`, `GcsClient`, `GcpCredentialResolver`, `BigQueryClient`, `ProgressTracker`, `TableFormatter`, `ToolParser`, `LlmClient`。各类新增 `DEFAULT_SCHEMA_DICT` 类属性，用于保存要写入的默认配置。
+  - 调用程序自身的 Schema (通过 `register_schema()` 注册或以 `default_schema` 传入) 仍然始终生成并补全。
+  - 值按 `_bool` 后缀规则解析 (`true`/`false` 及等价字符串，其他值立即报错)。若已启用的键在 `agent_common` 中找不到对应的类，将记录警告日志 `config_auto_repair_unknown_class` 并跳过 (已添加 4 种语言的消息)。
+  - 兼容性: 旧版本即使不使用 `LlmClient` 也会把 `llm`、`llm_pool` 自动写入 `config.yml`，现在不再写入。如有需要请设置 `LlmClient_bool: true`。
+- **新增全局 Schema 注册方法 (遵循规则 1.5.4)**:
+  - `ConfigLoader.register_schema_globally(schema_dict)`: 把传入的 Schema 注册到全局 Schema 注册表。`ReadOnlyConfig.register_schema()` 在三处调用了该方法，但 `agent_common` 中并未定义，进入这些分支时会抛出 `AttributeError`，现已修复。
+  - `ConfigLoader.register_enabled_class_schemas_globally()`: 仅把在 `config_loader.config_file_auto_repair_dict` 中为 `true` 的类的 `DEFAULT_SCHEMA_DICT` 注册到全局。`ensure_config_file()` 会首先调用它，因此已启用类的默认配置同时作用于文件写入和运行时默认值。
+  - 调用程序 Schema 已注册的值不会被类默认值覆盖。
+- **将 LLM 默认配置移入包默认配置文件**:
+  - 移除 `llm.py` 在导入时和 `LlmClient` 构造时通过 `register_schema()` 进行的全局注册，并在 `default_agent_common.yml` 中定义相同的值 (`llm.router_model_str`、`llm.sql_generator_model_str`、`llm.system_prompt_str`、`llm.default_purpose_str`)。运行时配置值不变。
+- **按类拆分 `clients.py` 模块 Schema**:
+  - 删除模块级 `APP_DEFAULT_SCHEMA_DICT`，拆分为 `S3Client`、`GcsClient`、`GcpCredentialResolver`、`BigQueryClient` 各自的 `DEFAULT_SCHEMA_DICT`。公共键 `transfer.timeout_seconds_int` 分别包含在三个客户端中。
+  - 删除没有任何类读取的 `transfer.chunk_size_int`、`bigquery.max_retries_int`。
+- **修正 `logger.py` 默认 Schema 中的 `logging.log_file_str`**:
+  - 将与包默认配置 (`default_agent_common.yml`) 不一致的路径模板改为相同的值，避免启用 `ProjectLogger` 时写入与实际生效默认值不同的路径。
+- **移除 `logging.level_dict` 查找中对无后缀键的回退 (遵循规则 1.5.3，兼容性变更)**:
+  - `ProjectLogger.configure` 查找日志级别的顺序整理为两步: 先查 `<程序名>_str` 键，再查 `default` 键。不再识别无后缀的 `<程序名>` 键，需改为 `<程序名>_str`。
+- **补充手册 `1.6` (遵循规则 4.2)**:
+  - 在 4 种语言的手册中新增 `2.1` 节，说明按类选择的配置、各类写入的配置项以及首次运行时的应用方法。
 
 ### v0.4.96 (2026-10-04)
 
@@ -16,6 +40,9 @@
 - **将文档中的 `agent_common.utils` 更正为实际模块路径 (遵循规则 4.2)**:
   - 将 README 与手册中指向不存在的 `agent_common.utils` 模块的写法改为 `agent_common.time_utils`、`agent_common.progress_tracker`、`agent_common.table_formatter`。
   - 将示例代码中运行时会引发 `ModuleNotFoundError` 的 `from agent_common.utils import ...` 改为 `from agent_common import ...`。
+- **将语言跳转链接中的国旗表情替换为语言代码 (遵循规则 4.2)**:
+  - 将 README 与 CHANGELOG 顶部语言跳转链接中的国旗表情（在部分环境中显示为国家代码 `KR`、`US`、`CN`、`JP`）替换为语言代码 `KO`、`EN`、`ZH`、`JA`。
+  - 删除 README 各语言章节标题中的国旗表情，并将跳转锚点更新为与新标题一致（`#agent_common-软件包-中文` 等）。
 
 ### v0.4.95 (2026-10-04)
 

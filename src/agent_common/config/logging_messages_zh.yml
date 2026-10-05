@@ -196,6 +196,9 @@ logging_messages:
       # 示例: logger.warning("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
       config_auto_repair_failed: "自动修复配置文件时发生错误: {file_path_str}, 错误: {error_str}"
 
+      # 示例: logger.warning("config_auto_repair_unknown_class", key_str="BigqueryClient_bool")
+      config_auto_repair_unknown_class: "在 agent_common 中找不到与配置 config_loader.config_file_auto_repair_dict 的键 ({key_str}) 对应的类，已跳过。键必须为 '<类名>_bool' 形式。"
+
       # 示例: logger.warning("config_default_fallback", key_str="timeout_seconds", default_val_any=30)
       config_default_fallback: "配置项 (key: '{key_str}') 不存在，回退采用系统默认值 ({default_val_any}) 启动。"
 

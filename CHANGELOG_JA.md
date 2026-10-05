@@ -1,6 +1,30 @@
 # バージョン変更履歴 (Changelog)
 
-> [ 🇰🇷 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+> [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+
+### v0.4.97 (2026-10-05)
+
+- **設定ファイルの自動生成・自動補正の書き込み対象をクラス単位で選択 (ルール 1.7.5、4.2 準拠、互換性変更)**:
+  - 新規設定 `config_loader.config_file_auto_repair_dict`: `<クラス名>_bool` 形式のキー (例: `BigQueryClient_bool`) でクラスごとの有効・無効を指定する辞書。既定値はすべて `false` で、`ensure_config_file()` は値が `true` のクラスの既定設定のみを `config.yml` に書き込む。
+  - 対象クラス: `ConfigLoader`, `ProjectLogger`, `S3Client`, `GcsClient`, `GcpCredentialResolver`, `BigQueryClient`, `ProgressTracker`, `TableFormatter`, `ToolParser`, `LlmClient`。各クラスに、書き込む既定設定を保持する `DEFAULT_SCHEMA_DICT` クラス属性を追加。
+  - 呼び出し側プログラムのスキーマ (`register_schema()` の登録分、`default_schema` 引数) は従来どおり常に生成・補正。
+  - 値は `_bool` 接尾辞の規則で解釈 (`true`/`false` および同義の文字列、それ以外は即時エラー)。有効にしたキーに対応するクラスが `agent_common` に見つからない場合は警告ログ `config_auto_repair_unknown_class` を出力してスキップ (4 言語のメッセージを追加)。
+  - 互換性: 以前のバージョンは `LlmClient` を使わなくても `llm`、`llm_pool` を `config.yml` に自動追加していたが、今後は追加しない。必要な場合は `LlmClient_bool: true` を指定。
+- **グローバルスキーマ登録メソッドを追加 (ルール 1.5.4 準拠)**:
+  - `ConfigLoader.register_schema_globally(schema_dict)`: 渡されたスキーマをグローバルスキーマレジストリに登録。`ReadOnlyConfig.register_schema()` が 3 か所で呼び出していたが `agent_common` に定義がなく、その分岐に入ると `AttributeError` になっていた問題を解消。
+  - `ConfigLoader.register_enabled_class_schemas_globally()`: `config_loader.config_file_auto_repair_dict` で `true` のクラスの `DEFAULT_SCHEMA_DICT` だけをグローバル登録。`ensure_config_file()` が最初に呼び出すため、有効にしたクラスの既定設定はファイルへの書き込みと実行時の既定値の両方に適用される。
+  - 呼び出し側プログラムのスキーマで登録済みの値は、クラスの既定値で上書きしない。
+- **LLM 既定設定をパッケージ既定設定ファイルへ移動**:
+  - `llm.py` がインポート時および `LlmClient` 生成時に `register_schema()` でグローバル登録していた動作を削除し、同じ値 (`llm.router_model_str`、`llm.sql_generator_model_str`、`llm.system_prompt_str`、`llm.default_purpose_str`) を `default_agent_common.yml` に定義。実行時の設定値は同一。
+- **`clients.py` のモジュールスキーマをクラス別に分割**:
+  - モジュールレベルの `APP_DEFAULT_SCHEMA_DICT` を削除し、`S3Client`、`GcsClient`、`GcpCredentialResolver`、`BigQueryClient` の `DEFAULT_SCHEMA_DICT` に分割。共用キー `transfer.timeout_seconds_int` は 3 つのクライアントそれぞれに含める。
+  - どのクラスも読み取っていなかった `transfer.chunk_size_int`、`bigquery.max_retries_int` をスキーマから削除。
+- **`logger.py` 既定スキーマの `logging.log_file_str` を修正**:
+  - パッケージ既定設定 (`default_agent_common.yml`) と異なっていたパステンプレートを同じ値に統一し、`ProjectLogger` を有効にしたときに実際に適用されている既定値と異なるパスが書き込まれないようにした。
+- **`logging.level_dict` の参照から接尾辞なしキーへのフォールバックを削除 (ルール 1.5.3 準拠、互換性変更)**:
+  - `ProjectLogger.configure` がログレベルを探す順序を、`<プログラム名>_str` キー、`default` キーの 2 段階に整理。接尾辞のない `<プログラム名>` キーは認識しなくなるため、`<プログラム名>_str` に変更する必要がある。
+- **マニュアル `1.6` の補足 (ルール 4.2 準拠)**:
+  - 4 言語のマニュアルに `2.1` 節を追加し、クラス単位の選択設定、クラスごとの書き込み項目、初回実行時の適用方法を説明。
 
 ### v0.4.96 (2026-10-04)
 
@@ -16,6 +40,9 @@
 - **ドキュメント内の `agent_common.utils` 表記を実際のモジュールパスに修正 (ルール 4.2 準拠)**:
   - 存在しない `agent_common.utils` モジュールを指していた README とマニュアルの表記を、`agent_common.time_utils`、`agent_common.progress_tracker`、`agent_common.table_formatter` に修正。
   - 実行すると `ModuleNotFoundError` になっていたサンプルコードの `from agent_common.utils import ...` を `from agent_common import ...` に修正。
+- **言語移動リンクの国旗絵文字を言語コードに置き換え (ルール 4.2 準拠)**:
+  - README と CHANGELOG 冒頭の言語移動リンクにある国旗絵文字（一部の環境では国コード `KR`、`US`、`CN`、`JP` として表示される）を、言語コード `KO`、`EN`、`ZH`、`JA` に置き換え。
+  - README の言語別セクション見出しから国旗絵文字を削除し、移動リンクのアンカーを新しい見出し（`#agent_common-パッケージ-日本語` など）に合わせて更新。
 
 ### v0.4.95 (2026-10-04)
 

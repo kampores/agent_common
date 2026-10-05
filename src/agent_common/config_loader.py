@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import copy
 import os
 import re
 import sys
@@ -25,6 +26,19 @@ from agent_common.localizer import Localizer
 APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
     "config_loader": {
         "max_recursion_depth_int": 20,  # 재귀 호출 최대 탐색 깊이 제한 (스택 오버플로우 및 무한 루프 방지)
+        # 설정 파일 자동 생성·보정 시 기본 설정을 기록할 agent_common 클래스 (true 인 클래스의 설정만 기록)
+        "config_file_auto_repair_dict": {
+            "ConfigLoader_bool": False,
+            "ProjectLogger_bool": False,
+            "S3Client_bool": False,
+            "GcsClient_bool": False,
+            "GcpCredentialResolver_bool": False,
+            "BigQueryClient_bool": False,
+            "ProgressTracker_bool": False,
+            "TableFormatter_bool": False,
+            "ToolParser_bool": False,
+            "LlmClient_bool": False,
+        },
     },
     "templates": {
         "config_notice_header_str": (
@@ -428,6 +442,9 @@ class ConfigLoader:
     _global_cli_overrides_dict: dict[str, Any] = {}
     _global_registered_schemas_dict: dict[str, Any] = {}
 
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = APP_DEFAULT_SCHEMA_DICT
+
     def __init__(self, config_dir: str | Path | None = None):
         """ConfigLoader 인스턴스를 생성하고 self.logger 및 설정 디렉토리를 초기화합니다."""
         from agent_common.logger import ProjectLogger
@@ -518,10 +535,54 @@ class ConfigLoader:
             cls._deep_merge(loader_or_dict, overrides_dict)
         cls._deep_merge(cls._global_cli_overrides_dict, overrides_dict)
 
+    @classmethod
+    def register_schema_globally(cls, schema_dict: dict[str, Any]) -> None:
+        """전역 스키마 레지스트리에 스키마를 등록하여, 이후 생성되는 것을 포함한 모든 ConfigLoader 인스턴스에 적용합니다.
+
+        :param schema_dict: 전역 등록할 기본 설정 스키마 딕셔너리
+        :return: None
+        """
+        cls._deep_merge(cls._global_registered_schemas_dict, schema_dict)
+
+    def register_enabled_class_schemas_globally(self) -> None:
+        """설정 config_loader.config_file_auto_repair_dict 에서 true 로 활성화된 agent_common 클래스들의
+        기본 설정 스키마(각 클래스의 DEFAULT_SCHEMA_DICT)만 전역 스키마 레지스트리에 등록합니다.
+
+        이미 등록된 스키마(호출 프로그램 스키마)의 값은 클래스 기본값으로 덮어쓰지 않습니다.
+        사전의 키는 '<클래스명>_bool' 형식이며, 켠 키에 해당하는 클래스가 agent_common 에 없으면 경고 로그를 남기고 건너뜁니다.
+
+        :return: None
+        """
+        import agent_common
+
+        enabled_schemas_dict: dict[str, Any] = {}
+        auto_repair_dict: dict[str, Any] = self.setting("config_loader.config_file_auto_repair_dict")
+        for key_str, enabled_any in auto_repair_dict.items():
+            if not coerce_type_by_key_suffix(key_str, enabled_any):
+                continue
+            # 키 형식은 '<클래스명>_bool' 이며, 형식이 다른 키는 대응 클래스가 없는 것으로 처리
+            class_name_str: str = key_str[: -len("_bool")] if key_str.endswith("_bool") else ""
+            class_schema_dict: Any = getattr(getattr(agent_common, class_name_str, None), "DEFAULT_SCHEMA_DICT", None)
+            if not isinstance(class_schema_dict, dict):
+                self.logger.warning("config_auto_repair_unknown_class", key_str=key_str)
+                continue
+            # 이후 병합이 클래스 상수를 변형하지 않도록 사본을 병합
+            self._deep_merge(enabled_schemas_dict, copy.deepcopy(class_schema_dict))
+
+        if enabled_schemas_dict:
+            # 이미 등록된 스키마의 값이 클래스 기본값보다 우선하도록 기존 등록분을 덮어쓴 뒤 전역 등록
+            self._deep_merge(enabled_schemas_dict, copy.deepcopy(self._global_registered_schemas_dict))
+            self.register_schema_globally(enabled_schemas_dict)
+            self._cached_settings = None
+
     def ensure_config_file(self, config_file_name: str = "config.yml", default_schema: Optional[dict[str, Any]] = None) -> Path:
         """설정 파일의 실체 존재 여부를 검증하고, 미존재 시 기본 스키마 템플릿으로 자동 생성하거나
         기존 파일 내 누락된 키를 보정(Self-healing)합니다.
-        
+
+        기록 대상은 호출 프로그램의 스키마(register_schema 등록분 및 default_schema)와,
+        설정 config_loader.config_file_auto_repair_dict 에서 true 로 활성화된 agent_common 클래스의 기본 설정입니다.
+        활성화된 클래스의 기본 설정은 이 시점에 전역 스키마로 등록되며, 활성화하지 않은 클래스의 설정은 파일에 기록하지 않습니다.
+
         :param config_file_name: 대상 설정 파일명 (기본값: 'config.yml')
         :param default_schema: 파일 생성 시 기록할 기본 딕셔너리 스키마 (옵션)
         :return: 대상 설정 파일의 절대 Path 객체
@@ -530,6 +591,7 @@ class ConfigLoader:
         self.config_dir.mkdir(parents=True, exist_ok=True)
         from agent_common.tool.date.date_time_utils import DateTimeUtils
 
+        self.register_enabled_class_schemas_globally()
         merged_defaults = {}
         if self._registered_schemas:
             self._deep_merge(merged_defaults, self._registered_schemas)

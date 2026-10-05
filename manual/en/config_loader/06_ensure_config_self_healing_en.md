@@ -53,9 +53,62 @@ def ensure_config_file(
 - **`default_schema` (dict | None)**: Baseline dictionary schema defined at the application entry point. (If omitted, falls back to schemas registered via `register_schema()`).
 - **Returns (`Path`)**: Absolute `Path` object pointing to the ensured configuration file where all constants are materialized.
 
+### 2.1. Selectively Writing `agent_common` Class Defaults (`config_loader.config_file_auto_repair_dict`)
+
+`ensure_config_file()` writes two kinds of content to the configuration file.
+
+| Source | When it is written |
+| :--- | :--- |
+| The calling program's schema (registered with `register_schema()` or passed as `default_schema`) | Always (on file creation and when repairing missing keys) |
+| Defaults of `agent_common` classes (each class's `DEFAULT_SCHEMA_DICT`) | Only for classes set to `true` in `config_loader.config_file_auto_repair_dict` |
+
+Few programs use every feature of `agent_common`. So that settings for unused features do not fill up `config.yml`, every class defaults to `false`. A program that only uses BigQuery, for example, enables just two classes.
+
+```yaml
+config_loader:
+  config_file_auto_repair_dict:
+    GcpCredentialResolver_bool: true
+    BigQueryClient_bool: true
+```
+
+| Dictionary key (`<ClassName>_bool`) | Settings written when enabled |
+| :--- | :--- |
+| `ConfigLoader_bool` | `config_loader.*`, `templates.*` |
+| `ProjectLogger_bool` | `logging.*` |
+| `S3Client_bool` | `transfer.timeout_seconds_int` |
+| `GcsClient_bool` | `transfer.timeout_seconds_int` |
+| `GcpCredentialResolver_bool` | None (uses environment variables only) |
+| `BigQueryClient_bool` | `transfer.timeout_seconds_int`, `bigquery.ignore_unknown_values_bool`, `bigquery.timezone_offset_str` |
+| `ProgressTracker_bool` | `progress_tracker.*` |
+| `TableFormatter_bool` | `table_formatter.*` |
+| `ToolParser_bool` | `transfer.tool_dir_str` |
+| `LlmClient_bool` | `llm.*`, `llm_pool` |
+
+- Keys have the form `<ClassName>_bool`. Values are interpreted as booleans by the `_bool` suffix rule (`true`/`false`, including the strings `"true"`/`"false"`); any other value fails immediately as a configuration error.
+- An enabled key that does not match a class in `agent_common` (a typo, or a missing `_bool` suffix) is skipped with the warning log `config_auto_repair_unknown_class`.
+- The defaults of an enabled class are also registered as a global schema when `ensure_config_file()` runs (`ConfigLoader.register_enabled_class_schemas_globally()`). Values the calling program has already registered are not overwritten by class defaults.
+- A disabled class still works at runtime with the defaults built into the package.
+- To apply it from the very first run, before `config.yml` exists, include the setting in the program schema you register with `register_schema()`.
+
+```python
+APP_DEFAULT_SCHEMA_DICT = {
+    "config_loader": {
+        "config_file_auto_repair_dict": {
+            "GcpCredentialResolver_bool": True,
+            "BigQueryClient_bool": True,
+        },
+    },
+    # ...
+}
+loader.register_schema(APP_DEFAULT_SCHEMA_DICT)
+loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA_DICT)
+```
+
 ---
 
 ## 3. Constant Injection & File Reconciliation Workflow
+
+In the workflow below, "constants" means the calling program's schema plus the defaults of the `agent_common` classes enabled in section 2.1.
 
 ```mermaid
 flowchart TD

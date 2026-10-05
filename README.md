@@ -2,11 +2,11 @@
 
 **[📦 PyPI 패키지](https://pypi.org/project/agent-common/) · [💻 GitHub 소스 및 매뉴얼](https://github.com/kampores/agent_common)**
 
-> [ 🇰🇷 한국어 ](#-agent_common-패키지-한국어) | [ 🇺🇸 English ](#-agent_common-package-english) | [ 🇨🇳 中文 ](#-agent_common-软件包-中文) | [ 🇯🇵 日本語 ](#-agent_common-パッケージ-日本語)
+> [ KO 한국어 ](#agent_common-패키지-한국어) | [ EN English ](#agent_common-package-english) | [ ZH 中文 ](#agent_common-软件包-中文) | [ JA 日本語 ](#agent_common-パッケージ-日本語)
 
 ---
 
-## 🇰🇷 agent_common 패키지 (한국어)
+## agent_common 패키지 (한국어)
 
 중앙 에이전트 및 데이터 이관/생성 서비스를 위한 공통 로깅, 설정 로더, 인프라 클라이언트, 동적 도구(Tool) 파서 및 에러 처리 라이브러리 패키지입니다.
 
@@ -27,7 +27,7 @@
   - 타입 불일치 시 침묵하지 않고 상세 안내와 함께 즉시 조기 실패(Fail-Fast, `ValueError`/`TypeError`) 발생 보증
 - **1.4. [Fail-Fast 필수 설정 검증 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/04_fail_fast_require_setting_ko.md)**: 프로그램 시작 시 필수 설정값 누락 시 상세 원인 출력 후 프로세스 즉시 종료.
 - **1.5. [네트워크 프록시 제어 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/05_network_proxy_control_ko.md)**: `proxy.no_proxy` 설정의 `NO_PROXY` 환경변수 자동 반영.
-- **1.6. [모든 상수의 설정 파일화 및 템플릿 보정 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/06_ensure_config_self_healing_ko.md)**: 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정.
+- **1.6. [모든 상수의 설정 파일화 및 템플릿 보정 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/ko/config_loader/06_ensure_config_self_healing_ko.md)**: 코드 내 모든 상수의 설정 파일화(외부화), `config.yml` 자동 생성 및 누락 상수 강제 주입·보정. `agent_common` 클래스의 기본 설정은 `config_loader.config_file_auto_repair_dict`에서 `true`로 켠 클래스만 기록.
 
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/01_single_line_flatten_formatter_ko.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 로거 팩토리 기반 호출자/클래스명(`%(caller_str)s`, `%(class_name_str)s`) 자동 결합 및 프로그램 로거 이름(`%(name)s`) 통일 지원.
@@ -253,7 +253,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 배포 환경 (Wheel 패키지 설치)
-pip install dist/agent_common-0.4.96-py3-none-any.whl
+pip install dist/agent_common-0.4.97-py3-none-any.whl
 ```
 
 #### 🌐 PyPI 공식 배포 (관리자 전용)
@@ -268,7 +268,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI 업로드
-python -m twine upload dist/agent_common-0.4.96*
+python -m twine upload dist/agent_common-0.4.97*
 ```
 
 ---
@@ -279,7 +279,7 @@ python -m twine upload dist/agent_common-0.4.96*
 
 ---
 
-## 🇺🇸 agent_common Package (English)
+## agent_common Package (English)
 
 A comprehensive Python common library providing unified logging, hierarchical configuration loaders, cloud and database infrastructure clients, dynamic tool parsers, and centralized error handling for enterprise agent services and data migration pipelines.
 
@@ -300,7 +300,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
   - Strict Fail-Fast guarantee: type-suffix mismatches immediately raise diagnostic exceptions (`ValueError`/`TypeError`) instead of silently falling back to raw values.
 - **1.4. [Fail-Fast Required Setting Validation (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/04_fail_fast_require_setting_en.md)**: Immediate process termination with diagnostic output if required settings are missing during startup.
 - **1.5. [Network Proxy Control (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/05_network_proxy_control_en.md)**: Automatic synchronization of `NO_PROXY` environment variable from `proxy.no_proxy` configuration.
-- **1.6. [Externalizing All Constants & Self-Healing Templates (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/06_ensure_config_self_healing_en.md)**: Materializing all in-code constants to configuration files, automatic scaffolding, and in-place missing key injection.
+- **1.6. [Externalizing All Constants & Self-Healing Templates (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/en/config_loader/06_ensure_config_self_healing_en.md)**: Materializing all in-code constants to configuration files, automatic scaffolding, and in-place missing key injection. Defaults of `agent_common` classes are written only for classes set to `true` in `config_loader.config_file_auto_repair_dict`.
 
 #### 2. Single-Line Log Formatter & Project Logger (`agent_common.logger`)
 - **2.1. [Single-Line Flatten Formatter & Origin Tracking (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/01_single_line_flatten_formatter_en.md)**: Flattens log records, extracts `[Origin: ...]` caller frames, and optimizes for centralized log aggregators (Logstash, Fluentd, CloudWatch).
@@ -512,7 +512,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # Production (Wheel package)
-pip install dist/agent_common-0.4.96-py3-none-any.whl
+pip install dist/agent_common-0.4.97-py3-none-any.whl
 ```
 
 #### 🌐 Official PyPI Distribution (Maintainers Only)
@@ -527,7 +527,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. Upload to PyPI
-python -m twine upload dist/agent_common-0.4.96*
+python -m twine upload dist/agent_common-0.4.97*
 ```
 
 ---
@@ -538,7 +538,7 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
 
 ---
 
-## 🇨🇳 agent_common 软件包 (中文)
+## agent_common 软件包 (中文)
 
 面向企业级智能体（Agent）服务与数据迁移/生成管道的通用 Python 核心库，提供统一日志记录、分层配置加载、云端与数据库基础设施客户端、动态工具解析器及集中异常处理。
 
@@ -559,7 +559,7 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
   - 严格快速失败 (Fail-Fast) 保证：类型不匹配时立即抛出详细诊断异常 (`ValueError`/`TypeError`)，绝不静默降级为原始值。
 - **1.4. [快速失败必需配置验证 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/zh/config_loader/04_fail_fast_require_setting_zh.md)**: 程序启动阶段若缺少必要配置项，立即输出详细诊断日志并安全终止进程。
 - **1.5. [网络代理控制 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/zh/config_loader/05_network_proxy_control_zh.md)**: 自动将 `proxy.no_proxy` 配置同步至 `NO_PROXY` 环境变量，绕过内部通信代理。
-- **1.6. [常量外部化与自愈模板校正 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/zh/config_loader/06_ensure_config_self_healing_zh.md)**: 将代码中所有常量外部化为配置文件，自动生成 `config.yml` 并强制注入/补齐缺失的配置键。
+- **1.6. [常量外部化与自愈模板校正 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/zh/config_loader/06_ensure_config_self_healing_zh.md)**: 将代码中所有常量外部化为配置文件，自动生成 `config.yml` 并强制注入/补齐缺失的配置键。`agent_common` 各类的默认配置仅写入在 `config_loader.config_file_auto_repair_dict` 中设为 `true` 的类。
 
 #### 2. 单行日志格式化器与项目日志器 (`agent_common.logger`)
 - **2.1. [单行扁平化格式化器与源头位置追踪 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/01_single_line_flatten_formatter_zh.md)**: 扁平化多行日志与 Traceback 异常，提取 `[Origin: ...]` 根源调用栈，针对集中式日志收集器（Logstash、Fluentd、CloudWatch）优化。
@@ -771,7 +771,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 生产环境 (安装 Wheel 包)
-pip install dist/agent_common-0.4.96-py3-none-any.whl
+pip install dist/agent_common-0.4.97-py3-none-any.whl
 ```
 
 #### 🌐 官方 PyPI 镜像分发（仅限维护者）
@@ -786,7 +786,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. 上传至 PyPI
-python -m twine upload dist/agent_common-0.4.96*
+python -m twine upload dist/agent_common-0.4.97*
 ```
 
 ---
@@ -797,7 +797,7 @@ python -m twine upload dist/agent_common-0.4.96*
 
 ---
 
-## 🇯🇵 agent_common パッケージ (日本語)
+## agent_common パッケージ (日本語)
 
 エンタープライズ AI エージェントサービスおよびデータ移行・生成パイプラインのための共通 Python コアライブラリです。統合ロギング、階層型設定ローダー、クラウドおよびデータベースインフラクライアント、動的ツールパーサー、集中エラー処理を提供します。
 
@@ -818,7 +818,7 @@ python -m twine upload dist/agent_common-0.4.96*
   - 厳格な Fail-Fast 保証: 型不一致時は詳細な診断例外 (`ValueError`/`TypeError`) を即座に発生。
 - **1.4. [Fail-Fast 必須設定検証 (`require_setting()`)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/04_fail_fast_require_setting_ja.md)**: プログラム起動時に必須設定値が欠落している場合、詳細原因を出力してプロセスを即座に終了。
 - **1.5. [ネットワークプロキシ制御 (`_apply_no_proxy`)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/05_network_proxy_control_ja.md)**: `proxy.no_proxy` 設定を `NO_PROXY` 環境変数に自動反映し、内部通信プロキシをバイパス。
-- **1.6. [全定数の設定ファイル外部化および自己修復テンプレート補正 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/06_ensure_config_self_healing_ja.md)**: コード内の全定数を設定ファイル化、`config.yml` の自動生成および欠落キーの強制補正。
+- **1.6. [全定数の設定ファイル外部化および自己修復テンプレート補正 (`ensure_config_file()`)](https://github.com/kampores/agent_common/blob/main/manual/ja/config_loader/06_ensure_config_self_healing_ja.md)**: コード内の全定数を設定ファイル化、`config.yml` の自動生成および欠落キーの強制補正。`agent_common` クラスの既定設定は `config_loader.config_file_auto_repair_dict` で `true` にしたクラスのみ書き込む。
 
 #### 2. 単一行ログフォーマッターおよびロガー (`agent_common.logger`)
 - **2.1. [単一行フラット化フォーマッターおよび例外発生源追跡 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/01_single_line_flatten_formatter_ja.md)**: 全ログおよびトレースバックを1行にフラット化し、`[Origin: ...]` 発生源位置を抽出。集中ログ収集基盤（Logstash, Fluentd, CloudWatch）に最適化。
@@ -1030,7 +1030,7 @@ pip install -e agent_common
 pip install -e "agent_common[clients]"
 
 # 本番環境（Wheel パッケージのインストール）
-pip install dist/agent_common-0.4.96-py3-none-any.whl
+pip install dist/agent_common-0.4.97-py3-none-any.whl
 ```
 
 #### 🌐 公式 PyPI 配布（管理者専用）
@@ -1045,7 +1045,7 @@ python -m build
 python -m twine check dist/*
 
 # 4. PyPI アップロード
-python -m twine upload dist/agent_common-0.4.96*
+python -m twine upload dist/agent_common-0.4.97*
 ```
 
 ---

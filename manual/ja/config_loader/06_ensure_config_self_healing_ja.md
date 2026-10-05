@@ -53,9 +53,62 @@ def ensure_config_file(
 - **`default_schema` (dict | None)**: コード初回実行段で定義された基本定数辞書スキーマ（未指定時は `register_schema` で登録されたスキーマを使用）
 - **返却値 (`Path`)**: すべての定数がファイル化・補正完了した設定ファイルの絶対パス `Path` オブジェクト
 
+### 2.1. `agent_common` クラス既定設定の選択的な書き込み (`config_loader.config_file_auto_repair_dict`)
+
+`ensure_config_file()` が設定ファイルに書き込む内容は 2 種類あります。
+
+| 区分 | 書き込み条件 |
+| :--- | :--- |
+| 呼び出し側プログラムのスキーマ (`register_schema()` の登録分、`default_schema` 引数) | 常に書き込む (新規作成および欠落キーの補正) |
+| `agent_common` クラスの既定設定 (各クラスの `DEFAULT_SCHEMA_DICT`) | `config_loader.config_file_auto_repair_dict` で `true` にしたクラスのみ書き込む |
+
+`agent_common` のすべての機能を使うプログラムは多くありません。使わない機能の設定で `config.yml` が埋まらないよう、クラスごとの既定値はすべて `false` です。たとえば BigQuery だけを使うプログラムは 2 つのクラスだけを有効にします。
+
+```yaml
+config_loader:
+  config_file_auto_repair_dict:
+    GcpCredentialResolver_bool: true
+    BigQueryClient_bool: true
+```
+
+| 辞書のキー (`<クラス名>_bool`) | 有効時に書き込まれる設定 |
+| :--- | :--- |
+| `ConfigLoader_bool` | `config_loader.*`、`templates.*` |
+| `ProjectLogger_bool` | `logging.*` |
+| `S3Client_bool` | `transfer.timeout_seconds_int` |
+| `GcsClient_bool` | `transfer.timeout_seconds_int` |
+| `GcpCredentialResolver_bool` | なし (環境変数のみ使用) |
+| `BigQueryClient_bool` | `transfer.timeout_seconds_int`、`bigquery.ignore_unknown_values_bool`、`bigquery.timezone_offset_str` |
+| `ProgressTracker_bool` | `progress_tracker.*` |
+| `TableFormatter_bool` | `table_formatter.*` |
+| `ToolParser_bool` | `transfer.tool_dir_str` |
+| `LlmClient_bool` | `llm.*`、`llm_pool` |
+
+- キーは `<クラス名>_bool` 形式です。値は `_bool` 接尾辞の規則に従って真偽値として解釈し (`true`/`false`、文字列 `"true"`/`"false"` を含む)、それ以外の値は設定エラーとして即時に失敗します。
+- 有効にしたキーに対応するクラスが `agent_common` に見つからない場合 (綴りの誤り、`_bool` 接尾辞の欠落を含む) は、警告ログ `config_auto_repair_unknown_class` を出力してスキップします。
+- 有効にしたクラスの既定設定は、`ensure_config_file()` の呼び出し時にグローバルスキーマとしても登録されます (`ConfigLoader.register_enabled_class_schemas_globally()`)。呼び出し側プログラムが登録済みの値は、クラスの既定値で上書きしません。
+- 無効にしたクラスも、実行時にはパッケージ内蔵の既定設定値で正常に動作します。
+- `config.yml` がまだ存在しない初回実行から適用するには、`register_schema()` で登録するプログラムのスキーマにこの設定を含めます。
+
+```python
+APP_DEFAULT_SCHEMA_DICT = {
+    "config_loader": {
+        "config_file_auto_repair_dict": {
+            "GcpCredentialResolver_bool": True,
+            "BigQueryClient_bool": True,
+        },
+    },
+    # ...
+}
+loader.register_schema(APP_DEFAULT_SCHEMA_DICT)
+loader.ensure_config_file("config.yml", default_schema=APP_DEFAULT_SCHEMA_DICT)
+```
+
 ---
 
 ## 3. 定数の強制注入およびファイル補正フロー
+
+以下のフローでいう「定数」は、呼び出し側プログラムのスキーマと、2.1 節で有効にした `agent_common` クラスの既定設定を合わせたものです。
 
 ```mermaid
 flowchart TD

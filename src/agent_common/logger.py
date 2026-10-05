@@ -35,7 +35,7 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
         "format_str": "[%(asctime)s][%(levelname)s][%(name)s][%(filename)s:%(lineno)d %(caller_str)s] %(message)s",
         "datefmt_str": "%Y-%m-%d %H:%M:%S",
         "file_logging_bool": True,
-        "log_file_str": "logs/load/out/%Y/%m/%d/{log_level_str}/{app_name_str}_out_%Y%m%dT%H%M%S.log",
+        "log_file_str": "logs/%Y/%m/%d/{log_level_str}/{app_name_str}_%Y%m%dT%H%M%S.log",
         "progress_interval_percent_int": 1,
         "print_deleted_pks_bool": False,
     }
@@ -159,6 +159,9 @@ class ProjectLogger:
     기존 info/warning/error 메서드는 물론 log_msg(level, code, **kwargs) 등의 메서드를 직접 지원합니다.
     """
 
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = APP_DEFAULT_SCHEMA_DICT
+
     # 중복 basicConfig 호출로 handler가 겹치지 않도록 로깅 초기화 여부를 기억합니다.
     _configured = False
     _app_name_str: str | None = None
@@ -241,7 +244,7 @@ class ProjectLogger:
         level_dict: dict[str, str] | None = loader_obj.setting("logging.level_dict")
         if level_dict:
             app_key_str: str = f"{app_name_str}_str"
-            log_level_str: str = level_dict.get(app_key_str) or level_dict.get(app_name_str) or level_dict.get("default", "INFO")
+            log_level_str: str = level_dict.get(app_key_str) or level_dict.get("default", "INFO")
         else:
             log_level_str = loader_obj.setting("logging.level_str") or "INFO"
 

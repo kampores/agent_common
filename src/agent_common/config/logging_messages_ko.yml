@@ -195,6 +195,9 @@ logging_messages:
       # 예시: logger.warning("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
       config_auto_repair_failed: "설정 파일 자동 보정 중 오류가 발생했습니다: {file_path_str}, 에러: {error_str}"
 
+      # 예시: logger.warning("config_auto_repair_unknown_class", key_str="BigqueryClient_bool")
+      config_auto_repair_unknown_class: "설정 config_loader.config_file_auto_repair_dict 의 키({key_str})에 해당하는 클래스를 agent_common 에서 찾을 수 없어 건너뜁니다. 키는 '<클래스명>_bool' 형식이어야 합니다."
+
       # 예시: logger.warning("config_default_fallback", key_str="timeout_seconds", default_val_any=30)
       config_default_fallback: "설정(key: '{key_str}') 항목이 존재하지 않습니다. 시스템 기본값({default_val_any})으로 대체하여 기동합니다."
 

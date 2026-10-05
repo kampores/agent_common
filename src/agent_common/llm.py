@@ -33,10 +33,6 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
 # 로컬 GGUF 모델들의 캐시 딕셔너리. 파일 경로를 키로 하고 Llama 객체를 값으로 갖는다.
 _LOCAL_LLMS_DICT: dict[str, Any] = {}
 
-# 전역 설정 객체(config)에 LLM 모듈 기본 스키마 자동 등록
-if hasattr(config, "_source") and isinstance(config._source, ConfigLoader):
-    config._source.register_schema(APP_DEFAULT_SCHEMA_DICT)
-
 
 class LlmInferenceError(Exception):
     """LLM 추론 또는 호출 과정 중 예외 상황이 발생했을 때 나타내는 예외 클래스입니다.
@@ -52,6 +48,9 @@ class LlmClient:
 
     llmpool.yml 설정 풀로부터 지정된 모델 속성을 읽어와 설정 상태를 바인딩하고 추론을 처리합니다.
     """
+
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = APP_DEFAULT_SCHEMA_DICT
 
     # 마지막 추론 생성에 실제로 사용된 LLM 경로 종류 ("external_llm" 또는 "local_llm")
     last_generated_by_str: str | None
@@ -77,9 +76,8 @@ class LlmClient:
         self.last_generated_by_str = None
         self.purpose_str: str = purpose_str or config.llm.default_purpose_str
         self.logger: ProjectLogger = ProjectLogger(f"agent_common.{self.__class__.__name__}")
-        # self 객체 내에 독립적인 ConfigLoader 인스턴스를 바인딩하고 스키마 등록
+        # self 객체 내에 독립적인 ConfigLoader 인스턴스를 바인딩 (LLM 기본 설정은 패키지 default_agent_common.yml 에서 로드)
         self.config_loader: ConfigLoader = ConfigLoader(config_dir=config_dir_path)
-        self.config_loader.register_schema(APP_DEFAULT_SCHEMA_DICT)
 
         if model_name_str:
             self.model_name_str = model_name_str

@@ -1,6 +1,30 @@
 # 버전 변경 이력 (Changelog)
 
-> [ 🇰🇷 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+> [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+
+### v0.4.97 (2026-10-05)
+
+- **설정 파일 자동 생성·보정 대상을 클래스 단위로 선택 (규칙 1.7.5, 4.2 준수, 호환성 변경)**:
+  - 신규 설정 `config_loader.config_file_auto_repair_dict`: `<클래스명>_bool` 형식의 키(예: `BigQueryClient_bool`)로 클래스별 활성화 여부를 지정하는 사전. 기본값은 전부 `false`이며, `ensure_config_file()`은 `true`인 클래스의 기본 설정만 `config.yml`에 기록.
+  - 대상 클래스: `ConfigLoader`, `ProjectLogger`, `S3Client`, `GcsClient`, `GcpCredentialResolver`, `BigQueryClient`, `ProgressTracker`, `TableFormatter`, `ToolParser`, `LlmClient`. 각 클래스에 기록할 기본 설정을 담은 `DEFAULT_SCHEMA_DICT` 클래스 속성 추가.
+  - 호출 프로그램이 넘긴 스키마(`register_schema()` 등록분, `default_schema` 인자)는 기존과 같이 항상 생성·보정.
+  - 값은 `_bool` 접미사 규칙으로 해석(`true`/`false` 및 같은 뜻의 문자열, 그 밖의 값은 즉시 오류). 켠 키에 해당하는 클래스가 `agent_common`에 없으면 경고 로그 `config_auto_repair_unknown_class`를 남기고 건너뜀 (4개 언어 메시지 추가).
+  - 호환성: 이전 버전은 `LlmClient`를 쓰지 않아도 `llm`, `llm_pool` 항목을 `config.yml`에 자동 추가했으나 이제 추가하지 않음. 필요하면 `LlmClient_bool: true`로 지정.
+- **전역 스키마 등록 메서드 추가 (규칙 1.5.4 준수)**:
+  - `ConfigLoader.register_schema_globally(schema_dict)`: 넘겨받은 스키마를 전역 스키마 레지스트리에 등록. `ReadOnlyConfig.register_schema()`가 세 군데에서 호출하고 있었으나 `agent_common`에 정의가 없어, 해당 분기를 타면 `AttributeError`가 나던 문제 해소.
+  - `ConfigLoader.register_enabled_class_schemas_globally()`: `config_loader.config_file_auto_repair_dict`에서 `true`인 클래스의 `DEFAULT_SCHEMA_DICT`만 전역 등록. `ensure_config_file()`이 가장 먼저 호출하므로, 켠 클래스의 기본 설정은 파일 기록과 실행 중 기본값에 함께 적용.
+  - 이미 등록된 호출 프로그램 스키마의 값은 클래스 기본값으로 덮어쓰지 않음.
+- **LLM 기본 설정을 패키지 기본 설정 파일로 이동**:
+  - `llm.py`가 임포트 시점과 `LlmClient` 생성 시점에 `register_schema()`로 전역 등록하던 동작을 제거하고, 같은 값(`llm.router_model_str`, `llm.sql_generator_model_str`, `llm.system_prompt_str`, `llm.default_purpose_str`)을 `default_agent_common.yml`에 정의. 런타임 설정값은 동일.
+- **`clients.py` 모듈 스키마를 클래스별로 분리**:
+  - 모듈 전역 `APP_DEFAULT_SCHEMA_DICT`를 삭제하고 `S3Client`, `GcsClient`, `GcpCredentialResolver`, `BigQueryClient`의 `DEFAULT_SCHEMA_DICT`로 분리. 공용 키 `transfer.timeout_seconds_int`는 세 클라이언트에 각각 포함.
+  - 어떤 클래스도 읽지 않던 `transfer.chunk_size_int`, `bigquery.max_retries_int`는 스키마에서 삭제.
+- **`logger.py` 기본 스키마의 `logging.log_file_str` 정정**:
+  - 패키지 기본 설정(`default_agent_common.yml`)과 다르던 경로 템플릿을 동일한 값으로 일치. `ProjectLogger`를 켰을 때 실제 적용 중인 기본값과 다른 경로가 기록되지 않도록 함.
+- **`logging.level_dict` 조회에서 접미사 없는 키 대체 탐색 제거 (규칙 1.5.3 준수, 호환성 변경)**:
+  - `ProjectLogger.configure`가 로그 레벨을 찾는 순서를 `<프로그램명>_str` 키, `default` 키의 두 단계로 정리. 접미사 없는 `<프로그램명>` 키는 더 이상 인식하지 않으므로 `<프로그램명>_str`로 바꿔야 함.
+- **매뉴얼 `1.6` 보완 (규칙 4.2 준수)**:
+  - 4개 국어 매뉴얼에 `2.1` 절을 추가하여 클래스 단위 선택 설정, 클래스별 기록 항목, 최초 실행 시 적용 방법을 설명.
 
 ### v0.4.96 (2026-10-04)
 
@@ -16,6 +40,9 @@
 - **문서의 `agent_common.utils` 표기를 실제 모듈 경로로 정정 (규칙 4.2 준수)**:
   - 존재하지 않는 `agent_common.utils` 모듈을 가리키던 README와 매뉴얼의 표기를 `agent_common.time_utils`, `agent_common.progress_tracker`, `agent_common.table_formatter`로 수정.
   - 실행 시 `ModuleNotFoundError`가 나던 예시 코드의 `from agent_common.utils import ...`를 `from agent_common import ...`로 수정.
+- **언어 이동 링크의 국기 이모지를 언어 코드로 교체 (규칙 4.2 준수)**:
+  - README와 CHANGELOG 상단 언어 이동 링크의 국기 이모지(일부 환경에서 `KR`, `US`, `CN`, `JP` 국가 코드로 표시됨)를 언어 코드 `KO`, `EN`, `ZH`, `JA`로 교체.
+  - README 언어별 섹션 제목에서 국기 이모지를 제거하고, 이동 링크 앵커를 새 제목(`#agent_common-패키지-한국어` 등)에 맞게 갱신.
 
 ### v0.4.95 (2026-10-04)
 

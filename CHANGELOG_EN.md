@@ -1,6 +1,30 @@
 # Version History (Changelog)
 
-> [ 🇰🇷 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ 🇺🇸 English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ 🇨🇳 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ 🇯🇵 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+> [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
+
+### v0.4.97 (2026-10-05)
+
+- **Per-Class Selection of What Configuration Auto-Creation and Auto-Repair Write (Rules 1.7.5, 4.2, Breaking Change)**:
+  - New setting `config_loader.config_file_auto_repair_dict`: a dictionary whose keys have the form `<ClassName>_bool` (for example `BigQueryClient_bool`). Every class defaults to `false`, and `ensure_config_file()` writes the defaults of a class to `config.yml` only when its value is `true`.
+  - Supported classes: `ConfigLoader`, `ProjectLogger`, `S3Client`, `GcsClient`, `GcpCredentialResolver`, `BigQueryClient`, `ProgressTracker`, `TableFormatter`, `ToolParser`, `LlmClient`. Each class now has a `DEFAULT_SCHEMA_DICT` class attribute holding the defaults to write.
+  - The calling program's own schema (registered with `register_schema()` or passed as `default_schema`) is still always created and repaired.
+  - Values are interpreted by the `_bool` suffix rule (`true`/`false` and the equivalent strings; anything else fails immediately). An enabled key that does not match a class in `agent_common` is skipped with the warning log `config_auto_repair_unknown_class` (message added in four languages).
+  - Compatibility: earlier versions added `llm` and `llm_pool` to `config.yml` even when `LlmClient` was not used. They are no longer added; set `LlmClient_bool: true` if you need them.
+- **Added Global Schema Registration Methods (Rule 1.5.4)**:
+  - `ConfigLoader.register_schema_globally(schema_dict)`: registers the given schema in the global schema registry. `ReadOnlyConfig.register_schema()` called it in three places although `agent_common` did not define it, so those branches raised `AttributeError`; this is now fixed.
+  - `ConfigLoader.register_enabled_class_schemas_globally()`: globally registers the `DEFAULT_SCHEMA_DICT` of only the classes set to `true` in `config_loader.config_file_auto_repair_dict`. `ensure_config_file()` calls it first, so the defaults of an enabled class apply both to what is written to the file and to runtime defaults.
+  - Values already registered by the calling program's schema are not overwritten by class defaults.
+- **Moved LLM Defaults into the Package Default Configuration File**:
+  - `llm.py` no longer registers its schema globally with `register_schema()` at import time and at `LlmClient` construction. The same values (`llm.router_model_str`, `llm.sql_generator_model_str`, `llm.system_prompt_str`, `llm.default_purpose_str`) are now defined in `default_agent_common.yml`. Runtime values are unchanged.
+- **Split the `clients.py` Module Schema by Class**:
+  - Removed the module-level `APP_DEFAULT_SCHEMA_DICT` and split it into `DEFAULT_SCHEMA_DICT` on `S3Client`, `GcsClient`, `GcpCredentialResolver`, and `BigQueryClient`. The shared key `transfer.timeout_seconds_int` is included in each of the three clients.
+  - Removed `transfer.chunk_size_int` and `bigquery.max_retries_int` from the schema because no class reads them.
+- **Corrected `logging.log_file_str` in the `logger.py` Default Schema**:
+  - Aligned the path template with the package default (`default_agent_common.yml`), so enabling `ProjectLogger` does not write a path that differs from the default actually in effect.
+- **Removed the Unsuffixed-Key Fallback from `logging.level_dict` Lookup (Rule 1.5.3, Breaking Change)**:
+  - `ProjectLogger.configure` now resolves the log level in two steps: the `<program name>_str` key, then the `default` key. The unsuffixed `<program name>` key is no longer recognized and must be renamed to `<program name>_str`.
+- **Manual `1.6` Update (Rule 4.2)**:
+  - Added section `2.1` to the manual in four languages, covering the per-class setting, what each class writes, and how to apply it on the first run.
 
 ### v0.4.96 (2026-10-04)
 
@@ -16,6 +40,9 @@
 - **Corrected `agent_common.utils` References in the Documentation to the Real Module Paths (Rule 4.2)**:
   - Changed README and manual references that pointed at the non-existent `agent_common.utils` module to `agent_common.time_utils`, `agent_common.progress_tracker`, and `agent_common.table_formatter`.
   - Changed `from agent_common.utils import ...` in example code, which raised `ModuleNotFoundError` when run, to `from agent_common import ...`.
+- **Replaced Flag Emojis in the Language Navigation with Language Codes (Rule 4.2)**:
+  - Replaced the flag emojis in the language navigation at the top of the README and CHANGELOG (shown as the country codes `KR`, `US`, `CN`, `JP` in some environments) with the language codes `KO`, `EN`, `ZH`, `JA`.
+  - Removed the flag emojis from the per-language section headings in the README and updated the navigation anchors to match the new headings (`#agent_common-package-english`, etc.).
 
 ### v0.4.95 (2026-10-04)
 

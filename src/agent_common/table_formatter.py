@@ -33,6 +33,9 @@ class TableFormatter:
     정밀 계산하여 표 세로줄 컬럼 너비를 칼같이 맞춰주는 공용 테이블 포매터 유틸리티 클래스입니다.
     """
 
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = APP_DEFAULT_SCHEMA_DICT
+
     @classmethod
     def calculate_display_width(cls, text_str: str) -> int:
         """

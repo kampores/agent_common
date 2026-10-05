@@ -43,6 +43,25 @@ templates:
 
   config_repair_inline_comment_str: "# [자동 추가: {now_dt_str}]"
 
+llm:
+  router_model_str: "groq_gpt_oss"
+  sql_generator_model_str: "openai_gpt4o"
+  system_prompt_str: "You are a helpful AI assistant."
+  default_purpose_str: "sql_generator"
+
 config_loader:
   max_recursion_depth_int: 20  # 재귀 호출 최대 탐색 깊이 제한 (스택 오버플로우 및 무한 루프 방지)
+  # 설정 파일 자동 생성·보정 시 기본 설정을 기록할 agent_common 클래스 (true 인 클래스의 설정만 기록)
+  # 호출 프로그램이 직접 넘긴 스키마(register_schema, default_schema)는 이 설정과 무관하게 항상 기록됩니다.
+  config_file_auto_repair_dict:
+    ConfigLoader_bool: false
+    ProjectLogger_bool: false
+    S3Client_bool: false
+    GcsClient_bool: false
+    GcpCredentialResolver_bool: false
+    BigQueryClient_bool: false
+    ProgressTracker_bool: false
+    TableFormatter_bool: false
+    ToolParser_bool: false
+    LlmClient_bool: false
 

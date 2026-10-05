@@ -32,6 +32,9 @@ class ProgressTracker:
     배치 작업의 실시간 진행률(Progress) 추적 및 설정 % 배수 마일스톤 경고 로깅을 수행하는 공용 유틸리티 클래스입니다.
     """
 
+    # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
+    DEFAULT_SCHEMA_DICT: dict[str, Any] = APP_DEFAULT_SCHEMA_DICT
+
     def __init__(
         self,
         total_items_int: int,

@@ -65,7 +65,7 @@
 1.7.5. **Mandatory Project-Wide Default Schema Definition & Self-Healing**:
 - All projects and modules must eliminate source code hardcoding and declaratively define all operational configuration values and constants as a **Default Schema** dictionary. (The constant name is not restricted to `APP_DEFAULT_SCHEMA`; single-program projects may use `APP_DEFAULT_SCHEMA`, while multi-program environments can use clear domain-specific schema names such as `ECS_TO_GCS_SCHEMA`, `ECS_TO_BIGQUERY_SCHEMA` in `app_schema.py`.)
 - Executable programs (entry points) must pass their respective default schema to `ConfigLoader.register_schema(schema)` and `ConfigLoader.ensure_config_file("config.yml", default_schema=schema)` at early startup to guarantee file auto-creation and missing-key self-healing.
-- Common library packages without a main entry point (such as `agent_common`) must define module-specific default schemas in each file to preserve lazy loading and modularity (prohibit forced package-wide schema synthesis).
+- Common library packages without a main entry point (such as `agent_common`) must define module-specific default schemas in each file to preserve lazy loading and modularity (prohibit forced package-wide schema synthesis). Library defaults are excluded from the auto-creation and self-healing guarantee: they are written to the configuration file only when the entry-point program explicitly enables them (disabled by default).
 
 ### 1.8. CLI Input Parameter Option Standardization
 1.8.1. **Strict 1-Short & 1-Long Option Rule**: CLI argument parser options must declare exactly one short option and one long option (`add_argument("--<long-option>", "-<short-option>")`). Redundant alias options (3 or more options) are prohibited.
