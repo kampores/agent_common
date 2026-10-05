@@ -18,6 +18,7 @@ transfer:
 
 bigquery:
   ignore_unknown_values_bool: true
+  datetime_timezone_str: "KST"  # DATETIME 컬럼에 기록할 벽시계 시각의 기준 타임존 (KST 등 약어 또는 +09:00 형식, AUTO: 시스템 타임존)
 
 table_formatter:
   min_center_width_int: 5

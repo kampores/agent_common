@@ -2,6 +2,19 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.99 (2026-10-06)
+
+- **把 `BigQueryClient` DATETIME 转换的基准时区改为可配置 (遵循规则 1.1.1、1.3.1、4.2)**:
+  - 新增配置 `bigquery.datetime_timezone_str` (默认值 `KST`): 写入 `DATETIME` 列的钟表时刻所依据的基准时区。可填写 `KST` 等时区缩写或 `+09:00` 形式的偏移量，为 `AUTO`/`SYSTEM` 时使用宿主系统的本地时区。
+  - `convert_to_bigquery_datetime`: 带有偏移量的值不再换算为源代码中写死的 KST，而是换算为该配置所指定时区的时刻。默认值为 `KST`，因此不新增配置时结果与此前相同。
+  - 在系统时间为 UTC 的环境 (如 Airflow Pod) 中把当前时间写入 `DATETIME` 列时，应传入带偏移量的 `DateTimeUtils.get_now_timestamp()` 的值，而不是不带偏移量的 `DateTimeUtils.get_now_no_tz()`，这样才会换算为基准时区的时刻。
+  - 配置值在创建 `BigQueryClient` 时解析，因此格式不正确的值会在启动时以 `ValueError` 失败，而不是在处理数据行的过程中失败。
+  - 在 `default_agent_common.yml` 与 `BigQueryClient.DEFAULT_SCHEMA_DICT` 中新增默认值。
+  - 以 4 种语言更新手册 `3.5` 中的 DATETIME 时区处理说明，以及手册 `1.6` 中按类写入配置的表格。
+- **修正 `BigQueryClient.merge_table_from_json_data` 中 `DATETIME`/`DATE`/`TIME` 列的转换表达式**:
+  - 在 `column_types_dict` 中声明为 `DATETIME`、`DATE`、`TIME` 的列，改用 `CAST(JSON_VALUE(...) AS DATETIME)` 的形式转换，不再使用 `DATETIME(...)`、`DATE(...)`、`TIME(...)` 函数。这些函数不接受字符串表达式作为参数，因此从 JSON 中取出的字符串值必须用 `CAST` 转换。
+  - `DATETIME` 等非字符串类型的列必须通过 `column_types_dict` 传入类型。不传入时字符串值会被推断为 `STRING`，MERGE 在赋值时会出现类型错误。
+
 ### v0.4.98 (2026-10-06)
 
 - **分离 `GcsClient`、`BigQueryClient` 的认证阶段与连接阶段 (遵循规则 1.6.4、4.2，兼容性变更)**:

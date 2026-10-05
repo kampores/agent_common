@@ -2,6 +2,19 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.99 (2026-10-06)
+
+- **`BigQueryClient` DATETIME 변환의 기준 타임존을 설정으로 분리 (규칙 1.1.1, 1.3.1, 4.2 준수)**:
+  - 신규 설정 `bigquery.datetime_timezone_str` (기본값 `KST`): `DATETIME` 컬럼에 기록할 벽시계 시각의 기준 타임존. `KST` 같은 타임존 약어나 `+09:00` 형식의 오프셋을 지정하며, `AUTO`/`SYSTEM`이면 호스트 시스템의 로컬 타임존을 사용.
+  - `convert_to_bigquery_datetime`: 오프셋이 명시된 값을 소스 코드에 고정되어 있던 KST 대신 이 설정의 타임존 시각으로 환산. 기본값이 `KST`이므로 설정을 추가하지 않으면 결과는 이전과 동일.
+  - 시스템 시각이 UTC인 환경(Airflow 파드 등)에서 현재 시각을 `DATETIME` 컬럼에 기록할 때는, 오프셋이 없는 `DateTimeUtils.get_now_no_tz()` 대신 오프셋이 포함된 `DateTimeUtils.get_now_timestamp()` 값을 넘겨야 기준 타임존 시각으로 환산됨.
+  - 설정값은 `BigQueryClient` 생성 시점에 해석하므로, 형식이 잘못된 값은 행 처리 중이 아닌 기동 시점에 `ValueError`로 실패.
+  - 기본값을 `default_agent_common.yml`과 `BigQueryClient.DEFAULT_SCHEMA_DICT`에 추가.
+  - 매뉴얼 `3.5`의 DATETIME 타임존 처리 설명과 `1.6`의 클래스별 기록 설정 표를 4개 언어로 갱신.
+- **`BigQueryClient.merge_table_from_json_data`의 `DATETIME`/`DATE`/`TIME` 컬럼 변환식 수정**:
+  - `column_types_dict`에 `DATETIME`, `DATE`, `TIME`으로 지정된 컬럼을 `DATETIME(...)`, `DATE(...)`, `TIME(...)` 함수 대신 `CAST(JSON_VALUE(...) AS DATETIME)` 형태로 변환. 이 함수들은 문자열 표현식을 인자로 받지 않으므로, JSON에서 꺼낸 문자열 값은 `CAST`로 변환해야 함.
+  - `DATETIME` 등 문자열이 아닌 타입의 컬럼은 `column_types_dict`로 타입을 넘겨야 함. 넘기지 않으면 문자열 값이 `STRING`으로 추론되어 MERGE의 대입 단계에서 타입 오류가 발생.
+
 ### v0.4.98 (2026-10-06)
 
 - **`GcsClient`, `BigQueryClient`의 인증과 연결 단계 분리 (규칙 1.6.4, 4.2 준수, 호환성 변경)**:

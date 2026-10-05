@@ -78,7 +78,7 @@ config_loader:
 | `S3Client_bool` | `transfer.timeout_seconds_int` |
 | `GcsClient_bool` | `transfer.timeout_seconds_int` |
 | `GcpCredentialResolver_bool` | なし (環境変数のみ使用) |
-| `BigQueryClient_bool` | `transfer.timeout_seconds_int`、`bigquery.ignore_unknown_values_bool`、`bigquery.timezone_offset_str` |
+| `BigQueryClient_bool` | `transfer.timeout_seconds_int`、`bigquery.ignore_unknown_values_bool`、`bigquery.timezone_offset_str`、`bigquery.datetime_timezone_str` |
 | `ProgressTracker_bool` | `progress_tracker.*` |
 | `TableFormatter_bool` | `table_formatter.*` |
 | `ToolParser_bool` | `transfer.tool_dir_str` |

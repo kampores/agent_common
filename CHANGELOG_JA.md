@@ -2,6 +2,19 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.99 (2026-10-06)
+
+- **`BigQueryClient` の DATETIME 変換の基準タイムゾーンを設定化 (ルール 1.1.1, 1.3.1, 4.2 準拠)**:
+  - 新規設定 `bigquery.datetime_timezone_str` (既定値 `KST`): `DATETIME` 列に記録する壁時計時刻の基準タイムゾーン。`KST` などのタイムゾーン略称、または `+09:00` 形式のオフセットを指定し、`AUTO`/`SYSTEM` の場合はホストシステムのローカルタイムゾーンを使用。
+  - `convert_to_bigquery_datetime`: オフセットが明記された値を、ソースコードに固定されていた KST ではなく、この設定のタイムゾーンの時刻に換算。既定値が `KST` のため、設定を追加しなければ結果は従来と同じ。
+  - システム時刻が UTC の環境 (Airflow Pod など) で現在時刻を `DATETIME` 列に記録する場合は、オフセットのない `DateTimeUtils.get_now_no_tz()` ではなく、オフセット付きの `DateTimeUtils.get_now_timestamp()` の値を渡すことで基準タイムゾーンの時刻に換算される。
+  - 設定値は `BigQueryClient` の生成時に解釈するため、形式が不正な値は行の処理中ではなく起動時に `ValueError` で失敗。
+  - 既定値を `default_agent_common.yml` と `BigQueryClient.DEFAULT_SCHEMA_DICT` に追加。
+  - マニュアル `3.5` の DATETIME タイムゾーン処理の説明と、`1.6` のクラス別記録設定の表を 4 言語で更新。
+- **`BigQueryClient.merge_table_from_json_data` の `DATETIME`/`DATE`/`TIME` 列の変換式を修正**:
+  - `column_types_dict` で `DATETIME`、`DATE`、`TIME` と指定された列を、`DATETIME(...)`、`DATE(...)`、`TIME(...)` 関数ではなく `CAST(JSON_VALUE(...) AS DATETIME)` の形で変換。これらの関数は文字列式を引数に取らないため、JSON から取り出した文字列値は `CAST` で変換する必要がある。
+  - `DATETIME` など文字列以外の型の列は、`column_types_dict` で型を渡す必要がある。渡さない場合、文字列値が `STRING` と推論され、MERGE の代入で型エラーになる。
+
 ### v0.4.98 (2026-10-06)
 
 - **`GcsClient`、`BigQueryClient` の認証段階と接続段階を分離 (ルール 1.6.4, 4.2 準拠、互換性変更)**:

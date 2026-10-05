@@ -2,7 +2,7 @@
 
 > **Module**: `agent_common.clients.BigQueryClient`  
 > **Key Methods**: `convert_to_bigquery_timestamp()`, `convert_to_bigquery_datetime()`  
-> **Configuration**: `config.bigquery.timezone_offset_str`
+> **Configuration**: `config.bigquery.timezone_offset_str`, `config.bigquery.datetime_timezone_str`
 
 ---
 
@@ -54,8 +54,9 @@ def convert_to_bigquery_datetime(self, val_any: Any) -> Optional[str]
 ```
 - **Supported input formats**: Same as `convert_to_bigquery_timestamp`.
 - **Time zone handling**:
-  - If the source string carries an offset (`Z`, `+09:00`, `-0500`, etc.), it is converted to Korea Standard Time (KST) and the offset is then dropped.
+  - If the source string carries an offset (`Z`, `+09:00`, `-0500`, etc.), it is converted to the time zone set in `config.bigquery.datetime_timezone_str` (default `KST`) and the offset is then dropped. A current time generated on a host whose system clock is UTC (`DateTimeUtils.get_now_timestamp()`) is therefore also recorded in that time zone.
   - If there is no offset, the clock digits are used as they are.
+  - `datetime_timezone_str` accepts a time zone abbreviation such as `KST` or an offset such as `+09:00`. `AUTO`/`SYSTEM` uses the host system's local time zone, and an invalid value raises `ValueError` when `BigQueryClient` is created.
   - It is not affected by the `timezone_offset_str` setting.
 - Returns `None` when the value is empty or cannot be parsed as a date.
 
@@ -97,7 +98,7 @@ dt_1 = bq_client.convert_to_bigquery_datetime("20260824153000")
 # 2) ISO datetime without an offset -> "2026-08-24 15:30:00" (digits kept as is)
 dt_2 = bq_client.convert_to_bigquery_datetime("2026-08-24T15:30:00")
 
-# 3) UTC notation (Z) -> "2026-08-25 00:30:00" (converted to KST)
+# 3) UTC notation (Z) -> "2026-08-25 00:30:00" (converted to KST, the `datetime_timezone_str` value)
 dt_3 = bq_client.convert_to_bigquery_datetime("2026-08-24T15:30:00Z")
 
 # 4) Unparseable value -> None

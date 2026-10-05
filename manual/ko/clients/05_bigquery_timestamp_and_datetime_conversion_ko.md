@@ -2,7 +2,7 @@
 
 > **소속 모듈**: `agent_common.clients.BigQueryClient`  
 > **핵심 메서드**: `convert_to_bigquery_timestamp()`, `convert_to_bigquery_datetime()`  
-> **관련 설정**: `config.bigquery.timezone_offset_str`
+> **관련 설정**: `config.bigquery.timezone_offset_str`, `config.bigquery.datetime_timezone_str`
 
 ---
 
@@ -54,8 +54,9 @@ def convert_to_bigquery_datetime(self, val_any: Any) -> Optional[str]
 ```
 - **지원 입력 포맷**: `convert_to_bigquery_timestamp`와 동일합니다.
 - **타임존 처리**:
-  - 원천 문자열에 오프셋(`Z`, `+09:00`, `-0500` 등)이 있으면 한국 시각(KST)으로 환산한 뒤 오프셋을 제거합니다.
+  - 원천 문자열에 오프셋(`Z`, `+09:00`, `-0500` 등)이 있으면 `config.bigquery.datetime_timezone_str`(기본값 `KST`)의 시각으로 환산한 뒤 오프셋을 제거합니다. 시스템 시각이 UTC인 환경에서 만든 현재 시각(`DateTimeUtils.get_now_timestamp()`)도 이 타임존의 시각으로 기록됩니다.
   - 오프셋이 없으면 시각 숫자를 그대로 사용합니다.
+  - `datetime_timezone_str`에는 `KST` 같은 타임존 약어나 `+09:00` 형식의 오프셋을 지정합니다. `AUTO`/`SYSTEM`이면 호스트 시스템의 로컬 타임존을 사용하며, 형식이 잘못되면 `BigQueryClient` 생성 시점에 `ValueError`가 발생합니다.
   - `timezone_offset_str` 설정의 영향을 받지 않습니다.
 - 값이 비어 있거나 날짜로 해석할 수 없으면 `None`을 반환합니다.
 
@@ -97,7 +98,7 @@ dt_1 = bq_client.convert_to_bigquery_datetime("20260824153000")
 # 2) 오프셋이 없는 ISO 일시 -> "2026-08-24 15:30:00" (숫자 그대로)
 dt_2 = bq_client.convert_to_bigquery_datetime("2026-08-24T15:30:00")
 
-# 3) UTC 표기(Z) -> "2026-08-25 00:30:00" (KST로 환산)
+# 3) UTC 표기(Z) -> "2026-08-25 00:30:00" (`datetime_timezone_str`의 KST로 환산)
 dt_3 = bq_client.convert_to_bigquery_datetime("2026-08-24T15:30:00Z")
 
 # 4) 해석할 수 없는 값 -> None

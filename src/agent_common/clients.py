@@ -595,6 +595,7 @@ class BigQueryClient:
         "bigquery": {
             "ignore_unknown_values_bool": True,
             "timezone_offset_str": "+09:00",
+            "datetime_timezone_str": "KST",
         },
     }
 
@@ -675,6 +676,10 @@ class BigQueryClient:
             self.timezone_offset_str: str = configured_timezone_offset_str
         else:
             self.timezone_offset_str = system_offset_str
+
+        # datetime_timezone_obj: BigQuery DATETIME 컬럼에 기록할 벽시계 시각의 기준 타임존 (config.bigquery.datetime_timezone_str)
+        # 오프셋이 명시된 일시(UTC 시스템 시각 등)는 이 타임존의 시각으로 환산하여 기록하며, 설정 누락·형식 오류는 기동 시점에 즉시 실패
+        self.datetime_timezone_obj: timezone = TimeUtils.resolve_timezone(config.bigquery.datetime_timezone_str)
 
         # client: google-cloud-bigquery 클라이언트 인스턴스
         self.client: Any = None
@@ -1127,11 +1132,11 @@ WHERE `{pk_column_name_str}` IN UNNEST(@pk_list)
                 elif sql_type_str.startswith("TIMESTAMP"):
                     expr_str = f"TIMESTAMP(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
                 elif sql_type_str.startswith("DATETIME"):
-                    expr_str = f"DATETIME(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
+                    expr_str = f"CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS DATETIME) AS `{col_str}`"
                 elif sql_type_str.startswith("DATE"):
-                    expr_str = f"DATE(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
+                    expr_str = f"CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS DATE) AS `{col_str}`"
                 elif sql_type_str.startswith("TIME"):
-                    expr_str = f"TIME(JSON_VALUE(item, '$.\"{safe_col_path_str}\"')) AS `{col_str}`"
+                    expr_str = f"CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS TIME) AS `{col_str}`"
                 elif sql_type_str.startswith("INT") or sql_type_str.startswith("NUMERIC") or sql_type_str.startswith("FLOAT") or sql_type_str.startswith("BIG"):
                     expr_str = f"SAFE_CAST(JSON_VALUE(item, '$.\"{safe_col_path_str}\"') AS {sql_type_str}) AS `{col_str}`"
                 elif sql_type_str.startswith("BOOL"):
@@ -1305,7 +1310,8 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
         """
         다양한 원천 날짜/시간 문자열(YYYYMMDD, YYYYMMDDHHMMSS, ISO8601 등)을 BigQuery 표준 DATETIME(YYYY-MM-DD HH:MM:SS) 포맷으로 변환합니다.
         BigQuery DATETIME은 특정 시간대와 무관한 벽시계 시각이므로 타임존 오프셋(+09:00, Z 등)을 배제한 순수 일시 문자열을 반환합니다.
-        원천 데이터에 명시적인 타임존이 포함된 경우 한국 시각(KST)으로 변환 후 일시 문자열을 추출합니다.
+        값에 명시적인 타임존 오프셋이 포함된 경우 config.yml의 bigquery.datetime_timezone_str(기본값: 'KST') 시각으로 환산한 뒤 일시 문자열을 추출합니다.
+        (예: 시스템 시각이 UTC인 환경의 '2026-09-14 11:48:59+00:00' -> '2026-09-14 20:48:59')
 
         :param val_any: 변환 대상 날짜/시간 데이터 (str, datetime, int 등)
         :return: BigQuery 표준 DATETIME 문자열 ('YYYY-MM-DD HH:MM:SS', 변환 실패 시 None)
@@ -1366,9 +1372,7 @@ ON T.`{pk_key_str}` = S.`{pk_key_str}`
         if has_explicit_tz_bool and raw_tz_val_str:
             try:
                 dt_with_tz_obj: datetime = datetime.fromisoformat(f"{datetime_part_str}{raw_tz_val_str}")
-                kst_tz_obj: timezone = TimeUtils.resolve_timezone("KST")
-                kst_dt_obj: datetime = dt_with_tz_obj.astimezone(kst_tz_obj)
-                return kst_dt_obj.strftime("%Y-%m-%d %H:%M:%S")
+                return dt_with_tz_obj.astimezone(self.datetime_timezone_obj).strftime("%Y-%m-%d %H:%M:%S")
             except (ValueError, TypeError):
                 return datetime_part_str
 

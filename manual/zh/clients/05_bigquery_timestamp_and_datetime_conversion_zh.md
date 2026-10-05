@@ -2,7 +2,7 @@
 
 > **所属模块**: `agent_common.clients.BigQueryClient`  
 > **核心方法**: `convert_to_bigquery_timestamp()`, `convert_to_bigquery_datetime()`  
-> **关联配置**: `config.bigquery.timezone_offset_str`
+> **关联配置**: `config.bigquery.timezone_offset_str`, `config.bigquery.datetime_timezone_str`
 
 ---
 
@@ -54,8 +54,9 @@ def convert_to_bigquery_datetime(self, val_any: Any) -> Optional[str]
 ```
 - **支持的输入格式**: 与 `convert_to_bigquery_timestamp` 相同。
 - **时区处理**:
-  - 源字符串带有偏移量（`Z`、`+09:00`、`-0500` 等）时，先换算为韩国时间 (KST)，再去掉偏移量。
+  - 源字符串带有偏移量（`Z`、`+09:00`、`-0500` 等）时，先换算为 `config.bigquery.datetime_timezone_str`（默认值 `KST`）所指定时区的时刻，再去掉偏移量。在系统时间为 UTC 的环境中生成的当前时间（`DateTimeUtils.get_now_timestamp()`）同样按该时区的时刻记录。
   - 没有偏移量时，直接使用原有的时刻数字。
+  - `datetime_timezone_str` 可填写 `KST` 等时区缩写或 `+09:00` 形式的偏移量。为 `AUTO`/`SYSTEM` 时使用宿主系统的本地时区，格式不正确时会在创建 `BigQueryClient` 时抛出 `ValueError`。
   - 不受 `timezone_offset_str` 配置的影响。
 - 值为空或无法解析为日期时返回 `None`。
 
@@ -97,7 +98,7 @@ dt_1 = bq_client.convert_to_bigquery_datetime("20260824153000")
 # 2) 不带偏移量的 ISO 日期时间 -> "2026-08-24 15:30:00"（数字保持不变）
 dt_2 = bq_client.convert_to_bigquery_datetime("2026-08-24T15:30:00")
 
-# 3) UTC 标记 (Z) -> "2026-08-25 00:30:00"（换算为 KST）
+# 3) UTC 标记 (Z) -> "2026-08-25 00:30:00"（换算为 `datetime_timezone_str` 的 KST）
 dt_3 = bq_client.convert_to_bigquery_datetime("2026-08-24T15:30:00Z")
 
 # 4) 无法解析的值 -> None

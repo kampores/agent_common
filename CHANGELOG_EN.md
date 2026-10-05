@@ -2,6 +2,19 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.99 (2026-10-06)
+
+- **Made the Reference Time Zone of `BigQueryClient` DATETIME Conversion Configurable (Rules 1.1.1, 1.3.1, 4.2)**:
+  - New setting `bigquery.datetime_timezone_str` (default `KST`): the time zone of the wall-clock time written to `DATETIME` columns. It accepts a time zone abbreviation such as `KST` or an offset such as `+09:00`; `AUTO`/`SYSTEM` uses the host system's local time zone.
+  - `convert_to_bigquery_datetime` now converts a value that carries an offset to the time zone from this setting instead of the KST that was fixed in the source code. Because the default is `KST`, results are unchanged unless the setting is added.
+  - To write the current time to a `DATETIME` column on a host whose system clock is UTC (an Airflow pod, for example), pass the offset-carrying `DateTimeUtils.get_now_timestamp()` value instead of the offset-free `DateTimeUtils.get_now_no_tz()`; only a value with an offset can be converted to the reference time zone.
+  - The setting is resolved when `BigQueryClient` is created, so an invalid value fails with `ValueError` at startup instead of during row processing.
+  - Added the default to `default_agent_common.yml` and `BigQueryClient.DEFAULT_SCHEMA_DICT`.
+  - Updated the DATETIME time zone handling in manual `3.5` and the per-class settings table in manual `1.6` in four languages.
+- **Fixed the `DATETIME`/`DATE`/`TIME` Column Conversion in `BigQueryClient.merge_table_from_json_data`**:
+  - Columns declared as `DATETIME`, `DATE` or `TIME` in `column_types_dict` are now converted with `CAST(JSON_VALUE(...) AS DATETIME)` instead of the `DATETIME(...)`, `DATE(...)` and `TIME(...)` functions. Those functions do not accept a string expression, so a string value taken from JSON has to be converted with `CAST`.
+  - Columns of a non-string type such as `DATETIME` must have their type passed in `column_types_dict`. Without it a string value is inferred as `STRING` and the MERGE fails with a type error at the assignment.
+
 ### v0.4.98 (2026-10-06)
 
 - **Separated Credential Resolution from Connection in `GcsClient` and `BigQueryClient` (Rules 1.6.4, 4.2, Breaking Change)**:
