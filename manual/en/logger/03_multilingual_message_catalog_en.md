@@ -213,3 +213,56 @@ logger.info("task_completed", task_name="SilverToGold")
 
 ### 6.2. Naming Conventions
 - Use lowercase `snake_case` codes indicating context and state (e.g., `db_query_failed`, `file_not_found`, `invalid_payload`).
+
+---
+
+### 6.3. Best Practices for Exception Message Handling: Localization & Double Logging Prevention
+
+When low-level domain components, context builders, or data transformers validate inputs and need to raise exceptions (`ValueError`, `TypeError`, etc.), directly hardcoding error strings or eagerly calling logger methods causes critical drawbacks:
+
+#### 1) Potential Issues
+* **Hardcoding Issue**: Writing `raise ValueError(f"Error occurred: {key_str}")` violates the No-Hardcoding rule and prevents multilingual localization.
+* **Double Logging Issue**: Calling `logger.error(...)` in a lower function before raising `ValueError` leads to duplicate log output when the upstream runner (e.g., worker pool in `PipelineThreadRunner`) catches the error with `except Exception:` and logs `logger.exception(...)`.
+
+#### 2) Recommended Pattern: "Log or Throw, Never Both" & Using `get_log_msg()`
+The lower-level function formats only the localized error text using `logger.get_log_msg()` without outputting to log handlers, passing it to the exception object. The top-level runner takes exclusive responsibility for catching the exception, printing the stack trace, and recording failure metrics.
+
+```python
+# 1. Register in message catalog (config/logging_messages_en.yml)
+logging_messages:
+  ERROR:
+    extract_job_base_date_failed_error: "Failed to extract 8-digit job base date (YYYYMMDD) from ECS object key: [ECS_Key={ecs_key_str}]"
+
+# 2. Raise exception in low-level builder (pure formatting without log output)
+class RuleContextBuilder:
+    def __init__(self):
+        self.logger = ProjectLogger(self.__class__.__name__)
+
+    def build_context(self, ecs_key_str: str) -> dict[str, Any]:
+        extracted_date_str = StoragePathBuilder.extract_date_from_key(ecs_key_str)
+        if not extracted_date_str:
+            # get_log_msg() formats the localized message string without emitting log records
+            error_msg_str: str = self.logger.get_log_msg(
+                "ERROR",
+                "extract_job_base_date_failed_error",
+                ecs_key_str=ecs_key_str,
+            )
+            raise ValueError(error_msg_str)
+        ...
+
+# 3. Single centralized logging in upstream runner
+try:
+    context_dict = context_builder.build_context(ecs_key_str)
+except Exception as err_obj:
+    # Upstream logs the error once with full traceback and preserves the localized message
+    self.logger.exception(
+        "pipeline_worker_exception",
+        target_item_str=ecs_key_str,
+        error_str=f"[{type(err_obj).__name__}] {err_obj}",
+    )
+```
+
+#### 3) Key Benefits
+1. **0% Duplicate Logging**: `get_log_msg()` does not emit records to console or file handlers, eliminating nested double logs.
+2. **100% Localization**: Eliminates hardcoded strings from Python code and dynamically switches messages based on language settings (`KO`, `EN`, `ZH`, `JA`).
+3. **Clean Upstream Metrics & Tracebacks**: Upstream runners log `logger.exception()` exactly once, preserving precise error tracking and metric counters.

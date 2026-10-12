@@ -2,6 +2,20 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.100 (2026-10-12)
+
+- **多言語メッセージカタログの英語テンプレートキーの誤記修正 (ルール 4.2 準拠)**:
+  - `logging_messages_en.yml` の `db_load_max_retceeded` キーを `db_load_max_retries_exceeded` に訂正し、英語ログ環境でリトライ超過例外ログテンプレートが正常にマッピングされるよう修正。
+- **`Localizer` および `ConfigLoader` の言語解決ロジックの一元化と欠陥修正 (ルール 1.4.1, 1.4.6, 1.5.3, 1.6.1, 4.2 準拠)**:
+  - `ConfigLoader._resolve_logging_language`: ロギング専用環境変数 (`AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`) の解釈時に POSIX ロケール形式 (例: `en_US.UTF-8` -> `en`) の分離処理をサポートし、`Localizer` と一貫して正規化するよう改善。あいまいマッチング (`language`, `lang` 代替探索) を全廃し、正規キー `logging.language_str` のみを厳格に参照 (ルール 1.5.3 準拠)。
+  - `Localizer.resolve_language`: 環境変数の評価時に `LANGUAGE_ALIAS_DICT` の存在を事前に検証し、未対応の言語文字列が流入した際にデフォルト値へ早期ロールバックされ後続の環境変数が無視される事象を防止。
+  - `ConfigLoader.language_str` Getter/Setter プロパティを新設 (ルール 1.6.1 準拠)。`ConfigLoader.language` プロパティがグローバル/環境変数設定を無視していた問題を解消し、`_resolve_logging_language` 経由に一本化。
+  - `Localizer.resolve_localized_path_from_list`: デフォルト言語 (`KO`) 検索時の重複ファイル探索を防止。
+  - 形式的な転送関数およびプロパティの整理 (ルール 1.4.6 準拠):
+    - `ProjectLogger`: `ConfigLoader` へ単に転送・委譲していた `set_language`, `language_set`, `language_str`, `language` を全面削除し、本来のロギング責任 (SRP) に集中。
+    - `Localizer`: `resolve_catalog_file`, `resolve_project_catalog_file` の委譲ラッパー関数を削除。
+    - `ConfigLoader`: `_resolve_language`, `_resolve_logging_messages_file`, `_resolve_project_logging_messages_file` の委譲ラッパー関数を削除し、実体対象関数を直接呼び出すよう簡素化。
+
 ### v0.4.99 (2026-10-06)
 
 - **`BigQueryClient` の DATETIME 変換の基準タイムゾーンを設定化 (ルール 1.1.1, 1.3.1, 4.2 準拠)**:

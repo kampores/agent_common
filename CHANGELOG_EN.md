@@ -2,6 +2,20 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.100 (2026-10-12)
+
+- **Fixed Typo in English Log Message Catalog Template Key (Rule 4.2)**:
+  - Corrected `db_load_max_retceeded` to `db_load_max_retries_exceeded` in `logging_messages_en.yml` so that retry-exceeded exception log templates map properly in English logging environments.
+- **Unified Language Resolution Logic and Fixed Defects in `Localizer` and `ConfigLoader` (Rules 1.4.1, 1.4.6, 1.5.3, 1.6.1, 4.2)**:
+  - `ConfigLoader._resolve_logging_language`: Added POSIX locale format splitting (e.g. `en_US.UTF-8` -> `en`) when parsing logging environment variables (`AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`) to ensure consistent normalization via `Localizer`. Completely removed fuzzy key fallbacks (`language`, `lang`) and strictly reference canonical key `logging.language_str` (Rule 1.5.3).
+  - `Localizer.resolve_language`: Validates environment variable tokens against `LANGUAGE_ALIAS_DICT` prior to returning, preventing premature fallback to the default language on unsupported inputs and ensuring fallback to remaining environment variables.
+  - Added `language_str` getter/setter properties to `ConfigLoader` (Rule 1.6.1). Resolved the defect where `ConfigLoader.language` ignored global and environment variable overrides by routing through `_resolve_logging_language`.
+  - `Localizer.resolve_localized_path_from_list`: Prevented redundant candidate searches when resolving default language (`KO`) files.
+  - Removed superficial pass-through shell functions and forwarding properties (Rule 1.4.6):
+    - `ProjectLogger`: Completely removed `set_language`, `language_set`, `language_str`, and `language` forwarding shell methods/properties that merely delegated to `ConfigLoader`, keeping `ProjectLogger` focused on core logging responsibilities (SRP).
+    - `Localizer`: Removed `resolve_catalog_file` and `resolve_project_catalog_file` pass-through functions.
+    - `ConfigLoader`: Removed `_resolve_language`, `_resolve_logging_messages_file`, and `_resolve_project_logging_messages_file` pass-through functions in favor of direct substantive calls to `Localizer`.
+
 ### v0.4.99 (2026-10-06)
 
 - **Made the Reference Time Zone of `BigQueryClient` DATETIME Conversion Configurable (Rules 1.1.1, 1.3.1, 4.2)**:

@@ -2,6 +2,20 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.100 (2026-10-12)
+
+- **修正多语言消息目录英文模板键拼写错误 (遵循规则 4.2)**:
+  - 将 `logging_messages_en.yml` 中的 `db_load_max_retceeded` 键更正为 `db_load_max_retries_exceeded`，使英文日志环境下超过重试次数的异常日志模板能够正常映射。
+- **统一 `Localizer` 与 `ConfigLoader` 的语言解析逻辑并修复缺陷 (遵循规则 1.4.1、1.4.6、1.5.3、1.6.1、4.2)**:
+  - `ConfigLoader._resolve_logging_language`: 解析日志专用环境变量 (`AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`) 时支持 POSIX Locale 格式 (例如 `en_US.UTF-8` -> `en`) 分割处理，确保与 `Localizer` 规范化逻辑一致。彻底移除模糊键匹配 (`language`, `lang` 回退查找)，严格仅查询正规键 `logging.language_str` (遵循规则 1.5.3)。
+  - `Localizer.resolve_language`: 评估环境变量时预先校验 `LANGUAGE_ALIAS_DICT` 中是否存在该语言，防止传入不受支持的语言字符串时过早回退到默认语言导致后续环境变量被忽略。
+  - 新增 `ConfigLoader.language_str` Getter/Setter 属性 (遵循规则 1.6.1)。解决 `ConfigLoader.language` 属性忽略全局与环境变量设置的问题，统一归口至 `_resolve_logging_language`。
+  - `Localizer.resolve_localized_path_from_list`: 避免在查找默认语言 (`KO`) 时对相同后缀候选进行重复文件匹配。
+  - 清理形式化的转发函数与转发属性 (遵循规则 1.4.6):
+    - `ProjectLogger`: 全面移除仅简单转发至 `ConfigLoader` 的 `set_language`, `language_set`, `language_str`, `language` 壳方法与属性，专注于核心日志职责 (SRP)。
+    - `Localizer`: 移除 `resolve_catalog_file`, `resolve_project_catalog_file` 转发包装函数。
+    - `ConfigLoader`: 移除 `_resolve_language`, `_resolve_logging_messages_file`, `_resolve_project_logging_messages_file` 转发包装函数，直接调用 `Localizer` 实体方法。
+
 ### v0.4.99 (2026-10-06)
 
 - **把 `BigQueryClient` DATETIME 转换的基准时区改为可配置 (遵循规则 1.1.1、1.3.1、4.2)**:

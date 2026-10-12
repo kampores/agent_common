@@ -194,3 +194,56 @@ logging_messages:
 
 ### 6.2. エラーコード命名規約
 メッセージコードはスネークケース（`snake_case`）で一貫して記述し、目的と対象を明確に命名してください（例: `db_query_failed`, `file_not_found`, `invalid_payload`）。
+
+---
+
+### 6.3. 例外発生時のメッセージ処理ベストプラクティス：多言語化（Localization）と二重ログ（Double Logging）防止
+
+下位レイヤー（バリデータ、コンテキストビルダー、ドメイン変換クラスなど）で入力値やデータが不正であり、例外（`ValueError`、`TypeError` など）を送出する必要がある場合、コード内に直接エラー文字列をハードコードしたり、安易にロガーを出力すると深刻な不具合が発生します：
+
+#### 1) 潜在的な問題点
+* **ハードコーディング問題**: `raise ValueError(f"エラー発生: {key_str}")` のようにソース内に文字列を直接記述すると、**AGENTS.md 第1原則（ハードコーディング禁止）**違反となり、多言語化（Localization）にも対応できません。
+* **二重ログ（Double Logging）問題**: 下位関数で `logger.error(...)` を直接呼び出してから `raise ValueError(...)` を送出すると、上位の実行ランナー（例: `PipelineThreadRunner` のワーカースレッドプール）が `except Exception:` で捕捉して再度 `logger.exception(...)` を出力するため、**同一エラー1件に対してログが2回重複出力**され、監視やエラー集計が歪められます。
+
+#### 2) 推奨される設計パターン: "Log or Throw, Never Both" & `get_log_msg()` の活用
+下位関数では**一切のログ出力を行わず**、`logger.get_log_msg()` を通じて多言語メッセージ辞書からフォーマット済みテキストのみを生成して例外オブジェクトに渡します。実際のログ出力、スタックトレース記録、エラーカウント集計は、例外を最終的に捕捉する最上位の実行ランナー（Runner）が一元管理します。
+
+```python
+# 1. メッセージ辞書の定義 (config/logging_messages_ja.yml または logging_messages.yml)
+logging_messages:
+  ERROR:
+    extract_job_base_date_failed_error: "ECSオブジェクトキーから8桁の作業基準日(YYYYMMDD)を抽出できません: [ECS_Key={ecs_key_str}]"
+
+# 2. 下位ドメイン/ビルダーでの例外送出（画面/ファイル出力は行わず文字列のみ取得）
+class RuleContextBuilder:
+    def __init__(self):
+        self.logger = ProjectLogger(self.__class__.__name__)
+
+    def build_context(self, ecs_key_str: str) -> dict[str, Any]:
+        extracted_date_str = StoragePathBuilder.extract_date_from_key(ecs_key_str)
+        if not extracted_date_str:
+            # get_log_msg() はコンソール/ファイルに出力せず、多言語テンプレートからフォーマット済み文字列のみを返します。
+            error_msg_str: str = self.logger.get_log_msg(
+                "ERROR",
+                "extract_job_base_date_failed_error",
+                ecs_key_str=ecs_key_str,
+            )
+            raise ValueError(error_msg_str)
+        ...
+
+# 3. 上位実行ランナー（Runner）での一元ロギングと例外隔離
+try:
+    context_dict = context_builder.build_context(ecs_key_str)
+except Exception as err_obj:
+    # 上位でスタックトレースとともに正確に1回のみ記録（二重ログ防止 + 多言語メッセージ保持）
+    self.logger.exception(
+        "pipeline_worker_exception",
+        target_item_str=ecs_key_str,
+        error_str=f"[{type(err_obj).__name__}] {err_obj}",
+    )
+```
+
+#### 3) 3大コアメリット
+1. **二重ログ 0%（重複出力の完全防止）**: `get_log_msg()` はハンドラーへのログ出力を一切行わないため、下位層で無駄なログが残りません。
+2. **多言語化 100%（ローカライズ完全対応）**: ソースコードに一切の文字列を埋め込まず、グローバル言語設定（`KO`、`EN`、`ZH`、`JA`）に応じて YAML 辞書から動的に適切な文言が適用されます。
+3. **正確なメトリクス集計とトレース保持**: 上位ランナーが `logger.exception()` を1回だけ記録するため、スタックトレースが確実に残ると同時にエラー集計カウンターが狂いません。

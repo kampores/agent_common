@@ -11,7 +11,6 @@ from logging import Logger
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
-from agent_common.localizer import Localizer
 
 if TYPE_CHECKING:
     from agent_common.config_loader import ConfigLoader
@@ -311,27 +310,6 @@ class ProjectLogger:
         )
 
         ProjectLogger._configured = True
-
-    @classmethod
-    def set_language(cls, lang_str: str) -> None:
-        """전역 로그 메시지 언어를 설정합니다.
-
-        :param lang_str: 설정할 언어 코드 ('KO', 'EN', 'ZH', 'JA', 대소문자 무관)
-        """
-        from agent_common.config_loader import ConfigLoader
-        ConfigLoader.set_language(lang_str)
-
-    def language_set(self, lang_str: str) -> None:
-        """로그 메시지 언어를 설정합니다 (Setter).
-
-        :param lang_str: 설정할 언어 코드 ('KO', 'EN', 'ZH', 'JA', 대소문자 무관)
-        """
-        self.set_language(lang_str)
-
-    @property
-    def language(self) -> str:
-        """현재 적용 중인 로그 메시지 언어 코드를 반환합니다 (Getter)."""
-        return self.config_loader.language
 
     def _search_template_in_level(self, target_level_str: str, target_code_str: str) -> str | None:
         """

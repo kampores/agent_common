@@ -32,7 +32,7 @@
 #### 2. 단일 행 로깅 포매터 및 로거 (`agent_common.logger`)
 - **2.1. [단일 행 평탄화 포매터 및 예외 원천 추적 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/01_single_line_flatten_formatter_ko.md)**: 모든 로그 및 Traceback 예외 메시지를 1줄로 평탄화 및 `[Origin: ...]` 원천 위치 추출, 로거 팩토리 기반 호출자/클래스명(`%(caller_str)s`, `%(class_name_str)s`) 자동 결합 및 프로그램 로거 이름(`%(name)s`) 통일 지원.
 - **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/02_project_logger_configure_ko.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 실행 로그 레벨별 디렉터리 자동 분기(`{log_level_str}` 기반 `log_file_str` 단일화).
-- **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/03_multilingual_message_catalog_ko.md)**: `config.yml`의 `logging.language_str` (`KO`, `EN`, `ZH`, `JA`) 설정에 따라 다국어 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환.
+- **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/03_multilingual_message_catalog_ko.md)**: `config.yml`의 `logging.language_str` (`KO`, `EN`, `ZH`, `JA`) 설정에 따라 다국어 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환, `get_log_msg()`를 활용한 예외 메시지 다국어화 및 이중 로깅(Double Logging) 방지 기법 제공.
 - **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/04_execution_result_and_error_tracking_ko.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계.
 - **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/05_summary_report_generation_ko.md)**: '전체 = 성공 + 실패 + 제외' 정합성 보장, `TableFormatter` 기반 세로줄 자동 맞춤, 소요 시간, 처리 속도, 전송량이 포함된 표준 마크다운 표(Table) 자동 출력.
 
@@ -305,7 +305,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 #### 2. Single-Line Log Formatter & Project Logger (`agent_common.logger`)
 - **2.1. [Single-Line Flatten Formatter & Origin Tracking (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/01_single_line_flatten_formatter_en.md)**: Flattens log records, extracts `[Origin: ...]` caller frames, and optimizes for centralized log aggregators (Logstash, Fluentd, CloudWatch).
 - **2.2. [Batch Logging Configuration & Handler Control (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/02_project_logger_configure_en.md)**: Dynamic console/file handler initialization, date-based directories, and level-based directory creation (`log_file_str` with `{log_level_str}`).
-- **2.3. [Multilingual Message Catalog & Code-Based Logging (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog_en.md)**: Dynamic multilingual dictionary loading (`KO`, `EN`, `ZH`, `JA`), runtime language switching, and safe template parameter substitution.
+- **2.3. [Multilingual Message Catalog & Code-Based Logging (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog_en.md)**: Dynamic multilingual dictionary loading (`KO`, `EN`, `ZH`, `JA`), runtime language switching, safe template parameter substitution, and exception message localization with zero duplicate logging via `get_log_msg()`.
 - **2.4. [Real-Time Metric Tracking & Error/Exclusion Classification (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/04_execution_result_and_error_tracking_en.md)**: Three-tier outcome model (Success, Failure, Excluded/Skip) and dual instance/class-global multithreaded telemetry.
 - **2.5. [Automatic Summary Report Generation (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation_en.md)**: Emits structured 80-column execution summary reports with duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
 
@@ -564,7 +564,7 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
 #### 2. 单行日志格式化器与项目日志器 (`agent_common.logger`)
 - **2.1. [单行扁平化格式化器与源头位置追踪 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/01_single_line_flatten_formatter_zh.md)**: 扁平化多行日志与 Traceback 异常，提取 `[Origin: ...]` 根源调用栈，针对集中式日志收集器（Logstash、Fluentd、CloudWatch）优化。
 - **2.2. [批量日志环境配置与处理器控制 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/02_project_logger_configure_zh.md)**: 控制台与文件日志处理器动态创建，按日期分目录归档，按执行日志级别自动分流 (`{log_level_str}` 统一日志路径)。
-- **2.3. [多语言日志消息字典与基于代码的日志记录 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/03_multilingual_message_catalog_zh.md)**: 依据配置自动联动中文/英文/韩文/日文消息字典，支持运行时动态语言切换与安全的模板占位符替换。
+- **2.3. [多语言日志消息字典与基于代码的日志记录 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/03_multilingual_message_catalog_zh.md)**: 依据配置自动联动中文/英文/韩文/日文消息字典，支持运行时动态语言切换与安全的模板占位符替换，提供基于 `get_log_msg()` 的异常消息多语言本地化与防止双重日志（Double Logging）机制。
 - **2.4. [任务进度统计与异常/跳过分类实时汇总 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/04_execution_result_and_error_tracking_zh.md)**: 成功、失败、跳过 (Skip) 三级状态分类，支持实例级与类全局多线程遥测。
 - **2.5. [自动生成任务执行总结报告 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/05_summary_report_generation_zh.md)**: 确保“总计 = 成功 + 失败 + 跳过”严格一致，自动生成对齐的标准 Markdown 表格，包含耗时、处理吞吐量、传输速率与错误诊断。
 
@@ -823,7 +823,7 @@ python -m twine upload dist/agent_common-0.4.99*
 #### 2. 単一行ログフォーマッターおよびロガー (`agent_common.logger`)
 - **2.1. [単一行フラット化フォーマッターおよび例外発生源追跡 (`SingleLineFlattenFormatter`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/01_single_line_flatten_formatter_ja.md)**: 全ログおよびトレースバックを1行にフラット化し、`[Origin: ...]` 発生源位置を抽出。集中ログ収集基盤（Logstash, Fluentd, CloudWatch）に最適化。
 - **2.2. [一括ロギング構成およびハンドラー制御 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/02_project_logger_configure_ja.md)**: コンソールおよびファイルハンドラーを動的構成、日付別ディレクトリ分離、ログレベル別ディレクトリ自動振り分け。
-- **2.3. [多言語メッセージカタログおよびコードベースロギング (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/03_multilingual_message_catalog_ja.md)**: 設定に基づき日本語/英語/韓国語/中国語メッセージ辞書を自動連動、動的言語切り替えおよび安全なテンプレート変数置換。
+- **2.3. [多言語メッセージカタログおよびコードベースロギング (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/03_multilingual_message_catalog_ja.md)**: 設定に基づき日本語/英語/韓国語/中国語メッセージ辞書を自動連動、動的言語切り替えおよび安全なテンプレート変数置換、`get_log_msg()` を活用した例外メッセージの多言語化および二重ログ（Double Logging）防止設計を提供。
 - **2.4. [タスク進捗統計およびエラー/除外リアルタイム集計 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/04_execution_result_and_error_tracking_ja.md)**: 成功、失敗、除外 (Skip) の3段階分類とマルチスレッド集計。
 - **2.5. [タスク結果要約レポート自動生成 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/05_summary_report_generation_ja.md)**: 「全体 = 成功 + 失敗 + 除外」整合性保証、処理スループット、転送速度、エラー診断を含む標準 Markdown 表を出力。
 

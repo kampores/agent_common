@@ -169,3 +169,6 @@ print(global_errors)
    - Because template keys in message dictionaries (`logging_messages_*.yml`) are defined in lowercase `snake_case`, using lowercase ensures that `log_summary()` and `get_log_id_description()` automatically map the code to human-readable explanations.
 2. **Direct Integration with `log_summary()`**:
    - Recorded error and exclusion counts are automatically sorted by frequency and summarized in `logger.log_summary()`.
+3. **Preventing Double Logging When Raising Low-Level Exceptions ("Log or Throw, Never Both")**:
+   - When an exception occurs in lower-level domain components, calling `logger.error()` before raising an exception leads to duplicate logging when the upstream `except Exception` handler calls `logger.exception()`.
+   - Lower-level functions should use `logger.get_log_msg()` to retrieve only the formatted localized error text and pass it to `raise ValueError(...)`. The top-level runner takes exclusive responsibility for centralized logging (see [Section 6.3 of 2.3 Multilingual Message Catalog](../logger/03_multilingual_message_catalog_en.md#63-best-practices-for-exception-message-handling-localization--double-logging-prevention) for full implementation details).

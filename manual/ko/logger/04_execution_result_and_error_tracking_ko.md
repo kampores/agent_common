@@ -179,3 +179,6 @@ logger_a.reset_result_counts()
    - 메시지 사전(`logging_messages_*.yml`)에 등록된 템플릿 키가 모두 소문자 `snake_case`로 관리되므로, 사전에 정의된 직관적인 한글/영문 설명문이 `log_summary()` 시 자동으로 매핑(`get_log_id_description`)되려면 소문자 일치가 필수적입니다.
 2. **`log_summary()`와의 연계**:
    - `record_error` 및 `record_exclusion`으로 누적된 사유별 건수는 `logger.log_summary()` 실행 시 **자동으로 순위별 정렬되어 최종 리포트에 출력**되므로, 별도의 집계 코드를 작성할 필요가 없습니다.
+3. **하위 레이어 예외 발생 시 이중 로깅 방지 ("Log or Throw, Never Both")**:
+   - 하위 함수에서 예외 발생 시 직접 `logger.error()`를 호출하고 `raise Exception`을 던지면 상위의 `except Exception` 처리부에서 다시 `logger.exception()`을 호출하여 이중 로깅이 발생합니다.
+   - 하위 함수는 `logger.get_log_msg()`를 활용해 다국어 에러 메시지만 렌더링하여 `raise ValueError(...)`로 전달하고, 실제 로그 출력은 최상위 실행기(Runner)가 1회만 전담하도록 설계하십시오 (상세한 구현 예시는 [2.3 다국어 로그 메시지 템플릿 사전의 6.3절](../logger/03_multilingual_message_catalog_ko.md#63-예외-발생-시-메시지-처리-베스트-프랙티스-다국어화localize-및-이중-로깅double-logging-방지) 참조).

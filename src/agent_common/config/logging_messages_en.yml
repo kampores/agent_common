@@ -355,7 +355,7 @@ logging_messages:
       db_merge_load_failed: "{service_name_str} MERGE load finally failed: {total_rows_int} total rows, error: {error_str}"
 
       # Example: logger.exception("db_load_max_retries_exceeded", service_name_str="BigQuery", max_retries_int=3, target_key_str="sample.json", error_str="Connection reset")
-      db_load_max_retceeded: "{service_name_str} batch load exceeded maximum retries ({max_retries_int}) and finally failed: [Key={target_key_str}] error: {error_str}"
+      db_load_max_retries_exceeded: "{service_name_str} batch load exceeded maximum retries ({max_retries_int}) and finally failed: [Key={target_key_str}] error: {error_str}"
 
       # Example: logger.exception("db_streaming_fallback_failed", service_name_str="BigQuery", target_key_str="sample.json", error_str="Permission denied")
       db_streaming_fallback_failed: "{service_name_str} streaming fallback load finally failed: [Key={target_key_str}] error: {error_str}"

@@ -119,10 +119,9 @@ class Localizer:
         for env_key_str in ("AGENT_LANGUAGE", "APP_LANGUAGE", "LANGUAGE", "LANG"):
             env_val_str: Optional[str] = os.environ.get(env_key_str)
             if env_val_str:
-                first_part_str: str = env_val_str.split(".")[0].split("_")[0]
-                normalized_code_str: str = cls.normalize_language(first_part_str)
-                if normalized_code_str in cls.SUPPORTED_LANGUAGES_LIST:
-                    return normalized_code_str
+                first_part_str: str = env_val_str.split(".")[0].split("_")[0].strip().upper()
+                if first_part_str in cls.LANGUAGE_ALIAS_DICT:
+                    return cls.LANGUAGE_ALIAS_DICT[first_part_str]
 
         return cls.normalize_language(default_lang_str)
 
@@ -188,8 +187,13 @@ class Localizer:
         """
         clean_lang_str: str = cls.normalize_language(language_str).lower()
 
-        # 1. 대상 언어 파일 우선 탐색, 2. 기본 언어 파일 탐색
-        for candidate_prefix_str in (f"{prefix_str}_{clean_lang_str}", f"{prefix_str}_{cls.DEFAULT_LANGUAGE_STR.lower()}"):
+        # 1. 대상 언어 파일 우선 탐색, 2. 기본 언어 파일 탐색 (중복 탐색 방지)
+        candidates_tuple: tuple[str, ...] = (
+            (f"{prefix_str}_{clean_lang_str}",)
+            if clean_lang_str == cls.DEFAULT_LANGUAGE_STR.lower()
+            else (f"{prefix_str}_{clean_lang_str}", f"{prefix_str}_{cls.DEFAULT_LANGUAGE_STR.lower()}")
+        )
+        for candidate_prefix_str in candidates_tuple:
             for file_path in file_paths_list:
                 if file_path.stem.lower() == candidate_prefix_str:
                     return file_path
@@ -200,37 +204,3 @@ class Localizer:
                 return file_path
 
         return None
-
-    @classmethod
-    def resolve_catalog_file(cls, config_dir_path: Path, language_str: str) -> Optional[Path]:
-        """
-        (하위 호환 전용) 로깅 메시지 카탈로그 파일 탐색을 일반화된 resolve_localized_file로 위임합니다.
-
-        :param config_dir_path: 탐색할 디렉토리 Path 객체
-        :param language_str: 언어 코드 문자열
-        :return: 발견된 템플릿 파일 Path 객체 (미발견 시 None)
-        """
-        return cls.resolve_localized_file(
-            dir_path=config_dir_path,
-            prefix_str="logging_messages",
-            language_str=language_str,
-        )
-
-    @classmethod
-    def resolve_project_catalog_file(
-        cls,
-        project_files_list: list[Path],
-        language_str: str,
-    ) -> Optional[Path]:
-        """
-        (하위 호환 전용) 프로젝트 파일 목록에서 로깅 메시지 파일 선택을 resolve_localized_path_from_list로 위임합니다.
-
-        :param project_files_list: 프로젝트 config 디렉토리 내 파일 Path 리스트
-        :param language_str: 언어 코드 문자열
-        :return: 선택된 파일 Path 객체 (미발견 시 None)
-        """
-        return cls.resolve_localized_path_from_list(
-            file_paths_list=project_files_list,
-            prefix_str="logging_messages",
-            language_str=language_str,
-        )

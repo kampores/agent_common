@@ -217,3 +217,56 @@ logger.info("task_completed", task_name="SilverToGold")
 
 ### 6.2. 消息代码命名规范
 - 统一使用小写下划线命名法（`snake_case`），语义明确、主谓分明（例如 `db_query_failed`, `file_not_found`, `invalid_payload`）。
+
+---
+
+### 6.3. 异常处理最佳实践：多语言国际化（Localization）与防止双重日志（Double Logging）
+
+在底层领域组件、上下文构建器（ContextBuilder）或数据转换器校验数据并需要抛出异常（`ValueError`、`TypeError` 等）时，如果直接在代码中硬编码错误文本或直接调用日志输出，会引发严重缺陷：
+
+#### 1) 潜在问题分析
+* **硬编码问题**：直接编写 `raise ValueError(f"发生错误: {key_str}")` 违背了 AGENTS.md 第一准则（严禁硬编码），且无法支持多语言（Localization）切换。
+* **双重日志（Double Logging）问题**：若在底层函数中先调用 `logger.error(...)` 再抛出 `raise ValueError(...)`，上层运行器（例如 `PipelineThreadRunner` 中的工作线程池）通过 `except Exception:` 捕获后又会执行 `logger.exception(...)`，导致**同一条错误被重复记录两次**，干扰故障排查与统计指标。
+
+#### 2) 推荐解决方案：“Log or Throw, Never Both” & 使用 `get_log_msg()`
+底层函数**不执行任何日志输出**，仅通过 `logger.get_log_msg()` 从多语言消息字典中渲染格式化文本并注入异常对象；实际的日志记录、堆栈输出与失败计数完全委托给最终捕获异常的上层运行器（Runner）。
+
+```python
+# 1. 注册消息模板 (config/logging_messages_zh.yml 或 logging_messages.yml)
+logging_messages:
+  ERROR:
+    extract_job_base_date_failed_error: "无法从 ECS 对象键路径提取 8 位作业基准日期 (YYYYMMDD): [ECS_Key={ecs_key_str}]"
+
+# 2. 在底层领域/构建器中抛出异常（仅格式化文本，不输出日志）
+class RuleContextBuilder:
+    def __init__(self):
+        self.logger = ProjectLogger(self.__class__.__name__)
+
+    def build_context(self, ecs_key_str: str) -> dict[str, Any]:
+        extracted_date_str = StoragePathBuilder.extract_date_from_key(ecs_key_str)
+        if not extracted_date_str:
+            # get_log_msg() 不向控制台或文件输出日志，仅返回格式化后的多语言消息字符串
+            error_msg_str: str = self.logger.get_log_msg(
+                "ERROR",
+                "extract_job_base_date_failed_error",
+                ecs_key_str=ecs_key_str,
+            )
+            raise ValueError(error_msg_str)
+        ...
+
+# 3. 在上层运行器（Runner）中统一记录日志与隔离异常
+try:
+    context_dict = context_builder.build_context(ecs_key_str)
+except Exception as err_obj:
+    # 上层统一记录单次日志并保留完整堆栈（彻底杜绝双重日志 + 保留本地化文本）
+    self.logger.exception(
+        "pipeline_worker_exception",
+        target_item_str=ecs_key_str,
+        error_str=f"[{type(err_obj).__name__}] {err_obj}",
+    )
+```
+
+#### 3) 核心优势
+1. **0% 双重日志（消除冗余记录）**：`get_log_msg()` 绝不触发 Handler 写入操作，底层阶段完全静默。
+2. **100% 本地化（多语言动态适配）**：消灭源代码中的硬编码文本，依据全局语言设置（`KO`、`EN`、`ZH`、`JA`）自动从 YAML 字典获取本地化文案。
+3. **指标统计准确清晰**：上层 Runner 仅执行一次 `logger.exception()` 记录，保留完整 Traceback 的同时确保错误指标计数毫无偏差。

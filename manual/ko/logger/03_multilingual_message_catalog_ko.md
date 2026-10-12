@@ -233,3 +233,56 @@ logger.info("task_completed", task_name="SilverToGold")
 
 ### 6.2. 에러 코드 명명 규칙
 - 메시지 코드는 스네이크 케이스(`snake_case`)로 일관성 있게 작성하며, 목적과 주체를 명확히 부여하십시오 (예: `db_query_failed`, `file_not_found`, `invalid_payload`).
+
+---
+
+### 6.3. 예외 발생 시 메시지 처리 베스트 프랙티스: 다국어화(Localize) 및 이중 로깅(Double Logging) 방지
+
+데이터 검증, 컨텍스트 빌더, 도메인 변환기 등 하위 레이어에서 잘못된 파라미터나 비정상 데이터가 유입되어 예외(`ValueError`, `TypeError` 등)를 발생시켜야 할 때, 코드 내에 직접 문자열을 하드코딩하거나 성급하게 로거를 직접 호출하면 심각한 부작용이 발생합니다.
+
+#### 1) 발생 가능한 문제점
+* **하드코딩 문제**: `raise ValueError(f"에러 발생: {key_str}")` 형태로 문자열을 소스에 직접 작성하면 **AGENTS.md 제1원칙(하드코딩 금지)** 위배 및 다국어(Localization) 지원이 불가능해집니다.
+* **이중 로깅(Double Logging) 문제**: 하위 함수에서 `logger.error(...)`를 직접 호출하고 `raise ValueError(...)`를 던지면, 상위 실행기(예: `PipelineThreadRunner`의 워커 스레드)가 `except Exception:`으로 포착하여 `logger.exception(...)`을 다시 출력하므로 **동일 에러 1건에 대해 로그가 2회 중복 출력**되어 로그 분석과 모니터링이 왜곡됩니다.
+
+#### 2) 권장 해결 패턴: "Log or Throw, Never Both" & `get_log_msg()` 활용
+하위 함수에서는 로그 출력을 하지 않고, `logger.get_log_msg()`를 통해 메시지 사전으로부터 다국어화된 에러 텍스트만 렌더링하여 예외 객체에 주입합니다. 실제 로그 출력과 트레이스백 보존은 예외를 최종 포착하는 상위 실행기(Runner)가 전담합니다.
+
+```python
+# 1. 메시지 사전 등록 (config/logging_messages_ko.yml 또는 logging_messages.yml)
+logging_messages:
+  ERROR:
+    extract_job_base_date_failed_error: "ECS 객체 키에서 8자리 작업기준일(YYYYMMDD)을 추출할 수 없습니다: [ECS_Key={ecs_key_str}]"
+
+# 2. 하위 도메인/빌더 클래스에서의 예외 발생 (화면/파일 출력 없이 포매팅 문자열만 획득)
+class RuleContextBuilder:
+    def __init__(self):
+        self.logger = ProjectLogger(self.__class__.__name__)
+
+    def build_context(self, ecs_key_str: str) -> dict[str, Any]:
+        extracted_date_str = StoragePathBuilder.extract_date_from_key(ecs_key_str)
+        if not extracted_date_str:
+            # get_log_msg()는 콘솔/파일 출력을 하지 않고 다국어 템플릿에서 포매팅된 문자열만 반환합니다.
+            error_msg_str: str = self.logger.get_log_msg(
+                "ERROR",
+                "extract_job_base_date_failed_error",
+                ecs_key_str=ecs_key_str,
+            )
+            raise ValueError(error_msg_str)
+        ...
+
+# 3. 상위 실행기(Runner)에서의 단일 일괄 로깅 및 예외 격리
+try:
+    context_dict = context_builder.build_context(ecs_key_str)
+except Exception as err_obj:
+    # 상위에서 트레이스백과 함께 정확히 1회만 로깅 (이중 로깅 원천 차단 + 다국어 메시지 보존)
+    self.logger.exception(
+        "pipeline_worker_exception",
+        target_item_str=ecs_key_str,
+        error_str=f"[{type(err_obj).__name__}] {err_obj}",
+    )
+```
+
+#### 3) 이 패턴의 3대 핵심 이점
+1. **이중 로깅 0% (Duplicate Logging 방지)**: `get_log_msg()`는 화면/파일 핸들러 출력을 전혀 하지 않고 포맷팅된 문자열만 반환하므로 하위 단계에서 중복 로그가 남지 않습니다.
+2. **다국어화 100% (Localization 완벽 대응)**: 소스 코드에 한글/영어 문자열이 전혀 하드코딩되지 않으며, `logging_messages_*.yml` 사전을 통해 프로세스 언어 설정(KO/EN/JA/ZH)에 따라 동적으로 메시지가 변환됩니다.
+3. **상위 일괄 집계 및 트레이스백 보존**: 상위 Runner가 `logger.exception()`으로 단 1회 기록하므로 스택 트레이스와 함께 에러 카운트 집계가 누락이나 왜곡 없이 완벽히 유지됩니다.

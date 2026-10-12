@@ -2,6 +2,20 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.100 (2026-10-12)
+
+- **다국어 메시지 카탈로그 영문 템플릿 키 오타 수정 (규칙 4.2 준수)**:
+  - `logging_messages_en.yml`의 `db_load_max_retceeded` 키를 `db_load_max_retries_exceeded`로 정정하여 영어 로그 환경에서 재시도 횟수 초과 예외 로그 템플릿이 정상 매핑되도록 수정.
+- **`Localizer` 및 `ConfigLoader` 언어 해석 로직 일원화 및 결함 수정 (규칙 1.4.1, 1.4.6, 1.5.3, 1.6.1, 4.2 준수)**:
+  - `ConfigLoader._resolve_logging_language`: 로깅 전용 환경변수(`AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`) 해석 시 POSIX 로케일 형식(예: `en_US.UTF-8`) 분리 처리를 지원하여 `Localizer`와 일관되게 정규화하도록 개선. 퍼지 매칭(`language`, `lang` 대체 탐색)을 전면 제거하고 정규 키 `logging.language_str`만 조회(규칙 1.5.3 준수).
+  - `Localizer.resolve_language`: 환경변수 평가 시 `LANGUAGE_ALIAS_DICT` 존재 여부를 사전에 검증하여 지원되지 않는 언어 문자열 유입 시 기본값으로 조기 롤백되어 후속 환경변수가 무시되던 현상 방지.
+  - `ConfigLoader.language_str` Getter/Setter 프로퍼티 신설(규칙 1.6.1 준수). `ConfigLoader.language` 프로퍼티가 전역/환경변수 설정을 무시하던 문제를 해결하고 `_resolve_logging_language` 기반으로 일원화.
+  - `Localizer.resolve_localized_path_from_list`: 기본 언어(`KO`) 조회 시 동일 접미사 후보에 대한 중복 파일 탐색 방지.
+  - 껍데기(Pass-through) 위임 함수 및 중계 프로퍼티 정리(규칙 1.4.6 준수):
+    - `ProjectLogger`: `ConfigLoader`로 단순 위임/중계하던 `set_language`, `language_set`, `language_str`, `language` 껍데기 메서드 및 프로퍼티를 전면 제거하여 로깅 본연의 역할(SRP)로 단순화.
+    - `Localizer`: `resolve_catalog_file`, `resolve_project_catalog_file` 단순 위임 껍데기 함수 제거.
+    - `ConfigLoader`: `_resolve_language`, `_resolve_logging_messages_file`, `_resolve_project_logging_messages_file` 단순 위임 껍데기 함수 제거 및 `Localizer` 실체 대상 함수 직접 호출로 단순화.
+
 ### v0.4.99 (2026-10-06)
 
 - **`BigQueryClient` DATETIME 변환의 기준 타임존을 설정으로 분리 (규칙 1.1.1, 1.3.1, 4.2 준수)**:
