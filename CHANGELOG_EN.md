@@ -2,6 +2,42 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.101 (2026-10-16)
+
+- **Support BCP 47 Standard Hyphen ('-') Locale Normalization in `Localizer` and `ConfigLoader` (Rules 1.1.3, 1.5.3, 4.2)**:
+  - `Localizer.normalize_language`: Added support for BCP 47 standard hyphen (`-`) delimiter and subtag/encoding separation, accurately normalizing standard locales such as `"en-US"`, `"ko-KR"`, `"zh-CN"`, and `"ja-JP"` to primary language codes. Removed defensive `str()` casting (Rule 1.5.3).
+  - `Localizer.resolve_language`: Supported hyphen (`-`) separation in environment variable resolution (`AGENT_LANGUAGE`, `APP_LANGUAGE`, `LANGUAGE`, `LANG`), preventing unexpected fallback to default language when standard HTTP headers or container environment variables are passed.
+  - `ConfigLoader._resolve_logging_language`: Supported hyphen (`-`) separation in logging environment variables (`AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`) for consistent language resolution.
+- **Support Uppercase Suffixes (`_KO.yml`, `_EN.yml`, etc.) and Subdirectory (`localize/{lang}/`) Resource Lookup in `Localizer` (Rules 1.4.4, 1.4.5, 4.2)**:
+  - `Localizer.resolve_localized_file`: Refactored sequential file existence checks to delegate to `resolve_localized_path_from_list`, using lowercase stem comparison to guarantee case-insensitive file resolution on both Linux and Windows, eliminating 18 redundant lines. Also supported discovering resources in language subdirectories (`localize/{lang}/`).
+- **Multilingual Resource Directory Restructuring and Component Decoupling (`localize/{ko,en,ja,zh}/`) (Rules 1.1.1, 1.1.2, 4.2)**:
+  - Established dedicated language directories under `agent_common/src/agent_common/localize/` (`ko`, `en`, `ja`, `zh`), completely separating general log message templates (`logging_messages_{lang}.yml`) from component-specific settings/labels such as progress tracker (`progress_tracker_{lang}.yml`).
+  - `ConfigLoader.get_settings()`: Automatically discovers and deep-merges all `.yml` files within the active language folder, enabling clean separation of logging catalogs and component text definitions.
+  - `pyproject.toml`: Updated package data specification to ensure `localize/**/*.yml` files are packaged into distributed wheels.
+- **Elimination of Hardcoding in `ProgressTracker` and External Localized Config Integration (Rules 1.1.1, 1.1.2, 1.4.2, 4.2)**:
+  - Completely removed hardcoded language dictionaries (`DEFAULT_TASK_NAMES_DICT`, `PROGRESS_LABELS_DICT`) from Python source code.
+  - Directly binds to dynamic attributes in `config.progress_tracker` (`default_task_name_str`, `milestone_title_str`, `progress_label_str`, `speed_label_str`, `unit_str`, `eta_label_str`), achieving real-time localization.
+- **Enhanced Multilingual Template Label Parsing in `ProjectLogger.get_log_id_description()` (Rules 1.1.3, 1.5.3, 4.2)**:
+  - Preemptively removes parentheses `(...)` and their contents to prevent premature splitting caused by nested colons in supplementary notes (e.g., `(Path: ...)`).
+  - Implemented regular period (`\.\s+`, `\.$`, `。`) and colon (`:`, `：`) splitting, avoiding accidental breaks on file extensions (`config.yml`) and keeping summary labels concise.
+  - Standardized punctuation in 4 key error templates across multilingual catalogs (`logging_messages_{ko,en,ja,zh}.yml`: `. ` for KO/EN, `。` for JA/ZH), removing language-specific regex heuristics while cleanly stripping bracket tags (`[...]`) and preserving `{}` placeholders.
+- **Optional `service_name_str` Instance Binding in `ProjectLogger` (Rules 1.4.2, 1.6.1, 4.2)**:
+  - Added optional `service_name_str: str = ""` parameter and attribute to `ProjectLogger.__init__`, allowing service-dedicated logger instances (BigQuery, GCS, etc.) to bind their service name once.
+  - Automatically interpolates `self.service_name_str` in `get_log_msg()` and `get_log_id_description()`, providing complete and natural summary labels without repeatedly passing the argument.
+- **Introduction of `StandardSummaryReporter` and Lightweight Decoupling of `ProjectLogger` (Rules 1.1.1, 1.4.1, 1.4.2, 1.7.5, 4.2)**:
+  - `ProjectLogger`: Lightweight refactoring to focus purely on logging and metric telemetry (`record_result`, `record_excluded`, `get_result_counts`, `get_error_counts`) adhering to Single Responsibility Principle (SRP).
+  - `StandardSummaryReporter`: Established a dedicated, standalone utility class that generates and formats structured 80-column summary tables with universal 'Total = Success + Failure + Excluded (Skip)' consistency and detailed error attribution.
+  - Complete Multilingual Label Externalization: Integrated with `agent_common/src/agent_common/localize/{ko,en,ja,zh}/summary_reporter_{lang}.yml` catalogs for full parity across 4 languages (KO, EN, JA, ZH) with zero source hardcoding (Rule 1.1.1).
+  - East Asian wide character alignment via `TableFormatter` for pixel-perfect 80-column borders, with seamless `ProgressTracker` integration (elapsed time, throughput, bandwidth).
+  - Provides both convenient single-line logging `log_summary(logger_obj, ...)` and raw formatted string generation `build_summary_report(...)`. Legacy implementations safely archived in `backup/log_summary/log_summary_backup.py`.
+- **Instance Logger Integration and Model Cache Structural Unification in `LlmClient` (Rules 1.4.1, 1.5.4, 4.2)**:
+  - Consolidated standalone helper function `_get_local_llm` into `LlmClient` as private instance method `self._get_local_llm(...)`, caching loaded GGUF models at `LlmClient._LOCAL_LLMS_DICT`.
+  - Fixed static method invocation runtime defect on `ProjectLogger.get_log_msg(...)` by directly utilizing instance logger `self.logger` initialized at line 78.
+- **Prevent Cache Pollution on Environment Override Deletion in `ConfigLoader` (Rules 1.3.1, 1.5.3, 4.2)**:
+  - Preserved raw configured logging language in `_raw_configured_logging_language_str` prior to mutating `settings["logging"]["language_str"]` in `get_settings()`, ensuring that unsetting temporary environment variables restores original YAML configuration.
+- **Corrected Phantom Parameter in `README.md` Example (Rules 1.5.3, 4.2)**:
+  - Fixed non-existent parameter `item_name_str="파일"` and unsupported `log_summary()` in `ProgressTracker` example in `README.md`, replacing with `task_name_str="파일 처리"` and `tracker.update(...)`.
+
 ### v0.4.100 (2026-10-12)
 
 - **Fixed Typo in English Log Message Catalog Template Key (Rule 4.2)**:

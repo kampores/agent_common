@@ -312,10 +312,10 @@ logging_messages:
       config_type_coercion_failed: "[設定型検証エラー] '{key_str}' 設定値は {expected_type_str} 型である必要があります。{guide_msg_str} (入力値: {val_any}, 実際の型: {current_type_str})"
 
       # 例: logger.exception("config_auto_create_failed", file_path_str="config/config.yml", error_str="Permission denied")
-      config_auto_create_failed: "設定ファイルの自動生成に失敗しました [ファイル={file_path_str}], エラー: {error_str}"
+      config_auto_create_failed: "設定ファイルの自動生成に失敗しました [ファイル={file_path_str}]。エラー: {error_str}"
 
       # 例: logger.exception("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
-      config_auto_repair_failed: "設定ファイルの自動修復に失敗しました [ファイル={file_path_str}], エラー: {error_str}"
+      config_auto_repair_failed: "設定ファイルの自動修復に失敗しました [ファイル={file_path_str}]。エラー: {error_str}"
 
     # --- [入力パラメータおよび日付検証エラー] ---
     validation:
@@ -334,10 +334,10 @@ logging_messages:
       schema_load_failed: "スキーマ仕様({namespace_str})ファイル({path_str})のロードに失敗しました: {error_str}"
 
       # 例: logger.exception("tool_eval_error", func_name_str="code.date_check", error_str="TypeError")
-      tool_eval_error: "動的ルールユーティリティ関数の評価に失敗しました [Tool={func_name_str}], エラー: {error_str}"
+      tool_eval_error: "動的ルールユーティリティ関数の評価に失敗しました [Tool={func_name_str}]。エラー: {error_str}"
 
       # 例: logger.exception("tool_execution_failed", func_name_str="code.date_check", error_str="RuntimeError")
-      tool_execution_failed: "動的ルールユーティリティ関数の実行に失敗しました [Tool={func_name_str}], エラー: {error_str}"
+      tool_execution_failed: "動的ルールユーティリティ関数の実行に失敗しました [Tool={func_name_str}]。エラー: {error_str}"
 
     # --- [データベースロードエラー] ---
     db:

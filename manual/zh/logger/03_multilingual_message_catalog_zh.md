@@ -1,8 +1,8 @@
 # 2.3. 多语言日志消息模板字典与基于代码的日志记录 (`logging_messages_*.yml`, `log_msg`)
 
 > **所属模块**: `agent_common.logger.ProjectLogger`  
-> **核心函数/方法**: `ProjectLogger.get_log_msg()`, `ProjectLogger.log_msg()`, `ProjectLogger.set_language()`, `get_log_msg()`  
-> **消息字典文件**: `agent_common/config/logging_messages_ko.yml`, `logging_messages_en.yml`, `logging_messages_zh.yml`, `logging_messages_ja.yml`
+> **核心函数/方法**: `ProjectLogger.get_log_msg()`, `ProjectLogger.log_msg()`, `ProjectLogger.get_log_id_description()`, `get_log_msg()`  
+> **消息字典文件**: `agent_common/src/agent_common/localize/{ko,en,zh,ja}/logging_messages_{lang}.yml`
 
 ---
 
@@ -14,7 +14,7 @@
 2. **阻碍全球化多语言运维**: 当海外运维中心 (NOC) 或跨国工程师协同排障时，单一语言的日志会极大降低沟通效率。
 3. **缺乏日志分析与指标标准化**: 自由编写的非结构化日志难以归纳同类故障，无法通过代码精准建立聚合监控与报警规则。
 
-`ProjectLogger` 全面支持**基于消息代码的外部模板字典集成**以及**运行时动态多语言切换 (KO ⇄ EN)**，从根源上化解上述难题。
+`ProjectLogger` 全面支持**基于消息代码的外部模板字典集成**以及**运行时动态多语言切换 (KO ⇄ EN ⇄ JA ⇄ ZH)**，从根源上化解上述难题。
 
 ---
 
@@ -23,7 +23,7 @@
 ```mermaid
 flowchart TD
     A["调用 logger.info('task_start', task_name='迁移')"] --> B{"判定当前语言"}
-    B -->|"KO / EN / ZH / JA"| C["logging_messages_*.yml"]
+    B -->|"KO / EN / ZH / JA"| C["localize/{lang}/logging_messages_{lang}.yml"]
     
     C --> E["_search_template_in_level(当前级别, 消息代码)"]
     E --> F{"当前级别中是否存在?"}
@@ -43,7 +43,9 @@ flowchart TD
 
 ## 3. 消息字典 YAML 结构
 
-### 3.1. 韩语字典 (`agent_common/config/logging_messages_ko.yml`)
+多语言消息字典文件按组件模块化存放在 `agent_common/src/agent_common/localize/{lang}/` 目录下。
+
+### 3.1. 韩语字典 (`agent_common/src/agent_common/localize/ko/logging_messages_ko.yml`)
 
 ```yaml
 logging_messages:
@@ -61,7 +63,7 @@ logging_messages:
     schema_validation_failed: "❌ 필수 필드 누락 또는 스키마 검증 실패: {detail}"
 ```
 
-### 3.2. 英语字典 (`agent_common/config/logging_messages_en.yml`)
+### 3.2. 英语字典 (`agent_common/src/agent_common/localize/en/logging_messages_en.yml`)
 
 ```yaml
 logging_messages:
@@ -97,19 +99,30 @@ safe_kwargs_dict = {
 虽然业务代码调用的是 `logger.info()`、`logger.error()` 等包装层，但日志系统内部应用 `stacklevel=2`，确保日志头中准确输出**实际发起调用的业务代码文件名与具体行号**。
 
 ### 4.3. 运行时多语言动态切换
-无需重启服务进程，即可通过全局类方法或实例方法实时修改输出语言：
-- 类方法: `ProjectLogger.set_language("EN")` 或 `ProjectLogger.set_language("KO")`
-- 实例方法 (Setter): `logger.language_set("EN")`
-- 查询当前语言 (Getter): `logger.language` (➔ `"EN"` 或 `"KO"`)
+无需重启服务进程，即可通过全局设置或 `ConfigLoader` 实时修改输出语言：
+
+- 全局设置: `Localizer.set_global_language("EN")`
+- 配置加载器属性 (Setter): `config_loader.language_str = "EN"`
+- 查询当前语言 (Getter): `config_loader.language_str` (➔ `"EN"`, `"KO"`, `"JA"`, `"ZH"`)
 
 支持的语言代码为 `KO`、`EN`、`ZH`、`JA`，日志语言按以下优先级决定：
 
-1. 通过 `ProjectLogger.set_language()` 或 `ConfigLoader.set_language()` 指定的值
-2. 环境变量 `AGENT_LOG_LANGUAGE`、`LOGGING_LANGUAGE`、`AGENT_LANGUAGE` 中按顺序第一个有值的
+1. 通过 `ConfigLoader.language_str` 或 `Localizer.set_global_language()` 指定的值
+2. 环境变量 `AGENT_LOG_LANGUAGE`、`LOGGING_LANGUAGE`、`AGENT_LANGUAGE`、`APP_LANGUAGE`、`LANG` 中按顺序第一个有值的 (支持 BCP 47 标准连字符 locale 自动规范化)
 3. `config.yml` 中的 `logging.language_str`
 4. 默认语言 `KO`
 
 语言代码规范化规则与多语言文件查找方式请参阅 [8.1. 语言代码规范化与多语言资源文件查找 (`Localizer`)](../localizer/01_language_codes_and_resource_lookup_zh.md)。
+
+### 4.4. 绑定 `service_name_str` 自动注入服务上下文
+在实例化 `ProjectLogger(name_str, service_name_str="")` 时传入可选参数 `service_name_str`，可将其持久绑定到日志实例。
+后续调用 `get_log_msg()` 与 `get_log_id_description()` 时无需反复传入 `service_name="BigQuery"`，模板中的 `{service_name}` 及 `{service_name_str}` 占位符会自动替换：
+
+```python
+logger = ProjectLogger("BqPipeline", service_name_str="BigQuery")
+logger.error("connection_failed", error_msg="Timeout")
+# ➔ "❌ Failed to connect to BigQuery. (Reason: Timeout)"
+```
 
 ---
 
@@ -120,7 +133,7 @@ safe_kwargs_dict = {
 ```python
 from agent_common.logger import ProjectLogger
 
-logger = ProjectLogger("MigrationService")
+logger = ProjectLogger("MigrationService", service_name_str="Cloud_Storage")
 
 # 1. 传入消息代码及命名关键字实参
 logger.info("task_start", task_name="Cloud_Data_Sync", target_count=50000)
@@ -134,17 +147,18 @@ logger.info(
     percent=50.0,
 )
 
-# 3. 发生异常时记录 (自动累加失败计数并保留堆栈)
+# 3. 发生异常时记录 (自动注入 service_name)
 try:
     raise ConnectionTimeoutError("Connection timed out after 30s")
 except Exception as e:
-    logger.exception("connection_failed", service_name="Cloud_Storage", error_msg=str(e))
+    logger.exception("connection_failed", error_msg=str(e))
 ```
 
 ### 5.2. 运行时动态切换语言范例
 
 ```python
 from agent_common.logger import ProjectLogger
+from agent_common import Localizer
 
 logger = ProjectLogger("InternationalBatch")
 
@@ -153,7 +167,7 @@ logger.info("task_start", task_name="SyncJob", target_count=100)
 # ➔ [INFO] 🚀 [SyncJob] 작업이 시작되었습니다. (대상: 100건)
 
 # 切换为英文模式
-ProjectLogger.set_language("EN")
+Localizer.set_global_language("EN")
 
 logger.info("task_start", task_name="SyncJob", target_count=100)
 # ➔ [INFO] 🚀 [SyncJob] task has started. (Targets: 100 items)

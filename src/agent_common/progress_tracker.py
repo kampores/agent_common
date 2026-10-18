@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from agent_common.config_loader import config
+from agent_common.localizer import Localizer
 from agent_common.time_utils import TimeUtils
 
 # ==============================================================================
@@ -48,14 +49,18 @@ class ProgressTracker:
 
         :param total_items_int: 전체 처리 대상 총 건수
         :param logger_obj: ProjectLogger 또는 logging.Logger 객체
-        :param task_name_str: 작업 명칭 (로그 접두사 및 요약 제목용, 미지정 시 config의 default_task_name_str 적용)
+        :param task_name_str: 작업 명칭 (로그 접두사 및 요약 제목용, 미지정 시 언어별 기본 작업명 적용)
         :param start_time_float: 작업 시작 타임스탬프 (미지정 시 현재 시간)
         :return: None
         :raises None: 예외를 발생시키지 않음
         """
         self.total_items_int: int = max(0, total_items_int)
         self.logger_obj: Any = logger_obj
-        self.task_name_str: str = task_name_str or str(config.progress_tracker.default_task_name_str)
+        if task_name_str:
+            self.task_name_str: str = task_name_str
+        else:
+            self.task_name_str: str = str(getattr(config.progress_tracker, "default_task_name_str", "작업"))
+
         self.start_time_float: float = start_time_float if start_time_float is not None else time.time()
         # 시작 일시 포맷팅 (YYYY-MM-DD HH:MM:SS)
         now_dt_obj: datetime = datetime.now(TimeUtils.resolve_timezone())
@@ -111,13 +116,21 @@ class ProgressTracker:
         speed_mb_str: str = f"{bytes_per_second_float / (1024 * 1024):.2f} MB/s" if self.total_bytes_int > 0 else ""
         eta_str: str = f"{int(eta_seconds_float // 60)}m {int(eta_seconds_float % 60)}s"
 
+        milestone_title_str: str = str(getattr(config.progress_tracker, "milestone_title_str", "진행률 마일스톤"))
+        progress_label_str: str = str(getattr(config.progress_tracker, "progress_label_str", "진행"))
+        speed_label_str: str = str(getattr(config.progress_tracker, "speed_label_str", "속도"))
+        unit_str: str = str(getattr(config.progress_tracker, "unit_str", "건/s"))
+        eta_label_str: str = str(getattr(config.progress_tracker, "eta_label_str", "남은시간(ETA)"))
+
         if is_warn_milestone_bool:
             self._last_warn_milestone_int = (current_percent_int // interval_pct_int) * interval_pct_int
             if self.logger_obj:
+                speed_str: str = f"{items_per_second_float:.1f}{unit_str}"
+                speed_suffix_str: str = f" {speed_mb_str}" if speed_mb_str else ""
                 msg_str = (
-                    f"[{self.task_name_str} 진행률 마일스톤] "
-                    f"진행: {self.current_count_int:,}/{self.total_items_int:,} ({current_percent_int}%) | "
-                    f"속도: {items_per_second_float:.1f}건/s {speed_mb_str} | 남은시간(ETA): {eta_str}"
+                    f"[{self.task_name_str} {milestone_title_str}] "
+                    f"{progress_label_str}: {self.current_count_int:,}/{self.total_items_int:,} ({current_percent_int}%) | "
+                    f"{speed_label_str}: {speed_str}{speed_suffix_str} | {eta_label_str}: {eta_str}"
                 )
                 if details_str:
                     msg_str += f" | {details_str}"
@@ -126,7 +139,7 @@ class ProgressTracker:
             if self.logger_obj:
                 msg_str = (
                     f"[{self.task_name_str}] {self.current_count_int:,}/{self.total_items_int:,} ({current_percent_int}%) | "
-                    f"{items_per_second_float:.1f}건/s"
+                    f"{items_per_second_float:.1f}{unit_str}"
                 )
                 if speed_mb_str:
                     msg_str += f" ({speed_mb_str})"

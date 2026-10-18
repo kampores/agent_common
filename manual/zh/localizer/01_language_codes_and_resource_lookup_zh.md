@@ -46,7 +46,7 @@
 3. 环境变量 `AGENT_LANGUAGE`、`APP_LANGUAGE`、`LANGUAGE`、`LANG` 中按顺序第一个有值的
 4. 参数 `default_lang_str`（默认值 `KO`）
 
-环境变量可以是 locale 形式。只取 `.` 和 `_` 之前的部分，因此 `ja_JP.UTF-8` 会被解析为 `JA`。
+环境变量可以是 locale 形式。系统通过拆分 BCP 47 标准连字符（`-`）、下划线（`_`）和点（`.`）提取主要语言代码，因此 `en-US`、`zh-CN`、`ja_JP.UTF-8` 会被分别准确解析为 `EN`、`ZH`、`JA`。
 
 日志消息的语言由 `ConfigLoader` 按另一套优先级决定，其中包含日志专用环境变量和 `logging.language_str` 配置。详情请参阅 [2.3. 多语言日志消息模板字典](../logger/03_multilingual_message_catalog_zh.md)。
 
@@ -54,14 +54,14 @@
 
 ## 4. 多语言资源文件查找规则
 
-`resolve_localized_file()` 与 `resolve_localized_path_from_list()` 按相同的顺序选择文件。
+`resolve_localized_file()` 与 `resolve_localized_path_from_list()` 按相同的顺序选择文件，且不区分大小写地处理文件名后缀（如 `_KO.yml`、`_en.yml`）。
 
-1. 目标语言文件: `{前缀}_{语言}.yml`（例如 `labels_en.yml`）
-2. 默认语言文件: `{前缀}_ko.yml`
+1. 目标语言文件: `{前缀}_{语言}.yml`（例如 `labels_en.yml` 或语言子目录 `en/labels_en.yml`）
+2. 默认语言文件: `{前缀}_ko.yml`（或 `ko/{前缀}_ko.yml`）
 3. 不带后缀的文件: `{前缀}.yml`
 4. 均不存在时返回 `None`
 
-`resolve_localized_file()` 直接搜索目录，依次检查扩展名 `.yml`、`.yaml`。`resolve_localized_path_from_list()` 则在已有的文件列表中，按去掉扩展名后的文件名进行比较。
+`resolve_localized_file()` 搜索指定目录及语言子目录（`localize/{lang}/`），依次检查扩展名 `.yml`、`.yaml`。`resolve_localized_path_from_list()` 则在已有的文件列表中，按去掉扩展名后的小写 `stem` 安全比较。
 
 ---
 
@@ -102,7 +102,6 @@ def resolve_localized_path_from_list(
 ```
 
 - `extensions_list`: 要查找的扩展名列表。未指定时为 `[".yml", ".yaml"]`。
-- `resolve_catalog_file()`、`resolve_project_catalog_file()` 是将前缀固定为 `logging_messages` 后调用上述两个方法的方法。
 
 ---
 
@@ -113,6 +112,7 @@ def resolve_localized_path_from_list(
 from agent_common import Localizer
 
 Localizer.normalize_language("ko")        # "KO"
+Localizer.normalize_language("en-US")     # "EN"（支持 BCP 47 标准连字符区域设置）
 Localizer.normalize_language(" Korean ")  # "KO"
 Localizer.normalize_language("JPN")       # "JA"
 Localizer.normalize_language("fr")        # "KO"（不支持的语言按默认语言处理）

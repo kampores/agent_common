@@ -40,10 +40,17 @@ flowchart TD
 
 ## 3. 主要設定スキーマおよび仕様
 
+`ProgressTracker` はハードコーディングを排除し、多言語メッセージカタログ（`agent_common/localize/{lang}/progress_tracker_{lang}.yml`）および `config.yml` の `progress_tracker` セクションを通じて動作パラメータと表示ラベルを動的に制御します。有効なロケールディレクトリ配下のすべての `.yml` ファイルは `ConfigLoader.get_settings()` により自動的に検出・マージされます。
+
 ```yaml
 progress_tracker:
-  interval_percent_int: 10       # 進捗マイルストーン警告間隔 (%)
-  default_task_name_str: "タスク" # デフォルトタスク名
+  interval_percent_int: 10                  # 進捗マイルストーン警告間隔 (%)
+  default_task_name_str: "タスク"            # デフォルトタスク名
+  milestone_title_suffix_str: "進捗マイルストーン" # マイルストーンタイトル接尾辞
+  progress_prefix_str: "進捗"               # 進捗プレフィックス
+  speed_prefix_str: "速度"                  # 速度プレフィックス
+  items_unit_str: "件"                      # 処理件数単位
+  eta_prefix_str: "残り時間"                # 残り時間(ETA)プレフィックス
 ```
 
 ### 3.1. コンストラクタ (`__init__`)

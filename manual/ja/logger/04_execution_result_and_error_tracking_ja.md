@@ -45,7 +45,7 @@ flowchart TD
     D1 --> F
     E1 --> F
     E2 --> F
-    F --> G["get_result_counts() / get_error_counts() / log_summary() の集計連携"]
+    F --> G["get_result_counts() / get_error_counts() / StandardSummaryReporter の集計連携"]
 ```
 
 ---
@@ -170,9 +170,9 @@ logger_a.reset_result_counts()
 
 1. **識別コード (`log_id_str`) の小文字スネークケース規格順守**:
    - エラーおよび除外理由コードは必ず**小文字スネークケース (`snake_case`)**（例: `db_deleted_status_skipped`, `db_duplicate_pk_skipped`, `network_timeout`）で命名してください。
-   - メッセージ辞書（`logging_messages_*.yml`）に登録されたテンプレートキーと小文字一致することで、`log_summary()` 時に分かりやすい説明文が自動解決されます。
-2. **`log_summary()` との連携**:
-   - `record_error` および `record_exclusion` で集計された内訳は、`logger.log_summary()` 実行時に**件数順に自動ソートされて最終レポートに出力**されます。
+   - メッセージ辞書（`logging_messages_*.yml`）に登録されたテンプレートキーと小文字一致することで、サマリーリポーター (`StandardSummaryReporter`) 実行時に分かりやすい説明文が自動解決されます。
+2. **`StandardSummaryReporter` との連携**:
+   - `record_error` および `record_exclusion` で集計された内訳は、`StandardSummaryReporter(logger).log_summary()` 実行時に**件数順に自動ソートされて最終レポートに出力**されます。
 3. **下位レイヤー例外送出時の二重ログ防止（"Log or Throw, Never Both"）**:
    - 下位関数で例外発生時に直接 `logger.error()` を出力してから `raise Exception` を送出すると、上位の `except Exception` 処理部で再度 `logger.exception()` が呼び出されて二重ログが発生します。
    - 下位関数は `logger.get_log_msg()` を活用して多言語エラーメッセージのみを取得し `raise ValueError(...)` に渡すように設計し、実際のログ出力は最上位ランナー（Runner）が1回のみ行うようにしてください（詳細な実装例は [2.3 多言語メッセージ辞書 第6.3節](../logger/03_multilingual_message_catalog_ja.md#63-例外発生時のメッセージ処理ベストプラクティス多言語化localizationと二重ログdouble-logging防止) を参照）。

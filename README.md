@@ -34,7 +34,7 @@
 - **2.2. [로깅 환경 일괄 구성 및 핸들러 제어 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/02_project_logger_configure_ko.md)**: 콘솔 및 파일 로그 핸들러 동적 생성, 일자별 폴더 분리, 실행 로그 레벨별 디렉터리 자동 분기(`{log_level_str}` 기반 `log_file_str` 단일화).
 - **2.3. [다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/03_multilingual_message_catalog_ko.md)**: `config.yml`의 `logging.language_str` (`KO`, `EN`, `ZH`, `JA`) 설정에 따라 다국어 메시지 사전 자동 연동, 런타임 동적 언어 전환 및 안전한 템플릿 치환, `get_log_msg()`를 활용한 예외 메시지 다국어화 및 이중 로깅(Double Logging) 방지 기법 제공.
 - **2.4. [작업 진행 통계 및 예외/제외 사유별 실시간 집계 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/04_execution_result_and_error_tracking_ko.md)**: 성공, 실패, 제외(Skip) 3단계 상태 분류 및 인스턴스/클래스 전역 멀티스레드 에러 집계.
-- **2.5. [작업 결과 요약 리포트 자동 생성 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/05_summary_report_generation_ko.md)**: '전체 = 성공 + 실패 + 제외' 정합성 보장, `TableFormatter` 기반 세로줄 자동 맞춤, 소요 시간, 처리 속도, 전송량이 포함된 표준 마크다운 표(Table) 자동 출력.
+- **2.5. [표준 작업 결과 요약 리포터 (`StandardSummaryReporter`)](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/05_summary_report_generation_ko.md)**: '전체 = 성공 + 실패 + 제외' 정합성 보장, `TableFormatter` 기반 80열 세로줄 자동 맞춤, 소요 시간, 처리 속도, 전송량 및 에러 상세 진단이 포함된 표준 요약 블록 자동 출력.
 
 #### 3. 스토리지 및 데이터베이스 클라이언트 (`agent_common.clients`)
 - **3.1. [AWS S3 및 Dell ECS 오브젝트 스토리지 클라이언트 (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/01_s3_ecs_storage_client_ko.md)**: AWS S3 및 Dell ECS(S3 호환) 저장소 접속, 초기화 즉시 `head_bucket` Fail-Fast 검증, 대용량 페이징 제너레이터(`list_objects`), 메타데이터 빠른 조회(`get_object_size`), 메모리 스트리밍 획득(`get_object_stream`), GCS 실시간 파일 전송 및 동일 파일 스마트 스킵(`transfer_to_gcs`).
@@ -72,7 +72,7 @@
 - **7.6. [Groq 감독관 AI 및 Antigravity Stop 훅](https://github.com/kampores/agent_common/blob/main/manual/ko/llm/06_groq_supervisor_and_stop_hook_ko.md)**
 
 #### 8. 언어 로컬라이저 (`agent_common.localizer`)
-- **8.1. [언어 코드 정규화 및 언어별 리소스 파일 탐색 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/ko/localizer/01_language_codes_and_resource_lookup_ko.md)**: ISO 639-1 언어 코드(`KO`, `EN`, `ZH`, `JA`) 정규화, 명시 인자·전역 설정·환경변수 기반 언어 결정, `{접두사}_{언어}.yml` 형태의 언어별 리소스 파일 탐색. 로깅과 분리되어 라벨·안내문 등 임의의 다국어 리소스에 재사용 가능.
+- **8.1. [언어 코드 정규화 및 언어별 리소스 파일 탐색 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/ko/localizer/01_language_codes_and_resource_lookup_ko.md)**: ISO 639-1 및 BCP 47 표준 로케일(`en-US`, `ko-KR` 등) 언어 코드(`KO`, `EN`, `ZH`, `JA`) 정규화, 명시 인자·전역 설정·환경변수 기반 언어 결정, `localize/{언어}/` 및 대소문자 무관 리소스 파일 탐색. 로깅과 분리되어 라벨·안내문 등 임의의 다국어 리소스에 재사용 가능.
 
 ---
 
@@ -117,15 +117,11 @@ from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("MyTask")
-tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, item_name_str="파일")
+tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, task_name_str="파일 처리")
 
 for file_info in file_list:
-    try:
-        tracker.increment_success(bytes_int=len(data))
-    except Exception as e:
-        tracker.increment_failure(error_msg_str=str(e))
-
-tracker.log_summary()
+    # 아이템 처리 및 진행률 갱신 (10% 배수 마일스톤 시 WARNING, 일반 진행 시 INFO 자동 로깅)
+    tracker.update(count_int=1, bytes_int=len(file_info.get("data", b"")))
 ```
 
 #### 4. LlmClient를 통한 통합 텍스트/SQL 생성
@@ -197,7 +193,7 @@ publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
 | **2.2** | **로깅 환경 일괄 구성 & 핸들러 제어** | [02_project_logger_configure_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/02_project_logger_configure_ko.md) | `ProjectLogger.configure()`, 콘솔/파일 핸들러 분기, 레벨별 파일 분리, 단일 표준 경로 템플릿 |
 | **2.3** | **다국어 메시지 사전 & 코드 기반 로깅** | [03_multilingual_message_catalog_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/03_multilingual_message_catalog_ko.md) | `logging_messages_*.yml`, 런타임 언어 전환, `safe_kwargs` 템플릿 치환 |
 | **2.4** | **작업 통계 & 에러/제외 실시간 집계** | [04_execution_result_and_error_tracking_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/04_execution_result_and_error_tracking_ko.md) | 성공/실패/제외(Skip) 3단계 상태 분류, 인스턴스 및 클래스 전역 멀티스레드 집계 |
-| **2.5** | **작업 결과 요약 리포트 자동 생성** | [05_summary_report_generation_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/05_summary_report_generation_ko.md) | `ProjectLogger.log_summary()`, 80열 표준 요약 블록, 처리 속도/전송률, 에러 상세 해석 |
+| **2.5** | **표준 작업 결과 요약 리포터** | [05_summary_report_generation_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/logger/05_summary_report_generation_ko.md) | `StandardSummaryReporter`, 80열 표준 요약 블록, 다국어 라벨 외부화, 처리 속도/전송률, 에러 상세 해석 |
 | **3.1** | **AWS S3 & Dell ECS 스토리지 연동** | [01_s3_ecs_storage_client_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/01_s3_ecs_storage_client_ko.md) | S3/ECS 연결, Fail-Fast 검증, 페이징 목록 조회, GCS 스트리밍 전송 및 동일 파일 스킵 |
 | **3.2** | **GCS 스트리밍 업로드 & 4단계 인증** | [02_gcs_cloud_storage_client_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/02_gcs_cloud_storage_client_ko.md) | 4단계 서비스 계정 인증 우선순위, 연결 검증, 메타데이터 조회, 메모리 파이프라인 업로드 |
 | **3.3** | **BigQuery 배치 적재 & 스트리밍 인서트** | [03_bigquery_batch_and_streaming_load_ko.md](https://github.com/kampores/agent_common/blob/main/manual/ko/clients/03_bigquery_batch_and_streaming_load_ko.md) | JSON 배치 로드 Job vs 스트리밍 API, 중첩 에러 상세 분해, 중복 방지 키 집합 조회 |
@@ -307,7 +303,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **2.2. [Batch Logging Configuration & Handler Control (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/02_project_logger_configure_en.md)**: Dynamic console/file handler initialization, date-based directories, and level-based directory creation (`log_file_str` with `{log_level_str}`).
 - **2.3. [Multilingual Message Catalog & Code-Based Logging (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog_en.md)**: Dynamic multilingual dictionary loading (`KO`, `EN`, `ZH`, `JA`), runtime language switching, safe template parameter substitution, and exception message localization with zero duplicate logging via `get_log_msg()`.
 - **2.4. [Real-Time Metric Tracking & Error/Exclusion Classification (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/04_execution_result_and_error_tracking_en.md)**: Three-tier outcome model (Success, Failure, Excluded/Skip) and dual instance/class-global multithreaded telemetry.
-- **2.5. [Automatic Summary Report Generation (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation_en.md)**: Emits structured 80-column execution summary reports with duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
+- **2.5. [Standard Execution Summary Reporter (`StandardSummaryReporter`)](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation_en.md)**: Emits structured 80-column execution summary reports with 'Total = Success + Failure + Excluded' consistency, localized external labels, duration, throughput (items/s), transfer rate (MB/s), and decoded error diagnostics.
 
 #### 3. Storage and Database Infrastructure Clients (`agent_common.clients`)
 - **3.1. [AWS S3 & Dell ECS Object Storage Client (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/en/clients/01_s3_ecs_storage_client_en.md)**: Connects to AWS S3 and Dell ECS (S3-compatible) storage, early `head_bucket` Fail-Fast verification, high-throughput paginated iterator (`list_objects`), fast header metadata lookup (`get_object_size`), in-memory streaming body extraction (`get_object_stream`), real-time streaming pipeline upload to GCS with smart duplicate skipping (`transfer_to_gcs`).
@@ -345,7 +341,7 @@ A comprehensive Python common library providing unified logging, hierarchical co
 - **7.6. [Groq Supervisor and Antigravity Stop Hook](https://github.com/kampores/agent_common/blob/main/manual/en/llm/06_groq_supervisor_and_stop_hook_en.md)**
 
 #### 8. Language Localizer (`agent_common.localizer`)
-- **8.1. [Language Code Normalization & Localized Resource Lookup (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/en/localizer/01_language_codes_and_resource_lookup_en.md)**: Normalizes ISO 639-1 language codes (`KO`, `EN`, `ZH`, `JA`), decides the language from an explicit argument, the global setting, and environment variables, and finds per-language resource files named `{prefix}_{language}.yml`. Separate from logging, so it can be reused for any multilingual resource such as labels and notices.
+- **8.1. [Language Code Normalization & Localized Resource Lookup (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/en/localizer/01_language_codes_and_resource_lookup_en.md)**: Normalizes ISO 639-1 and BCP 47 standard locales (e.g. `en-US`, `ko-KR`) to primary language codes (`KO`, `EN`, `ZH`, `JA`), resolves language from explicit arguments, global settings, and environment variables, and discovers case-insensitive localized resource files within `localize/{lang}/`. Separate from logging for general multilingual reuse.
 
 ---
 
@@ -387,15 +383,11 @@ from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("MyTask")
-tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, item_name_str="file")
+tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, task_name_str="File Processing")
 
 for file_info in file_list:
-    try:
-        tracker.increment_success(bytes_int=len(data))
-    except Exception as e:
-        tracker.increment_failure(error_msg_str=str(e))
-
-tracker.log_summary()
+    # Update progress and item count (WARNING at 10% milestones, INFO for regular updates)
+    tracker.update(count_int=1, bytes_int=len(file_info.get("data", b"")))
 ```
 
 #### 4. Unified Text/SQL Generation with LlmClient
@@ -468,7 +460,7 @@ publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
 | **2.2** | **Batch Logging Setup & Handler Control** | [02_project_logger_configure_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/02_project_logger_configure_en.md) | `ProjectLogger.configure()`, console/file handler routing, level-based paths, unified path template |
 | **2.3** | **Multilingual Catalog & Code-Based Logging** | [03_multilingual_message_catalog_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/03_multilingual_message_catalog_en.md) | `logging_messages_*.yml`, runtime language switching, safe template variable formatting |
 | **2.4** | **Result Telemetry & Error Classification** | [04_execution_result_and_error_tracking_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/04_execution_result_and_error_tracking_en.md) | Success/Failure/Exclusion 3-tier classification, instance & class-global multithreaded counters |
-| **2.5** | **Automatic Summary Report Generation** | [05_summary_report_generation_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation_en.md) | `ProjectLogger.log_summary()`, 80-column summary block, throughput/bandwidth, decoded error explanations |
+| **2.5** | **Standard Execution Summary Reporter** | [05_summary_report_generation_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/logger/05_summary_report_generation_en.md) | `StandardSummaryReporter`, 80-column summary block, externalized localized labels, throughput/bandwidth, decoded error diagnostics |
 | **3.1** | **AWS S3 & Dell ECS Storage Integration** | [01_s3_ecs_storage_client_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/01_s3_ecs_storage_client_en.md) | S3/ECS connection, Fail-Fast verification, paginated listing, direct GCS streaming and duplicate skip |
 | **3.2** | **GCS Streaming Upload & 4-Tier Auth** | [02_gcs_cloud_storage_client_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/02_gcs_cloud_storage_client_en.md) | 4-tier GCP credential precedence, connection validation, metadata retrieval, in-memory stream upload |
 | **3.3** | **BigQuery Batch Loading & Streaming Ingestion** | [03_bigquery_batch_and_streaming_load_en.md](https://github.com/kampores/agent_common/blob/main/manual/en/clients/03_bigquery_batch_and_streaming_load_en.md) | JSON batch load jobs vs streaming API, nested error diagnostics unpacking, deduplication key lookup |
@@ -566,7 +558,7 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
 - **2.2. [批量日志环境配置与处理器控制 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/02_project_logger_configure_zh.md)**: 控制台与文件日志处理器动态创建，按日期分目录归档，按执行日志级别自动分流 (`{log_level_str}` 统一日志路径)。
 - **2.3. [多语言日志消息字典与基于代码的日志记录 (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/03_multilingual_message_catalog_zh.md)**: 依据配置自动联动中文/英文/韩文/日文消息字典，支持运行时动态语言切换与安全的模板占位符替换，提供基于 `get_log_msg()` 的异常消息多语言本地化与防止双重日志（Double Logging）机制。
 - **2.4. [任务进度统计与异常/跳过分类实时汇总 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/04_execution_result_and_error_tracking_zh.md)**: 成功、失败、跳过 (Skip) 三级状态分类，支持实例级与类全局多线程遥测。
-- **2.5. [自动生成任务执行总结报告 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/05_summary_report_generation_zh.md)**: 确保“总计 = 成功 + 失败 + 跳过”严格一致，自动生成对齐的标准 Markdown 表格，包含耗时、处理吞吐量、传输速率与错误诊断。
+- **2.5. [标准任务执行结果汇总报告器 (`StandardSummaryReporter`)](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/05_summary_report_generation_zh.md)**: 严格确保“总计 = 成功 + 失败 + 跳过”一致性，基于 `TableFormatter` 自动输出 80 列标准对齐摘要块，集成多语言外部标签、耗时、处理吞吐量、传输速率与错误诊断。
 
 #### 3. 存储与数据库基础设施客户端 (`agent_common.clients`)
 - **3.1. [AWS S3 与 Dell ECS 对象存储客户端 (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/01_s3_ecs_storage_client_zh.md)**: 连接 AWS S3 及 Dell ECS（S3 兼容）存储，初始化即执行 `head_bucket` 快速失败校验，海量对象分页迭代器 (`list_objects`)，元数据快速查询 (`get_object_size`)，流式读取 (`get_object_stream`)，GCS 实时流式传输与相同文件智能跳过 (`transfer_to_gcs`)。
@@ -604,7 +596,7 @@ For detailed version history, please refer to [CHANGELOG_EN.md](https://github.c
 - **7.6. [Groq 监督员 AI 与 Antigravity Stop 钩子](https://github.com/kampores/agent_common/blob/main/manual/zh/llm/06_groq_supervisor_and_stop_hook_zh.md)**
 
 #### 8. 语言本地化器 (`agent_common.localizer`)
-- **8.1. [语言代码规范化与多语言资源文件查找 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/zh/localizer/01_language_codes_and_resource_lookup_zh.md)**: 规范化 ISO 639-1 语言代码 (`KO`, `EN`, `ZH`, `JA`)，基于显式参数、全局设置与环境变量决定语言，并查找 `{前缀}_{语言}.yml` 形式的多语言资源文件。与日志功能相互独立，可复用于标签、提示文案等任意多语言资源。
+- **8.1. [语言代码规范化与多语言资源文件查找 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/zh/localizer/01_language_codes_and_resource_lookup_zh.md)**: 规范化 ISO 639-1 与 BCP 47 标准区域代码（如 `en-US`, `ko-KR` 等）至主要语言代码（`KO`, `EN`, `ZH`, `JA`），支持从显式参数、全局设置及环境变量解析语言，并查找 `localize/{语言}/` 下不区分大小写的资源文件。与日志功能相互独立，可复用于任意多语言资源。
 
 ---
 
@@ -646,15 +638,11 @@ from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("MyTask")
-tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, item_name_str="文件")
+tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, task_name_str="文件处理")
 
 for file_info in file_list:
-    try:
-        tracker.increment_success(bytes_int=len(data))
-    except Exception as e:
-        tracker.increment_failure(error_msg_str=str(e))
-
-tracker.log_summary()
+    # 推进并更新进度（达到10%倍数里程碑时记录WARNING，常规记录INFO）
+    tracker.update(count_int=1, bytes_int=len(file_info.get("data", b"")))
 ```
 
 #### 4. 使用 LlmClient 进行统一文本/SQL生成
@@ -727,7 +715,7 @@ publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
 | **2.2** | **批量日志配置 & 处理器控制** | [02_project_logger_configure_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/02_project_logger_configure_zh.md) | `ProjectLogger.configure()`，控制台/文件处理器动态分配，按日志级别路径归档 |
 | **2.3** | **多语言消息字典 & 基于代码的日志** | [03_multilingual_message_catalog_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/03_multilingual_message_catalog_zh.md) | `logging_messages_*.yml`，运行时语言平滑切换，`safe_kwargs` 安全模板占位符 |
 | **2.4** | **执行结果统计 & 错误分类实时汇总** | [04_execution_result_and_error_tracking_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/04_execution_result_and_error_tracking_zh.md) | 成功/失败/跳过 (Skip) 三级状态分类，实例与类全局多线程统计指标汇总 |
-| **2.5** | **任务执行总结报告自动生成** | [05_summary_report_generation_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/05_summary_report_generation_zh.md) | `ProjectLogger.log_summary()`，80 列标准对齐摘要块，吞吐量/带宽，错误归因解析 |
+| **2.5** | **标准任务执行结果汇总报告器** | [05_summary_report_generation_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/logger/05_summary_report_generation_zh.md) | `StandardSummaryReporter`，80 列标准对齐摘要块，多语言标签外部化，吞吐量/带宽，错误归因解析 |
 | **3.1** | **AWS S3 & Dell ECS 存储集成** | [01_s3_ecs_storage_client_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/01_s3_ecs_storage_client_zh.md) | S3/ECS 连接连通性早验，海量对象分页遍历，流式直传 GCS 与相同文件跳过 |
 | **3.2** | **GCS 流式上传 & 4 级认证体系** | [02_gcs_cloud_storage_client_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/02_gcs_cloud_storage_client_zh.md) | 4 级服务账号凭证优先级，连接验证，元数据获取，零磁盘暂存分块流式上传 |
 | **3.3** | **BigQuery 批量加载 & 流式插入** | [03_bigquery_batch_and_streaming_load_zh.md](https://github.com/kampores/agent_common/blob/main/manual/zh/clients/03_bigquery_batch_and_streaming_load_zh.md) | JSON 批量加载 vs 流式 API，嵌套错误解包，防重已有唯一键集合提取 |
@@ -825,7 +813,7 @@ python -m twine upload dist/agent_common-0.4.99*
 - **2.2. [一括ロギング構成およびハンドラー制御 (`ProjectLogger.configure`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/02_project_logger_configure_ja.md)**: コンソールおよびファイルハンドラーを動的構成、日付別ディレクトリ分離、ログレベル別ディレクトリ自動振り分け。
 - **2.3. [多言語メッセージカタログおよびコードベースロギング (`logging_messages_*.yml`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/03_multilingual_message_catalog_ja.md)**: 設定に基づき日本語/英語/韓国語/中国語メッセージ辞書を自動連動、動的言語切り替えおよび安全なテンプレート変数置換、`get_log_msg()` を活用した例外メッセージの多言語化および二重ログ（Double Logging）防止設計を提供。
 - **2.4. [タスク進捗統計およびエラー/除外リアルタイム集計 (`record_result`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/04_execution_result_and_error_tracking_ja.md)**: 成功、失敗、除外 (Skip) の3段階分類とマルチスレッド集計。
-- **2.5. [タスク結果要約レポート自動生成 (`log_summary`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/05_summary_report_generation_ja.md)**: 「全体 = 成功 + 失敗 + 除外」整合性保証、処理スループット、転送速度、エラー診断を含む標準 Markdown 表を出力。
+- **2.5. [標準作業結果サマリーリポーター (`StandardSummaryReporter`)](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/05_summary_report_generation_ja.md)**: 「全体 = 成功 + 失敗 + 除外」整合性保証、`TableFormatter` による 80 列整形要約ブロック自動出力、多言語ラベル外部化、スループット、転送速度、エラー診断を完備。
 
 #### 3. ストレージおよびデータベースクライアント (`agent_common.clients`)
 - **3.1. [AWS S3 および Dell ECS オブジェクトストレージクライアント (`S3Client`)](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/01_s3_ecs_storage_client_ja.md)**: AWS S3 および Dell ECS (S3互換) 接続、起動時 `head_bucket` 検証、ページネーション一覧取得 (`list_objects`)、メタデータ高速取得 (`get_object_size`)、ストリーミング読み込み (`get_object_stream`)、GCS リアルタイム転送と重複スキップ (`transfer_to_gcs`)。
@@ -863,7 +851,7 @@ python -m twine upload dist/agent_common-0.4.99*
 - **7.6. [Groq 監督官 AI および Antigravity Stop フック](https://github.com/kampores/agent_common/blob/main/manual/ja/llm/06_groq_supervisor_and_stop_hook_ja.md)**
 
 #### 8. 言語ローカライザー (`agent_common.localizer`)
-- **8.1. [言語コードの正規化と言語別リソースファイル探索 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/ja/localizer/01_language_codes_and_resource_lookup_ja.md)**: ISO 639-1 言語コード (`KO`, `EN`, `ZH`, `JA`) の正規化、明示引数・グローバル設定・環境変数に基づく言語決定、`{接頭辞}_{言語}.yml` 形式の言語別リソースファイル探索。ロギングから分離されており、ラベルや案内文など任意の多言語リソースに再利用可能。
+- **8.1. [言語コードの正規化と言語別リソースファイル探索 (`Localizer`)](https://github.com/kampores/agent_common/blob/main/manual/ja/localizer/01_language_codes_and_resource_lookup_ja.md)**: ISO 639-1 および BCP 47 標準ロケール（`en-US`, `ko-KR` 等）の主要言語コード（`KO`, `EN`, `ZH`, `JA`）への正規化、明示引数・グローバル設定・環境変数に基づく言語決定、`localize/{言語}/` 配下の大文字・小文字無関係なリソースファイル探索。ロギングから分離されており、ラベルや案内文など任意の多言語リソースに再利用可能。
 
 ---
 
@@ -905,15 +893,11 @@ from agent_common import ProgressTracker
 from agent_common.logger import ProjectLogger
 
 logger = ProjectLogger("MyTask")
-tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, item_name_str="ファイル")
+tracker = ProgressTracker(total_items_int=1000, logger_obj=logger, task_name_str="ファイル処理")
 
 for file_info in file_list:
-    try:
-        tracker.increment_success(bytes_int=len(data))
-    except Exception as e:
-        tracker.increment_failure(error_msg_str=str(e))
-
-tracker.log_summary()
+    # アイテム処理および進捗更新（10%倍数マイルストーン時にWARNING、通常進捗時にINFO自動ロギング）
+    tracker.update(count_int=1, bytes_int=len(file_info.get("data", b"")))
 ```
 
 #### 4. LlmClient による統合テキスト/SQL生成
@@ -986,7 +970,7 @@ publisher_client = pubsub_v1.PublisherClient(credentials=credentials)
 | **2.2** | **一括ロギング構成 & ハンドラー制御** | [02_project_logger_configure_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/02_project_logger_configure_ja.md) | `ProjectLogger.configure()`、コンソール/ファイル振り分け、レベル別ディレクトリ分離 |
 | **2.3** | **多言語メッセージカタログ & コードベースロギング** | [03_multilingual_message_catalog_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/03_multilingual_message_catalog_ja.md) | `logging_messages_*.yml`、ランタイム言語切り替え、安全な変数置換 |
 | **2.4** | **タスク統計 & エラー/除外リアルタイム集計** | [04_execution_result_and_error_tracking_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/04_execution_result_and_error_tracking_ja.md) | 成功/失敗/除外の3段階分類、マルチスレッド環境での指標集計 |
-| **2.5** | **タスク結果要約レポート自動生成** | [05_summary_report_generation_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/05_summary_report_generation_ja.md) | `ProjectLogger.log_summary()`、80列整形要約ブロック、スループットとエラー診断 |
+| **2.5** | **標準作業結果サマリーリポーター** | [05_summary_report_generation_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/logger/05_summary_report_generation_ja.md) | `StandardSummaryReporter`、80列整形要約ブロック、多言語ラベル外部化、スループットとエラー診断 |
 | **3.1** | **AWS S3 & Dell ECS ストレージ連携** | [01_s3_ecs_storage_client_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/01_s3_ecs_storage_client_ja.md) | S3/ECS 接続検証、ページネーション一覧取得、GCS ストリーミング転送と重複スキップ |
 | **3.2** | **GCS ストリーミングアップロード & 4段階認証** | [02_gcs_cloud_storage_client_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/02_gcs_cloud_storage_client_ja.md) | 4段階認証優先順位、バケット検証、メモリパイプラインによるゼロディスク転送 |
 | **3.3** | **BigQuery バッチロード & ストリーミング挿入** | [03_bigquery_batch_and_streaming_load_ja.md](https://github.com/kampores/agent_common/blob/main/manual/ja/clients/03_bigquery_batch_and_streaming_load_ja.md) | JSON バッチロード vs ストリーミング API、ネストエラー展開、既存キー重複防止 |

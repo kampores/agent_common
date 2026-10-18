@@ -312,10 +312,10 @@ logging_messages:
       config_type_coercion_failed: "[配置类型校验错误] '{key_str}' 配置项应为 {expected_type_str} 类型。{guide_msg_str} (输入值: {val_any}, 实际类型: {current_type_str})"
 
       # 示例: logger.exception("config_auto_create_failed", file_path_str="config/config.yml", error_str="Permission denied")
-      config_auto_create_failed: "自动创建配置文件失败 [文件={file_path_str}], 错误: {error_str}"
+      config_auto_create_failed: "自动创建配置文件失败 [文件={file_path_str}]。错误: {error_str}"
 
       # 示例: logger.exception("config_auto_repair_failed", file_path_str="config/config.yml", error_str="Permission denied")
-      config_auto_repair_failed: "自动修复配置文件失败 [文件={file_path_str}], 错误: {error_str}"
+      config_auto_repair_failed: "自动修复配置文件失败 [文件={file_path_str}]。错误: {error_str}"
 
     # --- [输入参数与日期校验错误] ---
     validation:
@@ -334,10 +334,10 @@ logging_messages:
       schema_load_failed: "架构规范({namespace_str})文件({path_str})加载失败: {error_str}"
 
       # 示例: logger.exception("tool_eval_error", func_name_str="code.date_check", error_str="TypeError")
-      tool_eval_error: "动态规则工具函数评估失败 [Tool={func_name_str}], 错误: {error_str}"
+      tool_eval_error: "动态规则工具函数评估失败 [Tool={func_name_str}]。错误: {error_str}"
 
       # 示例: logger.exception("tool_execution_failed", func_name_str="code.date_check", error_str="RuntimeError")
-      tool_execution_failed: "动态规则工具函数执行失败 [Tool={func_name_str}], 错误: {error_str}"
+      tool_execution_failed: "动态规则工具函数执行失败 [Tool={func_name_str}]。错误: {error_str}"
 
     # --- [数据库装载错误] ---
     db:

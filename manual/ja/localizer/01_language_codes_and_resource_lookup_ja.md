@@ -46,7 +46,7 @@
 3. 環境変数 `AGENT_LANGUAGE`、`APP_LANGUAGE`、`LANGUAGE`、`LANG` のうち、先頭から最初に値があるもの
 4. 引数 `default_lang_str`（デフォルト値 `KO`）
 
-環境変数はロケール形式でもかまいません。`.` と `_` より前の部分だけを使用するため、`ja_JP.UTF-8` は `JA` と解釈されます。
+環境変数はロケール形式でもかまいません。BCP 47 標準ハイフン（`-`）、アンダースコア（`_`）、ドット（`.`）の前半部分を分離して主言語コードを抽出するため、`en-US`、`zh-CN`、`ja_JP.UTF-8` はそれぞれ `EN`、`ZH`、`JA` として正確に解釈されます。
 
 ログメッセージの言語は、`ConfigLoader` がロギング専用の環境変数と `logging.language_str` 設定を含む別の優先順位で決定します。詳しくは [2.3. 多言語ログメッセージテンプレート辞書](../logger/03_multilingual_message_catalog_ja.md) を参照してください。
 
@@ -54,14 +54,14 @@
 
 ## 4. 言語別リソースファイルの探索ルール
 
-`resolve_localized_file()` と `resolve_localized_path_from_list()` は、同じ順序でファイルを選びます。
+`resolve_localized_file()` と `resolve_localized_path_from_list()` は、同じ順序でファイルを選びます。ファイル名の大文字・小文字接尾辞（`_KO.yml`、`_en.yml` など）を区別せず安全に探索します。
 
-1. 対象言語のファイル: `{接頭辞}_{言語}.yml`（例: `labels_en.yml`）
-2. デフォルト言語のファイル: `{接頭辞}_ko.yml`
+1. 対象言語のファイル: `{接頭辞}_{言語}.yml`（例: `labels_en.yml` または言語サブディレクトリ `en/labels_en.yml`）
+2. デフォルト言語のファイル: `{接頭辞}_ko.yml`（または `ko/{接頭辞}_ko.yml`）
 3. 接尾辞なしのファイル: `{接頭辞}.yml`
 4. いずれもなければ `None`
 
-`resolve_localized_file()` はディレクトリを直接探索し、拡張子 `.yml`、`.yaml` を順に確認します。`resolve_localized_path_from_list()` は、すでに持っているファイル一覧の中から、拡張子を除いたファイル名で比較します。
+`resolve_localized_file()` は指定されたディレクトリおよび言語別サブディレクトリ（`localize/{lang}/`）を探索し、拡張子 `.yml`、`.yaml` を順に確認します。`resolve_localized_path_from_list()` は、すでに持っているファイル一覧の中から、拡張子を除いた小文字 `stem` で安全に比較します。
 
 ---
 
@@ -102,7 +102,6 @@ def resolve_localized_path_from_list(
 ```
 
 - `extensions_list`: 探索する拡張子の一覧。指定しない場合は `[".yml", ".yaml"]` です。
-- `resolve_catalog_file()`、`resolve_project_catalog_file()` は、接頭辞を `logging_messages` に固定して上記 2 つのメソッドを呼び出すメソッドです。
 
 ---
 
@@ -113,6 +112,7 @@ def resolve_localized_path_from_list(
 from agent_common import Localizer
 
 Localizer.normalize_language("ko")        # "KO"
+Localizer.normalize_language("en-US")     # "EN"（BCP 47 標準ハイフンロケール対応）
 Localizer.normalize_language(" Korean ")  # "KO"
 Localizer.normalize_language("JPN")       # "JA"
 Localizer.normalize_language("fr")        # "KO"（未対応の言語はデフォルト言語）

@@ -1,8 +1,8 @@
 # 2.3. 다국어 로그 메시지 템플릿 사전 및 코드 기반 로깅 (`logging_messages_*.yml`, `log_msg`)
 
 > **소속 모듈**: `agent_common.logger.ProjectLogger`  
-> **관련 함수/메서드**: `ProjectLogger.get_log_msg()`, `ProjectLogger.log_msg()`, `ProjectLogger.set_language()`, `get_log_msg()`  
-> **메시지 사전 파일**: `agent_common/config/logging_messages_ko.yml`, `logging_messages_en.yml`, `logging_messages_zh.yml`, `logging_messages_ja.yml`
+> **관련 함수/메서드**: `ProjectLogger.get_log_msg()`, `ProjectLogger.log_msg()`, `ProjectLogger.get_log_id_description()`, `get_log_msg()`  
+> **메시지 사전 파일**: `agent_common/src/agent_common/localize/{ko,en,zh,ja}/logging_messages_{lang}.yml`
 
 ---
 
@@ -14,7 +14,7 @@
 2. **글로벌 운영 지원 한계**: 해외 운영 센터(NOC)나 외국인 엔지니어 협업 시 한글 로그 메시지로 인한 장애 대응 지연
 3. **로그 분석 및 메트릭 표준화 부재**: 로그 메시지가 비정형 텍스트로 자유롭게 작성되어 동일한 유형의 장애를 통계화하거나 알람 룰로 정의하기 극히 어려움
 
-`ProjectLogger`는 이러한 문제를 원천 해결하기 위해 **메시지 코드 기반의 외부 사전 템플릿 연동 시스템**과 **런타임 동적 다국어 전환(KO ⇄ EN)** 기능을 완벽하게 지원합니다.
+`ProjectLogger`는 이러한 문제를 원천 해결하기 위해 **메시지 코드 기반의 외부 사전 템플릿 연동 시스템**과 **런타임 동적 다국어 전환(KO ⇄ EN ⇄ JA ⇄ ZH)** 기능을 완벽하게 지원합니다.
 
 ---
 
@@ -23,7 +23,7 @@
 ```mermaid
 flowchart TD
     A["logger.info('task_start', task_name='이관') 호출"] --> B{"언어 판별"}
-    B -->|"KO / EN / ZH / JA"| C["logging_messages_*.yml"]
+    B -->|"KO / EN / ZH / JA"| C["localize/{lang}/logging_messages_{lang}.yml"]
     
     C --> E["_search_template_in_level(레벨, 코드)"]
     E --> F{"해당 레벨에서 발견?"}
@@ -43,7 +43,9 @@ flowchart TD
 
 ## 3. 메시지 사전 YAML 구조
 
-### 3.1. 한국어 사전 (`agent_common/config/logging_messages_ko.yml`)
+다국어 메시지 파일은 컴포넌트별로 모듈화되어 `agent_common/src/agent_common/localize/{lang}/` 하위에 위치합니다.
+
+### 3.1. 한국어 사전 (`agent_common/src/agent_common/localize/ko/logging_messages_ko.yml`)
 
 ```yaml
 logging_messages:
@@ -61,7 +63,7 @@ logging_messages:
     schema_validation_failed: "❌ 필수 필드 누락 또는 스키마 검증 실패: {detail}"
 ```
 
-### 3.2. 영문 사전 (`agent_common/config/logging_messages_en.yml`)
+### 3.2. 영문 사전 (`agent_common/src/agent_common/localize/en/logging_messages_en.yml`)
 
 ```yaml
 logging_messages:
@@ -97,20 +99,30 @@ safe_kwargs_dict = {
 `logger.info()`, `logger.error()` 등의 편의 래퍼 메서드를 경유하더라도 로깅 프레임워크가 래퍼 내부가 아닌 **실제 이 메서드를 호출한 비즈니스 코드의 파일명과 라인 번호**를 로그 헤더에 정확히 기록하도록 `stacklevel=2`를 적용합니다.
 
 ### 4.3. 런타임 동적 언어 전환
-프로세스를 재시작하지 않고도 글로벌 설정 또는 로거 인스턴스를 통해 즉시 출력 언어를 변경할 수 있습니다:
+프로세스를 재시작하지 않고도 글로벌 설정 또는 `ConfigLoader`를 통해 즉시 출력 언어를 변경할 수 있습니다:
 
-- 클래스 메서드: `ProjectLogger.set_language("EN")` 또는 `ProjectLogger.set_language("KO")`
-- 인스턴스 메서드(Setter): `logger.language_set("EN")`
-- 현재 언어 확인(Getter): `logger.language` (➔ `"EN"` 또는 `"KO"`)
+- 전역 설정: `Localizer.set_global_language("EN")`
+- 설정 로더 프로퍼티(Setter): `config_loader.language_str = "EN"`
+- 현재 언어 확인(Getter): `config_loader.language_str` (➔ `"EN"`, `"KO"`, `"JA"`, `"ZH"`)
 
 지원하는 언어 코드는 `KO`, `EN`, `ZH`, `JA`이며, 로그 언어는 다음 우선순위로 결정됩니다:
 
-1. `ProjectLogger.set_language()` 또는 `ConfigLoader.set_language()`로 지정한 값
-2. 환경변수 `AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`, `AGENT_LANGUAGE` 중 앞에서부터 처음으로 값이 있는 것
+1. `ConfigLoader.language_str` 또는 `Localizer.set_global_language()`로 지정한 값
+2. 환경변수 `AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`, `AGENT_LANGUAGE`, `APP_LANGUAGE`, `LANG` 중 앞에서부터 처음으로 값이 있는 것 (BCP 47 표준 하이픈 로케일 자동 정규화)
 3. `config.yml`의 `logging.language_str`
 4. 기본 언어 `KO`
 
 언어 코드 정규화 규칙과 언어별 파일 탐색 방식은 [8.1. 언어 코드 정규화 및 언어별 리소스 파일 탐색 (`Localizer`)](../localizer/01_language_codes_and_resource_lookup_ko.md)을 참고하세요.
+
+### 4.4. `service_name_str` 바인딩을 통한 서비스 문맥 자동 주입
+`ProjectLogger(name_str, service_name_str="")` 인스턴스 생성 시 선택적 파라미터 `service_name_str`을 넘겨주면 로거 인스턴스에 영속적으로 바인딩됩니다.
+이후 `get_log_msg()`나 `get_log_id_description()` 호출 시 매번 `service_name="BigQuery"`를 반복 전달하지 않아도 템플릿의 `{service_name}` 및 `{service_name_str}` 변수에 바인딩된 서비스명이 자동으로 주입됩니다:
+
+```python
+logger = ProjectLogger("BqPipeline", service_name_str="BigQuery")
+logger.error("connection_failed", error_msg="Timeout")
+# ➔ "❌ BigQuery 서비스 연결에 실패하였습니다. (사유: Timeout)"
+```
 
 ---
 
@@ -121,7 +133,7 @@ safe_kwargs_dict = {
 ```python
 from agent_common.logger import ProjectLogger
 
-logger = ProjectLogger("MigrationService")
+logger = ProjectLogger("MigrationService", service_name_str="Cloud_Storage")
 
 # 1. 메시지 코드 및 키워드 인자를 사용한 로깅
 logger.info("task_start", task_name="Cloud_Data_Sync", target_count=50000)
@@ -135,17 +147,18 @@ logger.info(
     percent=50.0,
 )
 
-# 3. 에러 발생 시 코드 기반 로깅 (에러 카운트 자동 누적 및 Traceback 보존)
+# 3. 에러 발생 시 코드 기반 로깅 (service_name 자동 치환)
 try:
     raise ConnectionTimeoutError("Connection timed out after 30s")
 except Exception as e:
-    logger.exception("connection_failed", service_name="Cloud_Storage", error_msg=str(e))
+    logger.exception("connection_failed", error_msg=str(e))
 ```
 
 ### 5.2. 런타임 다국어 동적 전환 실전 예시
 
 ```python
 from agent_common.logger import ProjectLogger
+from agent_common import Localizer
 
 logger = ProjectLogger("InternationalBatch")
 
@@ -154,7 +167,7 @@ logger.info("task_start", task_name="SyncJob", target_count=100)
 # ➔ [INFO] 🚀 [SyncJob] 작업이 시작되었습니다. (대상: 100건)
 
 # 영문 모드로 전환
-ProjectLogger.set_language("EN")
+Localizer.set_global_language("EN")
 
 logger.info("task_start", task_name="SyncJob", target_count=100)
 # ➔ [INFO] 🚀 [SyncJob] task has started. (Targets: 100 items)

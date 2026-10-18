@@ -141,5 +141,5 @@ print("\n".join(table_lines))
 
 1. **설정값 외부화**:
    - 마크다운 구분선 최소 너비(`min_center_width_int: 5`, `min_default_width_int: 4`)와 콜론 패딩 등은 `config.table_formatter`에 정의되어 있어 코드 변경 없이 설정을 조정할 수 있습니다.
-2. **ProjectLogger.log_summary()와의 결합**:
-   - `agent_common.logger.ProjectLogger`의 최종 작업 요약 리포트(`log_summary()`) 역시 내부적으로 `TableFormatter`를 사용하여 표를 렌더링하므로, 전사 로그 시스템 어디서든 일관된 고품질 마크다운 표가 보장됩니다.
+2. **StandardSummaryReporter와의 결합**:
+   - `agent_common.summary_reporter.StandardSummaryReporter`의 최종 작업 요약 리포트(`log_summary()`) 역시 내부적으로 `TableFormatter`를 사용하여 표를 렌더링하므로, 전사 로그 시스템 어디서든 일관된 고품질 마크다운 표가 보장됩니다.

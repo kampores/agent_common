@@ -132,4 +132,4 @@ print("\n".join(table_lines))
 1. **配置外部化**:
    - 表格分隔线最小宽度等样式可在 `config.yml` 的 `table_formatter` 节点调优。
 2. **报表原生底座**:
-   - `ProjectLogger.log_summary()` 在输出 80 列总结报表时底层直接集成了 `TableFormatter`，确保全链路日志呈现体验的高度一致。
+   - `agent_common.summary_reporter.StandardSummaryReporter` 在输出 80 列总结报表时底层直接集成了 `TableFormatter`，确保全链路日志呈现体验的高度一致。

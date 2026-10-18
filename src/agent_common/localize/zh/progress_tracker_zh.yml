@@ -1,0 +1,13 @@
+# 작성일: 2026-10-16
+# 설계자: 김유상 수석
+# 설계자 소속: 경포씨엔씨
+# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+
+# 进度跟踪器(ProgressTracker) 中文配置及标签字典
+progress_tracker:
+  default_task_name_str: "任务"
+  milestone_title_str: "进度里程碑"
+  progress_label_str: "进度"
+  speed_label_str: "速度"
+  unit_str: "条/s"
+  eta_label_str: "剩余时间(ETA)"

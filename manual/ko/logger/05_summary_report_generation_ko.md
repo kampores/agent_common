@@ -1,8 +1,9 @@
-# 2.5. 작업 결과 요약 리포트 자동 생성 (`log_summary`)
+# 2.5. 표준 작업 결과 요약 리포터 (`StandardSummaryReporter`) 및 로그 ID 설명 역조회
 
-> **소속 모듈**: `agent_common.logger.ProjectLogger`  
-> **핵심 메서드**: `ProjectLogger.log_summary()`, `ProjectLogger.get_log_id_description()`  
-> **연계 모듈**: `agent_common.progress_tracker.ProgressTracker`
+> **소속 모듈**: `agent_common.summary_reporter.StandardSummaryReporter` / `agent_common.logger.ProjectLogger`  
+> **핵심 클래스/메서드**: `StandardSummaryReporter.log_summary()`, `build_summary_report()`, `ProjectLogger.get_log_id_description()`  
+> **연계 모듈**: `agent_common.progress_tracker.ProgressTracker`, `agent_common.table_formatter.TableFormatter`  
+> **다국어 설정**: `agent_common/src/agent_common/localize/{lang}/summary_reporter_{lang}.yml`
 
 ---
 
@@ -11,13 +12,15 @@
 엔터프라이즈 데이터 파이프라인(Airflow DAG, 배치 프로세스)이나 대규모 데이터 마이그레이션이 완료되었을 때, 엔지니어와 운영팀은 다음과 같은 핵심 질문에 즉시 답할 수 있어야 합니다:
 
 1. **전체 작업 소요 시간과 처리 속도(Throughput)는 얼마인가?**
-2. **성공/실패/제외(Skip) 건수가 각각 몇 건인가?**
-3. **실패가 발생했다면 구체적으로 어떤 오류 코드가 몇 건씩 발생했는가?**
+2. **성공/실패/제외(Skip) 건수가 각각 몇 건인가? (전체 = 성공 + 실패 + 제외 정합성)**
+3. **실패나 제외가 발생했다면 구체적으로 어떤 오류/사유 코드가 몇 건씩 발생했는가?**
 4. **전송/적재된 총 데이터 용량(MB)과 평균 네트워크 전송률(MB/s)은 적정 수준인가?**
 
 과거에는 각 배치 스크립트마다 `print()`나 로그를 제각각 구성하여 포맷이 통일되지 않았고, 에러 코드만 암호처럼 출력되어 즉각적인 원인 파악이 어려웠습니다.
 
-`ProjectLogger.log_summary()`는 이러한 요구사항을 완벽히 충족하도록 **시인성 높은 80열 표준 요약 리포트 블록**을 생성하여 `WARNING` 레벨로 출력합니다.
+v0.4.101에서는 **단일 책임 원칙(SRP, 규칙 1.4.1)** 및 **MSA 독립 서비스 분리(규칙 1.4.7)** 에 따라, 로깅 엔진 본체인 `ProjectLogger`를 가볍고 견고하게 유지하면서도 모든 배치 작업의 보편적 공통 분모인 **'성공 / 실패 / 제외' 3대 분류**와 **다국어 80열 표준 요약 마크다운 표** 생성을 전담하는 **`StandardSummaryReporter`** 유틸리티 클래스를 제공합니다.
+
+또한 `ProjectLogger`는 모든 도메인 요약 리포터가 공통으로 활용할 수 있도록 **다국어 메시지 사전 역조회 및 정제 엔진인 `get_log_id_description()`** 을 정교하게 제공합니다.
 
 ---
 
@@ -25,38 +28,35 @@
 
 ```mermaid
 flowchart TD
-    A["log_summary(task_name, tracker_obj, ...) 호출"] --> B{"tracker_obj 전달 여부"}
-    B -->|"예"| C["ProgressTracker로부터 메트릭 자동 추출"]
-    B -->|"아니오"| D["인자로 전달된 건수/시간 또는 로거 누적 통계 사용"]
+    A["전용 요약 리포터 (예: SummaryReporter) 실행"] --> B{"ProgressTracker 연동 여부"}
+    B -->|"예"| C["ProgressTracker로부터 처리 건수/바이트/소요시간 자동 추출"]
+    B -->|"아니오"| D["로거 인스턴스 통계 또는 전달된 메트릭 사용"]
     
-    C --> E["소요 시간 정밀 계산 (time.time - start_time)"]
+    C --> E["처리 속도 (items/sec) 및 전송률 (MB/s) 산출"]
     D --> E
-    E --> F["처리 속도 (items/sec) 및 전송률 (MB/s) 산출"]
     
-    F --> G["에러/제외 발생 딕셔너리 정렬 (발생 빈도 내림차순)"]
-    G --> H["get_log_id_description() 호출<br/>(logging_messages 사전에서 직관적 설명 동적 조회)"]
+    E --> F["에러/제외 딕셔너리 정렬 (발생 빈도 내림차순)"]
+    F --> G["logger.get_log_id_description(log_id) 호출<br/>(다국어 logging_messages에서 직관적 설명 정제 및 역조회)"]
     
-    H --> I["80열 표준 포맷 요약 블록 텍스트 조합"]
-    I --> J["logger.warning('execution_summary_report', summary=...) 출력"]
+    G --> H["80열 표준 포맷 요약 블록 텍스트 조합"]
+    H --> I["logger.warning(...)으로 운영 관제 화면에 요약 리포트 출력"]
 ```
 
 ---
 
 ## 3. 핵심 기능 및 상세 동작
 
-### 3.1. 에러 및 제외 사유 설명 동적 조회 (`get_log_id_description`)
-에러 및 제외 식별 코드(예: `db_deleted_status_skipped`, `network_timeout`)가 주어지면, 다국어 메시지 템플릿(`logging_messages_*.yml`)에서 해당 정의를 동적으로 역추적하고 미치환 템플릿 변수를 정제하여 **직관적인 한글/영문 설명문을 자동으로 결합**합니다:
+### 3.1. 에러 및 제외 사유 설명 정밀 정제 및 역조회 (`get_log_id_description`)
+에러 및 제외 식별 코드(예: `db_deleted_status_skipped`, `network_timeout`, `config_load_failed`)가 주어지면, 다국어 메시지 템플릿(`logging_messages_*.yml`)에서 해당 정의를 동적으로 역추적하고 고도화된 정제 규칙을 적용하여 **직관적인 한글/영문 설명문을 자동으로 결합**합니다:
+
+1. **소괄호 `()` 내용 사전 제거**: `(Path: ...)` 등 부가설명 내에 콜론이 있더라도 조기에 절단되지 않도록 소괄호 구간을 먼저 안전하게 정제합니다.
+2. **콜론 및 마침표 기준 분리 (`\.\s+|\.$|。|:|：`)**: 장황한 문장의 헤더를 분리하되, 정규식 `\.\s+|\.$` 및 `。`를 적용하여 `config.yml`과 같은 파일 확장자나 `1.0.0` 같은 버전 번호가 마침표로 인해 오인 절단되지 않도록 보호합니다.
+3. **`[TAG]` 대괄호 태그 제거**: `[파일={file_path_str}]` 등 헤더 뒤에 붙는 식별 태그를 안전하게 정제합니다.
+4. **`self.service_name_str` 자동 주입**: `ProjectLogger` 생성 시 서비스명이 지정되어 있으면 `{service_name}` 및 `{service_name_str}`에 자동 치환되어 완전한 문맥을 제공합니다.
+5. **미치환 중괄호 `{}` 보존 및 공백/따옴표 정제**: 미치환된 플레이스홀더를 무리하게 지우지 않고 보존하며, 따옴표나 불필요한 양끝 구두점(` -:,.。：`)을 정제합니다.
 
 - 코드: `db_deleted_status_skipped`
 - 출력: `* db_deleted_status_skipped (삭제 상태코드로 인한 적재 대상 제외): 120 건`
-
-### 3.2. 정밀한 처리 속도 및 전송 대역폭 분석
-- **총 소요 시간**: `분 초 (초)` 정밀 계산
-- **평균 처리 속도**: `items/sec` 단위 자동 계산
-- **전송 데이터량**: 바이트(`bytes`)를 메가바이트(`MB`)로 자동 변환하고 초당 전송 속도(`MB/s`)를 산출
-
-### 3.3. `ProgressTracker`와의 심리스(Seamless) 연동
-`ProgressTracker` 인스턴스를 `tracker_obj` 인자로 넘기면 전체 건수, 성공/실패/제외 건수, 시작 일시, 전송 바이트 수 등을 자동으로 감지하여 코드를 최소화합니다.
 
 ---
 
@@ -88,52 +88,43 @@ flowchart TD
 
 ## 5. 실전 사용 코드
 
-### 5.1. 직접 메트릭을 전달하여 요약 리포트 출력하기
+### 5.1. StandardSummaryReporter 단 한 줄 호출 (가장 권장)
 
 ```python
-import time
 from agent_common.logger import ProjectLogger
+from agent_common.summary_reporter import StandardSummaryReporter
 
-logger = ProjectLogger("BatchMigrator")
-start_ts = time.time()
+logger = ProjectLogger("MigrationService", service_name_str="BigQuery")
 
-# 비즈니스 로직 수행
+# 1. 런타임 작업 수행 및 통계 수집
 logger.record_success(count_int=950)
 logger.record_failure(count_int=30, log_id_str="network_timeout")
-logger.record_failure(count_int=20, log_id_str="schema_mismatch")
 logger.record_excluded("db_deleted_status_skipped", count_int=50)
 
-# 최종 요약 리포트 출력
-logger.log_summary(
-    task_name_str="고객 데이터 동기화",
-    total_items_int=1050,
-    start_time_float=start_ts,
-    total_bytes_int=1024 * 1024 * 150,  # 150 MB
-    extra_lines_list=[
-        "대상 데이터셋: customer_dw.activity_logs",
-        "타겟 분석 테이블: analytics_dw.daily_snapshot",
-    ]
-)
+# 2. 표준 요약 리포터 실행 (단 한 줄로 WARNING 레벨 출력)
+StandardSummaryReporter(logger).log_summary(task_name_str="빅쿼리 데이터 이관")
 ```
 
-### 5.2. `ProgressTracker`와 연동하여 원라인(One-line) 요약 리포트 출력하기
+### 5.2. ProgressTracker 연동 및 리포트 문자열 직접 반환
 
 ```python
 from agent_common.logger import ProjectLogger
-from agent_common import ProgressTracker
+from agent_common.progress_tracker import ProgressTracker
+from agent_common.summary_reporter import StandardSummaryReporter
 
-logger = ProjectLogger("DataPipeline")
-tracker = ProgressTracker(total_items_int=50000, logger_obj=logger, item_name_str="레코드")
+logger = ProjectLogger("BatchPipeline")
+tracker = ProgressTracker(total_items_int=1000, task_name_str="파일 변환")
 
-for item in data_items:
-    try:
-        # 처리 로직...
-        tracker.increment_success(bytes_int=len(item))
-    except Exception as e:
-        tracker.increment_failure(error_msg_str=str(e))
+# 배치 루프 진행 중 tracker.update(...) 및 logger.record_* 수행
+...
 
-# 작업 종료 후 ProgressTracker가 자동으로 logger.log_summary()를 호출
-tracker.log_summary(extra_lines_list=["배치 버전: v1.2.0"])
+# 문자열로 받아 외부 메신저(Slack/이메일 등)로 전송하거나 로그 출력
+reporter = StandardSummaryReporter(logger)
+report_markdown_str = reporter.build_summary_report(
+    tracker_obj=tracker,
+    extra_lines_list=["담당 작업자: 배치 워커 01", "타깃 버킷: raw-data-backup"],
+)
+logger.warning("execution_summary_report", summary_str=report_markdown_str)
 ```
 
 ---
@@ -141,6 +132,9 @@ tracker.log_summary(extra_lines_list=["배치 버전: v1.2.0"])
 ## 6. 운영 베스트 프랙티스
 
 1. **`WARNING` 레벨 로깅의 목적**:
-   - `log_summary()`는 의도적으로 `WARNING` 레벨로 출력됩니다. 이는 정보성 로그(`INFO`)가 비활성화된 프로덕션 환경(`logging.level: WARNING`)에서도 작업 완료 요약 블록만큼은 운영자가 반드시 확인할 수 있도록 보장하기 위함입니다.
-2. **`extra_lines_list`의 적극 활용**:
-   - 실행 호스트, 파티션 일자, 데이터 소스 URI 등 사후 장애 분석 및 감사에 필요한 핵심 비즈니스 메타데이터를 `extra_lines_list`에 담아 출력하십시오.
+   - 최종 작업 요약 리포트는 정보성 로그(`INFO`)가 비활성화된 프로덕션 환경(`logging.level: WARNING`)에서도 운영자가 반드시 확인할 수 있도록 `WARNING` 레벨로 출력하는 것을 표준으로 삼습니다.
+2. **도메인별 특화 리포터 확장 (MSA 원칙)**:
+   - `StandardSummaryReporter`는 어떤 배치 작업이든 필수적인 "성공/실패/제외" 3대 분류를 완벽하게 담당합니다.
+   - `bucket_test`의 `ExtensionSummaryReporter`처럼 파일 확장자별 통계나 스토리지 전용 세부 표가 추가로 필요한 도메인의 경우, `StandardSummaryReporter`를 조합(Composition)하거나 상속하여 도메인 특화 섹션을 손쉽게 덧붙일 수 있습니다.
+3. **다국어(4개국어) 표 자동 로컬라이징**:
+   - 표 헤더("구분", "처리 건수", "실행 시간" 등)는 `summary_reporter_{ko,en,ja,zh}.yml`을 통해 언어 설정(`logging.language_str: EN/JA/ZH`)에 따라 100% 자동 로컬라이징되므로 별도의 번역 코드를 작성할 필요가 없습니다.

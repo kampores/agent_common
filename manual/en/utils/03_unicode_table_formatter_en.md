@@ -143,4 +143,4 @@ print("\n".join(table_lines))
 1. **Config-Driven Padding Thresholds**:
    - Minimum column dividers and padding values are externalized in `config.table_formatter` (`min_center_width_int: 5`, `min_default_width_int: 4`).
 2. **Standardized Log Integration**:
-   - `ProjectLogger.log_summary()` internally invokes `TableFormatter`, ensuring that all enterprise batch execution summaries are consistently aligned across production logs and operational notifications.
+   - `agent_common.summary_reporter.StandardSummaryReporter` internally invokes `TableFormatter`, ensuring that all enterprise batch execution summaries are consistently aligned across production logs and operational notifications.

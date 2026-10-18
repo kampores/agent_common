@@ -1,0 +1,13 @@
+# 작성일: 2026-10-16
+# 설계자: 김유상 수석
+# 설계자 소속: 경포씨엔씨
+# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+
+# 진행률 추적기(ProgressTracker) 한국어 설정 및 라벨 사전
+progress_tracker:
+  default_task_name_str: "작업"
+  milestone_title_str: "진행률 마일스톤"
+  progress_label_str: "진행"
+  speed_label_str: "속도"
+  unit_str: "건/s"
+  eta_label_str: "남은시간(ETA)"

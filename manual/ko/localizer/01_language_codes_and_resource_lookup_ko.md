@@ -46,7 +46,7 @@
 3. 환경변수 `AGENT_LANGUAGE`, `APP_LANGUAGE`, `LANGUAGE`, `LANG` 중 앞에서부터 처음으로 값이 있는 것
 4. 인자 `default_lang_str` (기본값 `KO`)
 
-환경변수는 로캘 형식이어도 됩니다. `.`과 `_` 앞부분만 사용하므로 `ja_JP.UTF-8`은 `JA`로 해석됩니다.
+환경변수는 로캘 형식이어도 됩니다. BCP 47 표준 하이픈(`-`), 언더스코어(`_`), 점(`.`) 앞부분을 분리해 주 언어 코드를 추출하므로 `en-US`, `zh-CN`, `ja_JP.UTF-8`은 각각 `EN`, `ZH`, `JA`로 정확히 해석됩니다.
 
 로그 메시지 언어는 `ConfigLoader`가 로깅 전용 환경변수와 `logging.language_str` 설정을 포함한 별도 우선순위로 결정합니다. 자세한 내용은 [2.3. 다국어 로그 메시지 템플릿 사전](../logger/03_multilingual_message_catalog_ko.md)을 참고하세요.
 
@@ -54,14 +54,14 @@
 
 ## 4. 언어별 리소스 파일 탐색 규칙
 
-`resolve_localized_file()`과 `resolve_localized_path_from_list()`는 같은 순서로 파일을 고릅니다.
+`resolve_localized_file()`과 `resolve_localized_path_from_list()`는 같은 순서로 파일을 고릅니다. 파일명의 대소문자 접미사(`_KO.yml`, `_en.yml` 등)를 가리지 않고 안전하게 탐색합니다.
 
-1. 대상 언어 파일: `{접두사}_{언어}.yml` (예: `labels_en.yml`)
-2. 기본 언어 파일: `{접두사}_ko.yml`
+1. 대상 언어 파일: `{접두사}_{언어}.yml` (예: `labels_en.yml` 또는 언어 하위 폴더 `en/labels_en.yml`)
+2. 기본 언어 파일: `{접두사}_ko.yml` (또는 `ko/{접두사}_ko.yml`)
 3. 접미사 없는 파일: `{접두사}.yml`
 4. 모두 없으면 `None`
 
-`resolve_localized_file()`은 디렉토리를 직접 탐색하며 확장자 `.yml`, `.yaml`을 차례로 확인합니다. `resolve_localized_path_from_list()`는 이미 가지고 있는 파일 목록에서 확장자를 뺀 파일명으로 비교합니다.
+`resolve_localized_file()`은 지정된 디렉토리 및 언어별 하위 디렉터리(`localize/{lang}/`)를 탐색하며 확장자 `.yml`, `.yaml`을 차례로 확인합니다. `resolve_localized_path_from_list()`는 이미 가지고 있는 파일 목록에서 확장자를 뺀 소문자 `stem`으로 안전하게 비교합니다.
 
 ---
 
@@ -102,7 +102,6 @@ def resolve_localized_path_from_list(
 ```
 
 - `extensions_list`: 탐색할 확장자 목록. 지정하지 않으면 `[".yml", ".yaml"]`입니다.
-- `resolve_catalog_file()`, `resolve_project_catalog_file()`은 접두사를 `logging_messages`로 고정해 위 두 메서드를 호출하는 메서드입니다.
 
 ---
 
@@ -113,6 +112,7 @@ def resolve_localized_path_from_list(
 from agent_common import Localizer
 
 Localizer.normalize_language("ko")        # "KO"
+Localizer.normalize_language("en-US")     # "EN" (BCP 47 표준 하이픈 로케일 지원)
 Localizer.normalize_language(" Korean ")  # "KO"
 Localizer.normalize_language("JPN")       # "JA"
 Localizer.normalize_language("fr")        # "KO" (지원하지 않는 언어는 기본 언어)

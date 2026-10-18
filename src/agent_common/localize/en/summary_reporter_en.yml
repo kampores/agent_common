@@ -1,0 +1,34 @@
+# 작성일: 2026-10-18
+# 설계자: 김유상 수석
+# 설계자 소속: 경포씨엔씨
+# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+
+# StandardSummaryReporter English Configuration and Label Dictionary
+summary_reporter:
+  default_task_name_str: "Task"
+  report_title_template_str: "[{task_name_str} Execution Summary Table]"
+  table_header_division_str: "Category"
+  table_header_detail_str: "Metric"
+  table_header_value_str: "Value / Details"
+  table_header_note_str: "Note"
+  category_time_str: "Execution Time"
+  category_count_str: "Item Counts"
+  category_perf_str: "Performance"
+  category_detail_str: "Details"
+  label_work_datetime_str: "Period"
+  label_total_count_str: "Total Items"
+  label_success_count_str: "├─ Success"
+  label_failure_count_str: "├─ Failed"
+  label_excluded_count_str: "└─ Excluded"
+  label_throughput_str: "Average Throughput"
+  label_total_bytes_str: "Total Transferred"
+  note_total_formula_str: "Total = Success + Failed + Excluded"
+  note_average_rate_template_str: "Avg {rate_float:.2f} MB/s"
+  unit_items_str: "items"
+  unit_items_per_sec_str: "items/sec"
+  unit_minutes_seconds_template_str: "{minutes_int}m {seconds_float:.1f}s ({elapsed_float:.2f}s)"
+  unit_seconds_template_str: "{elapsed_float:.2f}s"
+  section_error_detail_template_str: "- Error & Exception Breakdown (Total: {total_errors_int:,}):"
+  section_excluded_detail_template_str: "- Exclusion / Skip Breakdown (Total: {total_excluded_items_int:,}):"
+  unclassified_failure_str: "Unclassified Failures"
+  unclassified_excluded_str: "Unclassified Exclusions"

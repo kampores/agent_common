@@ -40,12 +40,17 @@ flowchart TD
 
 ## 3. 주요 설정 스키마 및 규격
 
-`ProgressTracker`는 `config.yml`의 `progress_tracker` 네임스페이스를 통해 동작 매개변수를 제어합니다:
+`ProgressTracker`는 하드코딩 없이 다국어 메시지 카탈로그(`agent_common/localize/{lang}/progress_tracker_{lang}.yml`) 및 `config.yml`의 `progress_tracker` 네임스페이스를 통해 동작 매개변수와 라벨을 동적으로 제어합니다. 활성화된 로케일 디렉토리 내의 모든 `.yml` 파일이 `ConfigLoader.get_settings()`를 통해 자동으로 병합 적재됩니다.
 
 ```yaml
 progress_tracker:
-  interval_percent_int: 10       # 진행률 마일스톤 경고 간격 (단위: %)
-  default_task_name_str: "작업"  # 기본 작업 명칭 문자열
+  interval_percent_int: 10                  # 진행률 마일스톤 경고 간격 (단위: %)
+  default_task_name_str: "작업"             # 기본 작업 명칭 문자열
+  milestone_title_suffix_str: "진행률 마일스톤" # 마일스톤 제목 접미사
+  progress_prefix_str: "진행"               # 진행 레이블 접두사
+  speed_prefix_str: "속도"                  # 속도 레이블 접두사
+  items_unit_str: "건"                      # 처리 건수 단위
+  eta_prefix_str: "남은시간"                # 예상 잔여 시간(ETA) 접두사
 ```
 
 ### 3.1. 생성자 (`__init__`)

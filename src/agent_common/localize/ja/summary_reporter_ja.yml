@@ -1,0 +1,34 @@
+# 작성일: 2026-10-18
+# 설계자: 김유상 수석
+# 설계자 소속: 경포씨엔씨
+# 설계자 이메일: bakkus@kpcnc.co.kr, bakkus@daum.net
+
+# 標準作業結果要約リポーター(StandardSummaryReporter) 日本語設定およびラベル辞書
+summary_reporter:
+  default_task_name_str: "タスク"
+  report_title_template_str: "[{task_name_str} 作業結果要約表]"
+  table_header_division_str: "区分"
+  table_header_detail_str: "詳細項目"
+  table_header_value_str: "内容 / 数値"
+  table_header_note_str: "備考"
+  category_time_str: "実行時間"
+  category_count_str: "処理件数"
+  category_perf_str: "処理性能"
+  category_detail_str: "詳細情報"
+  label_work_datetime_str: "作業日時"
+  label_total_count_str: "全件数 (Total)"
+  label_success_count_str: "├─ 処理成功"
+  label_failure_count_str: "├─ 処理失敗"
+  label_excluded_count_str: "└─ 処理除外"
+  label_throughput_str: "平均処理速度"
+  label_total_bytes_str: "総転送データ量"
+  note_total_formula_str: "全体 = 成功 + 失敗 + 除外"
+  note_average_rate_template_str: "平均 {rate_float:.2f} MB/s"
+  unit_items_str: "件"
+  unit_items_per_sec_str: "items/sec"
+  unit_minutes_seconds_template_str: "{minutes_int}分 {seconds_float:.1f}秒 ({elapsed_float:.2f}秒)"
+  unit_seconds_template_str: "{elapsed_float:.2f}秒"
+  section_error_detail_template_str: "- 例外/エラー発生詳細 (計 {total_errors_int:,}件):"
+  section_excluded_detail_template_str: "- 処理除外詳細 (計 {total_excluded_items_int:,}件):"
+  unclassified_failure_str: "その他未分類失敗"
+  unclassified_excluded_str: "その他未分類除外"

@@ -46,7 +46,7 @@ Language codes follow ISO 639-1.
 3. The first of the environment variables `AGENT_LANGUAGE`, `APP_LANGUAGE`, `LANGUAGE`, `LANG` that has a value
 4. The `default_lang_str` argument (default `KO`)
 
-Environment variables may be in locale form. Only the part before `.` and `_` is used, so `ja_JP.UTF-8` resolves to `JA`.
+Environment variables may be in locale form. The primary language code is extracted by splitting on BCP 47 standard hyphens (`-`), underscores (`_`), and periods (`.`), so `en-US`, `zh-CN`, and `ja_JP.UTF-8` correctly resolve to `EN`, `ZH`, and `JA`.
 
 The log message language is decided by `ConfigLoader` with its own precedence, which includes logging-specific environment variables and the `logging.language_str` setting. See [2.3. Multilingual Message Catalog](../logger/03_multilingual_message_catalog_en.md) for details.
 
@@ -54,14 +54,14 @@ The log message language is decided by `ConfigLoader` with its own precedence, w
 
 ## 4. Localized Resource File Lookup Rules
 
-`resolve_localized_file()` and `resolve_localized_path_from_list()` choose a file in the same order.
+`resolve_localized_file()` and `resolve_localized_path_from_list()` choose a file in the same order, case-insensitively handling filename suffixes (e.g., `_KO.yml`, `_en.yml`).
 
-1. The target language file: `{prefix}_{language}.yml` (for example `labels_en.yml`)
-2. The default language file: `{prefix}_ko.yml`
+1. The target language file: `{prefix}_{language}.yml` (for example `labels_en.yml` or within language subdirectories `en/labels_en.yml`)
+2. The default language file: `{prefix}_ko.yml` (or `ko/{prefix}_ko.yml`)
 3. The file with no suffix: `{prefix}.yml`
 4. `None` when none of these exist
 
-`resolve_localized_file()` searches a directory and checks the extensions `.yml` and `.yaml` in turn. `resolve_localized_path_from_list()` compares against file names without their extension, from a list of files you already have.
+`resolve_localized_file()` searches the specified directory and language subdirectories (`localize/{lang}/`), checking extensions `.yml` and `.yaml` in turn. `resolve_localized_path_from_list()` compares against lowercase file stems from a list of files you already have.
 
 ---
 
@@ -102,7 +102,6 @@ def resolve_localized_path_from_list(
 ```
 
 - `extensions_list`: The extensions to search. Defaults to `[".yml", ".yaml"]`.
-- `resolve_catalog_file()` and `resolve_project_catalog_file()` call the two methods above with the prefix fixed to `logging_messages`.
 
 ---
 
@@ -113,6 +112,7 @@ def resolve_localized_path_from_list(
 from agent_common import Localizer
 
 Localizer.normalize_language("ko")        # "KO"
+Localizer.normalize_language("en-US")     # "EN" (BCP 47 standard hyphen locale support)
 Localizer.normalize_language(" Korean ")  # "KO"
 Localizer.normalize_language("JPN")       # "JA"
 Localizer.normalize_language("fr")        # "KO" (unsupported languages fall back to the default)

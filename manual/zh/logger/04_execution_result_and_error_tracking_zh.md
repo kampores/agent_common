@@ -45,7 +45,7 @@ flowchart TD
     D1 --> F
     E1 --> F
     E2 --> F
-    F --> G["无缝对接 get_result_counts() / get_error_counts() / log_summary()"]
+    F --> G["无缝对接 get_result_counts() / get_error_counts() / StandardSummaryReporter"]
 ```
 
 ---
@@ -176,9 +176,9 @@ logger_a.reset_result_counts()
 
 1. **原因代码 (`log_id_str`) 严格遵循小写蛇形命名 (`snake_case`)**:
    - 错误及排除原因编码务必统一采用小写下划线格式（例如 `db_deleted_status_skipped`, `db_duplicate_pk_skipped`, `network_timeout`, `schema_mismatch`）。
-   - 消息模板字典（`logging_messages_*.yml`）中的模板键均严格按小写 `snake_case` 组织，保持小写一致才能确保 `log_summary()` 在输出报表时能够自动翻译呈现人类友好的文字说明。
-2. **联动 `log_summary()` 自动出具汇总报表**:
-   - 经由 `record_error` 和 `record_exclusion` 累积的明细项，会在调用 `logger.log_summary()` 时**自动按发生频次降序输出至最终的 Markdown 汇总大盘**，开发者无需编写额外的聚合汇总代码。
+   - 消息模板字典（`logging_messages_*.yml`）中的模板键均严格按小写 `snake_case` 组织，保持小写一致才能确保汇总报告器 (`StandardSummaryReporter`) 在输出报表时能够自动翻译呈现人类友好的文字说明。
+2. **联动 `StandardSummaryReporter` 自动出具汇总报表**:
+   - 经由 `record_error` 和 `record_exclusion` 累积的明细项，会在调用 `StandardSummaryReporter(logger).log_summary()` 时**自动按发生频次降序输出至最终的 Markdown 汇总大盘**，开发者无需编写额外的聚合汇总代码。
 3. **底层异常抛出时防止双重日志（“Log or Throw, Never Both”）**:
    - 在底层函数中发生异常时，若直接调用 `logger.error()` 并抛出 `raise Exception`，上层的 `except Exception` 捕获层会再次调用 `logger.exception()`，造成双重重复日志。
    - 底层函数应使用 `logger.get_log_msg()` 渲染多语言错误消息并封装入 `raise ValueError(...)` 向上抛出，实际日志输出由最顶层运行器（Runner）统一单次完成（详细实现示例请参见 [2.3 多语言日志消息字典第 6.3 节](../logger/03_multilingual_message_catalog_zh.md#63-异常处理最佳实践多语言国际化localization与防止双重日志double-logging)）。

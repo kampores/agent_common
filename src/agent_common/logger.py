@@ -167,13 +167,20 @@ class ProjectLogger:
     _error_counts_dict: dict[str, int] = {}
     _excluded_counts_dict: dict[str, int] = {}
 
-    def __init__(self, logger_name_str: str | logging.Logger | None = None, config_dir_path: str | Path | None = None):
+    def __init__(
+        self,
+        logger_name_str: str | logging.Logger | None = None,
+        config_dir_path: str | Path | None = None,
+        service_name_str: str = "",
+    ):
         """프로젝트 로거 어댑터 인스턴스를 생성하고 대상 로거 명칭을 바인딩합니다.
 
         :param logger_name_str: 생성/바인딩할 로거 식별 명칭 문자열 또는 래핑할 표준 logging.Logger 객체
         :param config_dir_path: 커스텀 설정 디렉터리 경로 (선택)
+        :param service_name_str: 서비스 식별 명칭 문자열 (선택, 기본값: "", 로그 템플릿 {service_name_str} 치환용)
         """
         self._config_loader: ConfigLoader | None = None
+        self.service_name_str: str = str(service_name_str) if service_name_str else ""
         self.success_count_int: int = 0
         self.failure_count_int: int = 0
         self.excluded_count_int: int = 0
@@ -358,6 +365,10 @@ class ProjectLogger:
         if not template_str or not isinstance(template_str, str):
             template_str = default_str or target_code_str
 
+        eff_service_name_str: str = getattr(self, "service_name_str", "")
+        if eff_service_name_str and "service_name_str" not in kwargs:
+            kwargs["service_name_str"] = eff_service_name_str
+
         if kwargs:
             try:
                 safe_kwargs_dict: dict[str, Any] = {
@@ -529,11 +540,12 @@ class ProjectLogger:
         self.reset_error_counts()
         self.reset_excluded_counts()
 
-    def get_log_id_description(self, log_id_str: str) -> str:
+    def get_log_id_description(self, log_id_str: str, service_name_str: str = "") -> str:
         """
         로그 ID(메시지 코드)에 대응하는 직관적인 설명 문자열을 logging_messages 설정으로부터 동적으로 조회하고 정제하여 반환합니다.
 
         :param log_id_str: 로그 메시지 식별 코드
+        :param service_name_str: 특정 서비스 명칭 오버라이드 (선택, 미지정 시 self.service_name_str 사용)
         :return: 정제된 설명 문자열 (미매핑 시 빈 문자열)
         """
         if not log_id_str:
@@ -555,24 +567,35 @@ class ProjectLogger:
             return ""
 
         import re
-        title_str: str = template_str.split(":")[0].strip()
+
+        # 1. () 소괄호 및 내부 부가 설명 제거 (사례 2 해결)
+        text_str: str = re.sub(r"\([^)]*\)", "", template_str)
+
+        # 2. 콜론(: / ：) 또는 문장 끝 마침표(. / 。)에서 절단 (사례 1, 4 해결 및 파일 확장자 .yml 등 보호)
+        parts_list: list[str] = re.split(r":|：|\.\s+|\。|\.$", text_str, maxsplit=1)
+        title_str: str = parts_list[0].strip()
+
+        # 3. [TAG] 대괄호 태그 제거
         if "[" in title_str:
             if title_str.startswith("[") and "]" in title_str:
                 closing_bracket_idx_int: int = title_str.find("]")
-                after_tag_str: str = title_str[closing_bracket_idx_int + 1 :]
-                if "[" in after_tag_str:
-                    title_str = title_str[: closing_bracket_idx_int + 1] + after_tag_str.split("[")[0]
-            else:
-                title_str = title_str.split("[")[0].strip()
+                after_tag_str: str = title_str[closing_bracket_idx_int + 1 :].strip()
+                if after_tag_str:
+                    title_str = after_tag_str
+                else:
+                    title_str = title_str[1:closing_bracket_idx_int]
+            title_str = re.sub(r"\[[^\]]*\]", "", title_str)
 
-        # 미치환 템플릿 변수({stage}, {ecs_key} 등) 제거
-        cleaned_str: str = re.sub(r"\{[^}]*\}", "", title_str)
+        # 4. service_name_str 바인딩 치환 (self.service_name_str 활용)
+        eff_service_name_str: str = service_name_str or getattr(self, "service_name_str", "")
+        if eff_service_name_str and "{service_name_str}" in title_str:
+            title_str = title_str.replace("{service_name_str}", eff_service_name_str)
 
-        # 괄호, 따옴표, 잉여 특수문자 및 연속 공백 정제
-        cleaned_str = re.sub(r"[\(\)\[\]\'\"]", "", cleaned_str)
-        cleaned_str = re.sub(r"\s+", " ", cleaned_str).strip(" -:,")
+        # 5. 따옴표 제거 및 공백 정제 ({} 플레이스홀더는 안전하게 보존)
+        title_str = re.sub(r"[\'\"`]", "", title_str)
+        title_str = re.sub(r"\s+", " ", title_str).strip(" -:,.。：")
 
-        return cleaned_str
+        return title_str
 
     def log_msg(
         self,
@@ -681,149 +704,7 @@ class ProjectLogger:
         self.logger.exception(msg_or_log_id_any, *args, stacklevel=stacklevel_int, extra=extra_dict, **kwargs)
         return str(msg_or_log_id_any)
 
-    def log_summary(
-        self,
-        task_name_str: str = "작업",
-        total_items_int: int = 0,
-        success_count_int: int = 0,
-        failure_count_int: int = 0,
-        excluded_count_int: int = 0,
-        start_time_float: float | None = None,
-        start_datetime_str: str | None = None,
-        total_bytes_int: int = 0,
-        error_counts_dict: dict[str, int] | None = None,
-        excluded_counts_dict: dict[str, int] | None = None,
-        extra_lines_list: list[str] | None = None,
-        tracker_obj: Any = None,
-    ) -> None:
-        """
-        작업 실행 메트릭 또는 ProgressTracker 객체를 기반으로 최종 결과 요약 리포트(Summary Report)를 생성하여 WARNING 레벨로 로깅합니다.
 
-        :param task_name_str: 작업 명칭 (요약 리포트 제목용)
-        :param total_items_int: 전체 처리 대상 건수
-        :param success_count_int: 처리 성공 건수
-        :param failure_count_int: 처리 실패 건수
-        :param excluded_count_int: 처리 제외(Skip) 건수
-        :param start_time_float: 작업 시작 타임스탬프 (미지정 시 현재 시간)
-        :param start_datetime_str: 작업 시작 일시 문자열 (YYYY-MM-DD HH:MM:SS)
-        :param total_bytes_int: 전송/처리된 총 바이트 수
-        :param error_counts_dict: 에러 코드별 발생 건수 딕셔너리 (미지정 시 로거 자동 집계 사용)
-        :param excluded_counts_dict: 제외 코드별 발생 건수 딕셔너리 (미지정 시 로거 자동 집계 사용)
-        :param extra_lines_list: 요약 블록에 추가할 커스텀 상세 정보 행 리스트
-        :param tracker_obj: 메트릭을 추출할 ProgressTracker 인스턴스 (지정 시 다른 메트릭 인자 자동 추출)
-        """
-        if tracker_obj is not None:
-            task_name_str = getattr(tracker_obj, "task_name_str", task_name_str)
-            total_items_int = getattr(tracker_obj, "total_items_int", total_items_int)
-            start_time_float = getattr(tracker_obj, "start_time_float", start_time_float)
-            start_datetime_str = getattr(tracker_obj, "start_datetime_str", start_datetime_str)
-            total_bytes_int = getattr(tracker_obj, "total_bytes_int", total_bytes_int)
-
-        effective_success_count_int: int = success_count_int or self.success_count_int
-        effective_failure_count_int: int = failure_count_int or self.failure_count_int
-        effective_excluded_count_int: int = excluded_count_int or self.excluded_count_int
-
-        import time
-        from agent_common.tool.date.date_time_utils import DateTimeUtils
-
-        effective_start_time_float: float = start_time_float if start_time_float is not None else time.time()
-        effective_start_datetime_str: str = start_datetime_str or DateTimeUtils.get_now_no_tz()
-        elapsed_float: float = time.time() - effective_start_time_float
-        end_datetime_str: str = DateTimeUtils.get_now_no_tz()
-
-        minutes_int: int = int(elapsed_float // 60)
-        seconds_float: float = elapsed_float % 60
-        time_display_str: str = f"{minutes_int}분 {seconds_float:.1f}초 ({elapsed_float:.2f}초)" if minutes_int > 0 else f"{elapsed_float:.2f}초"
-
-        # '전체 = 성공 + 실패 + 제외' 수치 정합성 자동 보장
-        calculated_sum_items_int: int = effective_success_count_int + effective_failure_count_int + effective_excluded_count_int
-        effective_total_items_int: int = calculated_sum_items_int if calculated_sum_items_int > 0 else total_items_int
-
-        success_ratio_float: float = (effective_success_count_int / effective_total_items_int * 100.0) if effective_total_items_int > 0 else 0.0
-        failure_ratio_float: float = (effective_failure_count_int / effective_total_items_int * 100.0) if effective_total_items_int > 0 else 0.0
-        excluded_ratio_float: float = (effective_excluded_count_int / effective_total_items_int * 100.0) if effective_total_items_int > 0 else 0.0
-
-        rate_float: float = effective_total_items_int / max(0.001, elapsed_float)
-
-        from agent_common.table_formatter import TableFormatter
-
-        table_headers_list: list[str] = ["구분", "세부 항목", "내용 / 수치", "비고"]
-        table_data_rows_list: list[list[str]] = [
-            ["실행 시간", "작업 일시", f"{effective_start_datetime_str} ~ {end_datetime_str}", time_display_str],
-            ["처리 건수", "전체 건수 (Total)", f"{effective_total_items_int:,} 건", "전체 = 성공 + 실패 + 제외"],
-            ["", "├─ 처리 성공", f"{effective_success_count_int:,} 건", f"{success_ratio_float:.1f}%"],
-            ["", "├─ 처리 실패", f"{effective_failure_count_int:,} 건", f"{failure_ratio_float:.1f}%"],
-            ["", "└─ 처리 제외", f"{effective_excluded_count_int:,} 건", f"{excluded_ratio_float:.1f}%"],
-            ["처리 성능", "평균 처리 속도", f"{rate_float:.2f} items/sec", ""],
-        ]
-
-        if total_bytes_int > 0:
-            megabytes_value_float: float = total_bytes_int / (1024 * 1024)
-            megabytes_rate_float: float = megabytes_value_float / max(0.001, elapsed_float)
-            table_data_rows_list.append(["", "총 전송 데이터량", f"{megabytes_value_float:.2f} MB", f"평균 {megabytes_rate_float:.2f} MB/s"])
-
-        if extra_lines_list:
-            for extra_line_str in extra_lines_list:
-                cleaned_line_str = extra_line_str.strip().lstrip("-").strip()
-                if ":" in cleaned_line_str:
-                    item_key_str, item_value_str = cleaned_line_str.split(":", 1)
-                    item_key_str = item_key_str.strip()
-                    item_value_str = item_value_str.strip()
-                    table_data_rows_list.append(["상세 정보", item_key_str, item_value_str, ""])
-                else:
-                    table_data_rows_list.append(["상세 정보", cleaned_line_str, "", ""])
-
-        formatted_table_rows_list: list[str] = TableFormatter.format_markdown_table(
-            headers_list=table_headers_list,
-            rows_list=table_data_rows_list,
-            alignments_list=[":---", ":---", ":---", ":---"],
-        )
-
-        table_lines_list: list[str] = [
-            "=" * 80,
-            f"                    [{task_name_str} 작업 결과 요약 표]",
-            "=" * 80,
-        ]
-        table_lines_list.extend(formatted_table_rows_list)
-        table_lines_list.append("=" * 80)
-
-        # 실패 또는 제외 건수가 존재할 경우, 표 하단에 원인 분석용 세부 내역 목록 보존 (표 내부는 깔끔하게 유지)
-        effective_errors_dict: dict[str, int] = error_counts_dict if error_counts_dict is not None else self.error_counts_dict
-        effective_excluded_dict: dict[str, int] = excluded_counts_dict if excluded_counts_dict is not None else self.excluded_counts_dict
-
-        detail_lines_list: list[str] = []
-        if effective_errors_dict:
-            total_errors_int: int = sum(effective_errors_dict.values())
-            detail_lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {total_errors_int:,}건):")
-            for error_log_id_str, error_count_int in sorted(effective_errors_dict.items(), key=lambda x: (-x[1], x[0])):
-                description_str: str = self.get_log_id_description(error_log_id_str)
-                if description_str:
-                    detail_lines_list.append(f"  * {error_log_id_str} ({description_str}): {error_count_int:,} 건")
-                else:
-                    detail_lines_list.append(f"  * {error_log_id_str}: {error_count_int:,} 건")
-        elif effective_failure_count_int > 0:
-            detail_lines_list.append(f"- 예외/오류 발생 세부 내역 (총 {effective_failure_count_int:,}건):")
-            detail_lines_list.append(f"  * 기타 미분류 실패: {effective_failure_count_int:,} 건")
-
-        if effective_excluded_dict:
-            total_excluded_items_int: int = sum(effective_excluded_dict.values())
-            detail_lines_list.append(f"- 처리 제외 세부 내역 (총 {total_excluded_items_int:,}건):")
-            for excluded_log_id_str, excluded_count_int in sorted(effective_excluded_dict.items(), key=lambda x: (-x[1], x[0])):
-                description_str = self.get_log_id_description(excluded_log_id_str)
-                if description_str:
-                    detail_lines_list.append(f"  * {excluded_log_id_str} ({description_str}): {excluded_count_int:,} 건")
-                else:
-                    detail_lines_list.append(f"  * {excluded_log_id_str}: {excluded_count_int:,} 건")
-        elif effective_excluded_count_int > 0:
-            detail_lines_list.append(f"- 처리 제외 세부 내역 (총 {effective_excluded_count_int:,}건):")
-            detail_lines_list.append(f"  * 기타 미분류 제외: {effective_excluded_count_int:,} 건")
-
-        if detail_lines_list:
-            table_lines_list.extend(detail_lines_list)
-            table_lines_list.append("=" * 80)
-
-        summary_block_str: str = "\n" + "\n".join(table_lines_list)
-        self.warning("execution_summary_report", summary_str=summary_block_str)
 
     @staticmethod
     def log_request_result(

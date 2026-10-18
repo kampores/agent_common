@@ -38,6 +38,7 @@ APP_DEFAULT_SCHEMA_DICT: dict[str, Any] = {
             "TableFormatter_bool": False,
             "ToolParser_bool": False,
             "LlmClient_bool": False,
+            "StandardSummaryReporter_bool": False,
         },
     },
     "templates": {
@@ -719,16 +720,20 @@ class ConfigLoader:
         if global_lang_str:
             return global_lang_str
 
-        # 로깅 전용 환경변수 검사 (POSIX 로케일 문자열 분리 지원)
+        # 로깅 전용 환경변수 검사 (BCP 47 표준 하이픈 및 로케일 문자열 분리 지원)
         for env_key_str in ("AGENT_LOG_LANGUAGE", "LOGGING_LANGUAGE"):
             env_val_str: Optional[str] = os.environ.get(env_key_str)
             if env_val_str:
-                first_part_str: str = env_val_str.split(".")[0].split("_")[0].strip().upper()
+                first_part_str: str = env_val_str.split(".")[0].split("-")[0].split("_")[0].strip().upper()
                 if first_part_str in Localizer.LANGUAGE_ALIAS_DICT:
                     return Localizer.LANGUAGE_ALIAS_DICT[first_part_str]
 
-        # 설정 파일 내 logging.language_str 정규 키 검사 (퍼지 매칭 금지: Rule 1.5.3)
-        if isinstance(settings_dict, dict):
+        # 설정 파일 내 logging.language_str 정규 키 검사 (캐시 오염 방지를 위해 저장된 원래 설정 우선 조회)
+        raw_cfg_lang_str: Optional[str] = getattr(self, "_raw_configured_logging_language_str", None)
+        if raw_cfg_lang_str:
+            return Localizer.normalize_language(raw_cfg_lang_str)
+
+        if not hasattr(self, "_raw_configured_logging_language_str") and isinstance(settings_dict, dict):
             logging_sec_dict: Any = settings_dict.get("logging")
             if isinstance(logging_sec_dict, dict):
                 cfg_lang_any: Any = logging_sec_dict.get("language_str")
@@ -781,23 +786,41 @@ class ConfigLoader:
                 self._deep_merge(settings, mapping)
 
         # 4. 언어 판별 (KO, EN, ZH, JA, 기본값: KO)
+        # 캐시 오염 방지를 위해 원래 YAML 파일에서 정의되었던 logging.language_str 원본 값을 먼저 보존
+        raw_configured_lang_str: Optional[str] = None
+        if "logging" in settings and isinstance(settings["logging"], dict):
+            lang_candidate_any: Any = settings["logging"].get("language_str")
+            if isinstance(lang_candidate_any, str) and lang_candidate_any.strip():
+                raw_configured_lang_str = lang_candidate_any.strip()
+        self._raw_configured_logging_language_str = raw_configured_lang_str
+
         selected_lang_str: str = self._resolve_logging_language(settings)
         if "logging" not in settings or not isinstance(settings["logging"], dict):
             settings["logging"] = {}
         settings["logging"]["language"] = selected_lang_str
         settings["logging"]["language_str"] = selected_lang_str
 
-        # 5. 선택된 언어에 부합하는 logging_messages 템플릿 사전 병합
-        # 5-1. agent_common 패키지 기본 템플릿 로드
-        base_msg_file = Localizer.resolve_localized_file(
-            dir_path=common_config_dir,
-            prefix_str="logging_messages",
-            language_str=selected_lang_str,
-        )
-        if base_msg_file and base_msg_file.exists():
-            base_mapping = self._load_yaml_mapping(base_msg_file)
-            self._deep_merge(settings, base_mapping)
-            loaded_files.append(f"{base_msg_file.name}:{list(base_mapping.keys())}")
+        # 5. 선택된 언어에 부합하는 다국어(localize) 리소스 사전 병합
+        # 5-1. agent_common 패키지 기본 다국어 리소스 로드
+        localize_dir: Path = self.PACKAGE_DIR / "localize"
+        lang_sub_dir: Path = localize_dir / selected_lang_str.lower()
+        if lang_sub_dir.exists() and lang_sub_dir.is_dir():
+            for path in sorted(lang_sub_dir.glob("*.yml")):
+                mapping = self._load_yaml_mapping(path)
+                self._deep_merge(settings, mapping)
+                loaded_files.append(f"{path.name}:{list(mapping.keys())}")
+        else:
+            # 단일 디렉토리 리소스 탐색 호환
+            search_dir: Path = localize_dir if localize_dir.exists() else common_config_dir
+            base_msg_file = Localizer.resolve_localized_file(
+                dir_path=search_dir,
+                prefix_str="logging_messages",
+                language_str=selected_lang_str,
+            )
+            if base_msg_file and base_msg_file.exists():
+                base_mapping = self._load_yaml_mapping(base_msg_file)
+                self._deep_merge(settings, base_mapping)
+                loaded_files.append(f"{base_msg_file.name}:{list(base_mapping.keys())}")
 
         # 5-2. 프로젝트 고유 logging_messages 템플릿 오버라이드 (해당 언어 우선 매핑)
         if project_logging_msg_files:

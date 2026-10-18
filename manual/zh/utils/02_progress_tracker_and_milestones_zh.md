@@ -40,12 +40,17 @@ flowchart TD
 
 ## 3. 核心配置与参数规范
 
-可在 `config.yml` 的 `progress_tracker` 节点灵活调节：
+`ProgressTracker` 彻底消除硬编码，通过多语言消息字典（`agent_common/localize/{lang}/progress_tracker_{lang}.yml`）及 `config.yml` 的 `progress_tracker` 节点动态管理运行参数与显示标签。激活语言子目录下的所有 `.yml` 文件均由 `ConfigLoader.get_settings()` 自动发现并深度合并加载。
 
 ```yaml
 progress_tracker:
-  interval_percent_int: 10       # 里程碑告警步长间隔 (单位: %)
-  default_task_name_str: "任务"  # 默认任务名称文本
+  interval_percent_int: 10                  # 里程碑告警步长间隔 (单位: %)
+  default_task_name_str: "任务"              # 默认任务名称文本
+  milestone_title_suffix_str: "进度里程碑"   # 里程碑标题后缀
+  progress_prefix_str: "进度"               # 进度标签前缀
+  speed_prefix_str: "速度"                  # 速度标签前缀
+  items_unit_str: "件"                      # 处理条目单位
+  eta_prefix_str: "预计剩余时间"            # 预计剩余时间(ETA)前缀
 ```
 
 ### 3.1. 构造函数 (`__init__`)

@@ -52,6 +52,9 @@ class LlmClient:
     # 설정 파일 자동 생성·보정 시 기록할 이 클래스의 기본 설정 스키마
     DEFAULT_SCHEMA_DICT: dict[str, Any] = APP_DEFAULT_SCHEMA_DICT
 
+    # 프로세스 전역 로컬 GGUF 모델 인스턴스 캐시
+    _LOCAL_LLMS_DICT: dict[str, Any] = _LOCAL_LLMS_DICT
+
     # 마지막 추론 생성에 실제로 사용된 LLM 경로 종류 ("external_llm" 또는 "local_llm")
     last_generated_by_str: str | None
 
@@ -342,7 +345,7 @@ class LlmClient:
         verbose_env_str: str | None = os.getenv("LOCAL_LLM_VERBOSE")
         verbose_bool: bool = (verbose_env_str.lower() == "true") if verbose_env_str is not None else self.model_config.verbose_bool
 
-        llm_obj = _get_local_llm(
+        llm_obj = self._get_local_llm(
             model_path_str=str(resolved_model_path),
             n_ctx_int=n_ctx_int,
             n_threads_int=n_threads_int,
@@ -389,46 +392,45 @@ class LlmClient:
         """
         return os.getenv(self.model_config.api_key_env_str) or os.getenv("EXTERNAL_LLM_API_KEY")
 
+    def _get_local_llm(
+        self,
+        model_path_str: str,
+        n_ctx_int: int,
+        n_threads_int: int,
+        n_batch_int: int,
+        n_gpu_layers_int: int,
+        verbose_bool: bool,
+    ) -> Any:
+        """GGUF 모델을 lazy-load하고 프로세스 안에서 재사용합니다.
 
-def _get_local_llm(
-    model_path_str: str,
-    n_ctx_int: int,
-    n_threads_int: int,
-    n_batch_int: int,
-    n_gpu_layers_int: int,
-    verbose_bool: bool
-) -> Any:
-    """GGUF 모델을 lazy-load하고 프로세스 안에서 재사용합니다.
+        :param model_path_str: GGUF 모델 파일 경로 문자열
+        :param n_ctx_int: 최대 컨텍스트 토큰 크기
+        :param n_threads_int: CPU 멀티스레딩 스레드 수
+        :param n_batch_int: 배치 토큰 크기
+        :param n_gpu_layers_int: GPU 가속 레이어 수
+        :param verbose_bool: 상세 디버그 로깅 활성화 여부
+        :return: 초기화된 Llama 모델 인스턴스
+        :raises LlmInferenceError: llama_cpp 모듈 미설치 또는 모델 파일 미존재 시 발생
+        """
+        if model_path_str in self._LOCAL_LLMS_DICT:
+            return self._LOCAL_LLMS_DICT[model_path_str]
 
-    :param model_path_str: GGUF 모델 파일 경로 문자열
-    :param n_ctx_int: 최대 컨텍스트 토큰 크기
-    :param n_threads_int: CPU 멀티스레딩 스레드 수
-    :param n_batch_int: 배치 토큰 크기
-    :param n_gpu_layers_int: GPU 가속 레이어 수
-    :param verbose_bool: 상세 디버그 로깅 활성화 여부
-    :return: 초기화된 Llama 모델 인스턴스
-    :raises LlmInferenceError: llama_cpp 모듈 미설치 또는 모델 파일 미존재 시 발생
-    """
-    global _LOCAL_LLMS_DICT
-    if model_path_str in _LOCAL_LLMS_DICT:
-        return _LOCAL_LLMS_DICT[model_path_str]
+        try:
+            from llama_cpp import Llama
+        except ImportError as exc:
+            msg_str: str = self.logger.get_log_msg("ERROR", "config_load_failed", error_str="llama-cpp-python 패키지가 설치되어 있지 않습니다.")
+            raise LlmInferenceError(msg_str) from exc
 
-    try:
-        from llama_cpp import Llama
-    except ImportError as exc:
-        msg_str = ProjectLogger.get_log_msg("ERROR", "config_load_failed", error_str="llama-cpp-python 패키지가 설치되어 있지 않습니다.")
-        raise LlmInferenceError(msg_str) from exc
+        if not os.path.exists(model_path_str):
+            msg_str: str = self.logger.get_log_msg("ERROR", "config_file_not_found", path_str=model_path_str)
+            raise LlmInferenceError(msg_str)
 
-    if not os.path.exists(model_path_str):
-        msg_str = ProjectLogger.get_log_msg("ERROR", "config_file_not_found", path_str=model_path_str)
-        raise LlmInferenceError(msg_str)
-
-    _LOCAL_LLMS_DICT[model_path_str] = Llama(
-        model_path=model_path_str,
-        n_ctx=n_ctx_int,
-        n_threads=n_threads_int,
-        n_batch=n_batch_int,
-        n_gpu_layers=n_gpu_layers_int,
-        verbose=verbose_bool,
-    )
-    return _LOCAL_LLMS_DICT[model_path_str]
+        self._LOCAL_LLMS_DICT[model_path_str] = Llama(
+            model_path=model_path_str,
+            n_ctx=n_ctx_int,
+            n_threads=n_threads_int,
+            n_batch=n_batch_int,
+            n_gpu_layers=n_gpu_layers_int,
+            verbose=verbose_bool,
+        )
+        return self._LOCAL_LLMS_DICT[model_path_str]

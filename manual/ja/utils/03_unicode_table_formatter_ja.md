@@ -107,5 +107,5 @@ print("\n".join(table_lines))
 
 ## 6. ベストプラクティス
 
-1. **`ProjectLogger.log_summary()` との連携**:
-   - `ProjectLogger.log_summary()` も内部で `TableFormatter` を使用して集計結果を出力しているため、運用ログ全体で美しいレイアウトが維持されます。
+1. **`StandardSummaryReporter` との連携**:
+   - `agent_common.summary_reporter.StandardSummaryReporter` も内部で `TableFormatter` を使用して集計結果を出力しているため、運用ログ全体で美しいレイアウトが維持されます。

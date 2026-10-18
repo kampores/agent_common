@@ -40,12 +40,17 @@ flowchart TD
 
 ## 3. Configuration Schema & Specifications
 
-`ProgressTracker` references settings configured under the `progress_tracker` section in `config.yml`:
+`ProgressTracker` dynamically controls operational parameters and display labels via multilingual localized message files (`agent_common/localize/{lang}/progress_tracker_{lang}.yml`) and the `progress_tracker` section in `config.yml`. All `.yml` files in the active locale directory are automatically discovered and deep-merged by `ConfigLoader.get_settings()`.
 
 ```yaml
 progress_tracker:
-  interval_percent_int: 10       # Milestone warning interval (percentage %)
-  default_task_name_str: "Task"  # Default task label
+  interval_percent_int: 10                  # Milestone warning interval (percentage %)
+  default_task_name_str: "Task"             # Default task label
+  milestone_title_suffix_str: "Progress Milestone" # Milestone title suffix
+  progress_prefix_str: "Progress"           # Progress label prefix
+  speed_prefix_str: "Speed"                 # Speed label prefix
+  items_unit_str: "items"                   # Processed items unit
+  eta_prefix_str: "ETA"                     # Estimated time of arrival prefix
 ```
 
 ### 3.1. Constructor (`__init__`)

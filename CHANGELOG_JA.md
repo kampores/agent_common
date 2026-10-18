@@ -2,6 +2,41 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.101 (2026-10-16)
+
+- **`Localizer` および `ConfigLoader` の BCP 47 標準ハイフン ('-') ロケール正規化対応 (規則 1.1.3, 1.5.3, 4.2 準拠)**:
+  - `Localizer.normalize_language`: BCP 47 標準ハイフン (`-`) 区切り文字およびサブタグ/エンコーディング分離を適用し、`"en-US"`, `"ko-KR"`, `"zh-CN"`, `"ja-JP"` などの標準ロケールを主要言語コードに正確に正規化。不要な `str()` 防御的型変換を排除 (規則 1.5.3 準拠)。
+  - `Localizer.resolve_language`: 環境変数評価時のハイフン (`-`) 分離に対応し、コンテナ環境変数や標準ロケール設定時のデフォルト言語ロールバック問題を解消。
+  - `ConfigLoader._resolve_logging_language`: ロギング専用環境変数のハイフン (`-`) 分離に対応。
+- **`Localizer` の大文字サフィックス(`_KO.yml`, `_EN.yml`等)および言語別サブディレクトリ(`localize/{lang}/`)リソース探索対応 (規則 1.4.4, 1.4.5, 4.2 準拠)**:
+  - `Localizer.resolve_localized_file`: 大文字小文字を区別しない `stem` 比較により Linux/Windows 両環境で大文字ファイル名も漏れなく解決。言語別サブディレクトリ(`localize/{lang}/`)の探索もサポート。
+- **多言語リソース構造化とコンポーネント別分離 (`localize/{ko,en,ja,zh}/`) (規則 1.1.1, 1.1.2, 4.2 準拠)**:
+  - `agent_common/src/agent_common/localize/` 配下に言語別ディレクトリ (`ko`, `en`, `ja`, `zh`) を構築し、汎用ログテンプレート (`logging_messages_{lang}.yml`) と進捗トラッカー設定/ラベル (`progress_tracker_{lang}.yml`) を独立ファイルとして完全分離。
+  - `ConfigLoader.get_settings()`: 有効な言語フォルダ内のすべての `.yml` ファイルを自動走査してディープマージ (deep merge) 実行。
+  - `pyproject.toml`: ホイール配布パッケージに `localize/**/*.yml` が完全同梱されるよう package-data 設定を更新。
+- **`ProgressTracker` のハードコード完全排除と外部多言語設定連携 (規則 1.1.1, 1.1.2, 1.4.2, 4.2 準拠)**:
+  - ソースコード内のハードコード辞書 (`DEFAULT_TASK_NAMES_DICT`, `PROGRESS_LABELS_DICT`) を全面撤廃。
+  - `config.progress_tracker` の動的属性 (`default_task_name_str`, `milestone_title_str`, `progress_label_str`, `speed_label_str`, `unit_str`, `eta_label_str`) を直接参照し、言語設定に応じて動的切替。
+- **`ProjectLogger.get_log_id_description()` の多言語テンプレートラベル解析改善 (規則 1.1.3, 1.5.3, 4.2 準拠)**:
+  - 丸括弧 `()` および内部付加説明の事前除去により、途中のコロンによる誤切断を防止。
+  - コロン (`:`, `：`) および正規終止符 (`\.\s+`, `\.$`, `。`) 基準での切断により、ファイル拡張子 (`config.yml`) の誤判定を防止し簡潔なラベルを生成。
+  - 多言語メッセージカタログ (`logging_messages_{ko,en,ja,zh}.yml`) の 4 大エラーテンプレートの区切り文字を標準化 (韓国語/英語: `. `、日本語/中国語: `。`) することで言語固有のハードコード正規表現を撤廃し、角括弧タグ (`[...]`) のクレンジングおよび未置換プレースホルダー `{}` を保持。
+- **`ProjectLogger` の任意 `service_name_str` インスタンスバインディング対応 (規則 1.4.2, 1.6.1, 4.2 準拠)**:
+  - コンストラクタに任意 (Optional) パラメータ `service_name_str: str = ""` を追加し、特定サービス専用ロガーにサービス名を 1 回バインディング可能に。
+  - `get_log_msg()` および `get_log_id_description()` で `self.service_name_str` が自動置換され、自然な要約ラベル文脈を提供。
+- **標準作業結果サマリーリポーター (`StandardSummaryReporter`) の新設と `ProjectLogger` の軽量化分離 (規則 1.1.1, 1.4.1, 1.4.2, 1.7.5, 4.2 準拠)**:
+  - `ProjectLogger`: 単一責任の原則 (SRP) に基づき、ログ記録およびメトリクス集計 (`record_result`, `record_excluded`, `get_result_counts`, `get_error_counts`) に専念するよう軽量化リファクタリング。
+  - `StandardSummaryReporter`: すべてのパイプラインで普遍的に求められる「全体 = 成功 + 失敗 + 除外 (Skip)」3大分類と詳細エラー内訳を 80 列標準テーブルで生成・出力する専用独立ユーティリティクラスを新設。
+  - 多言語ラベル・テンプレートの完全外部化: `agent_common/src/agent_common/localize/{ko,en,ja,zh}/summary_reporter_{lang}.yml` カタログと連携し、4言語 (日本語、韓国語、英語、中国語) の完全サポートとソース内ハードコードの完全排除 (規則 1.1.1 準拠) を実現。
+  - 東アジア全角文字幅を考慮した `TableFormatter` による 80 列高精度縦線位置合わせと、`ProgressTracker` 連携 (所要時間、処理速度、転送レート) に完全対応。
+  - 1行呼び出しの `log_summary(logger_obj, ...)` および整形文字列取得 `build_summary_report(...)` を提供。従来の実装は `backup/log_summary/log_summary_backup.py` に安全バックアップ。
+- **`LlmClient` のインスタンスロガー連携とモデルキャッシュ構造統合 (規則 1.4.1, 1.5.4, 4.2 準拠)**:
+  - ヘルパー関数 `_get_local_llm` をインスタンスメソッド `self._get_local_llm(...)` に統合し、クラス属性 `LlmClient._LOCAL_LLMS_DICT` でキャッシュ管理。`self.logger` を直接使用。
+- **`ConfigLoader` の環境変数解除時における設定復元とキャッシュ汚染防止 (規則 1.3.1, 1.5.3, 4.2 準拠)**:
+  - `_raw_configured_logging_language_str` を保存し、一時的な環境変数解除時に本来の設定ファイル言語へ正確に復元。
+- **`README.md` の使用例における架空パラメータ訂正 (規則 1.5.3, 4.2 準拠)**:
+  - 存在しない `item_name_str="파일"` および非推奨 `log_summary()` を正規の `task_name_str="파일 처리"` および `tracker.update(...)` に訂正。
+
 ### v0.4.100 (2026-10-12)
 
 - **多言語メッセージカタログの英語テンプレートキーの誤記修正 (ルール 4.2 準拠)**:

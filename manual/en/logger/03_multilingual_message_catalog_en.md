@@ -1,8 +1,8 @@
 # 2.3. Multilingual Message Catalog & Code-Based Logging (`logging_messages_*.yml`, `log_msg`)
 
 > **Module**: `agent_common.logger.ProjectLogger`  
-> **Key Methods**: `ProjectLogger.get_log_msg()`, `ProjectLogger.log_msg()`, `ProjectLogger.set_language()`, `get_log_msg()`  
-> **Catalog Files**: `agent_common/config/logging_messages_ko.yml`, `logging_messages_en.yml`, `logging_messages_zh.yml`, `logging_messages_ja.yml`
+> **Key Methods**: `ProjectLogger.get_log_msg()`, `ProjectLogger.log_msg()`, `ProjectLogger.get_log_id_description()`, `get_log_msg()`  
+> **Catalog Files**: `agent_common/src/agent_common/localize/{ko,en,zh,ja}/logging_messages_{lang}.yml`
 
 ---
 
@@ -14,7 +14,7 @@ Hardcoding log messages directly inside application code creates several challen
 2. **Global Team Operations**: Multinational operations centers (NOCs) and global engineering teams require logs in their preferred language (e.g. English vs Korean).
 3. **Lack of Standard Metrics**: Free-form text messages make aggregation, automated alerts, and parsing fragile.
 
-`ProjectLogger` addresses these concerns by decoupling message text from application code through an **external message catalog** with seamless **runtime language switching (KO ⇄ EN)**.
+`ProjectLogger` addresses these concerns by decoupling message text from application code through an **external message catalog** with seamless **runtime language switching (KO ⇄ EN ⇄ JA ⇄ ZH)**.
 
 ---
 
@@ -23,7 +23,7 @@ Hardcoding log messages directly inside application code creates several challen
 ```mermaid
 flowchart TD
     A["logger.info('task_start', task_name='sync')"] --> B{"Resolve Language"}
-    B -->|"KO / EN / ZH / JA"| C["logging_messages_*.yml"]
+    B -->|"KO / EN / ZH / JA"| C["localize/{lang}/logging_messages_{lang}.yml"]
     
     C --> E["_search_template_in_level(level, code)"]
     E --> F{"Found in Level?"}
@@ -43,7 +43,9 @@ flowchart TD
 
 ## 3. Catalog Structure
 
-### 3.1. English Catalog (`agent_common/config/logging_messages_en.yml`)
+Message catalog files are modularized per language under `agent_common/src/agent_common/localize/{lang}/`.
+
+### 3.1. English Catalog (`agent_common/src/agent_common/localize/en/logging_messages_en.yml`)
 
 ```yaml
 logging_messages:
@@ -81,18 +83,28 @@ safe_kwargs_dict = {
 ### 4.3. Dynamic Runtime Language Switching
 Supports in-process language switching without restarts:
 
-- Class method: `ProjectLogger.set_language("EN")`
-- Instance setter: `logger.language_set("EN")`
-- Getter property: `logger.language`
+- Global setting: `Localizer.set_global_language("EN")`
+- ConfigLoader property: `config_loader.language_str = "EN"`
+- Current language getter: `config_loader.language_str` (returns `"EN"`, `"KO"`, `"JA"`, `"ZH"`)
 
 The supported language codes are `KO`, `EN`, `ZH`, and `JA`. The log language is decided in this order:
 
-1. The value set with `ProjectLogger.set_language()` or `ConfigLoader.set_language()`
-2. The first of the environment variables `AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`, `AGENT_LANGUAGE` that has a value
+1. Value set via `ConfigLoader.language_str` or `Localizer.set_global_language()`
+2. First present environment variable among `AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`, `AGENT_LANGUAGE`, `APP_LANGUAGE`, `LANG` (with BCP 47 hyphen locale normalization)
 3. `logging.language_str` in `config.yml`
-4. The default language `KO`
+4. Default language `KO`
 
 For language code normalization rules and per-language file lookup, see [8.1. Language Code Normalization & Localized Resource Lookup (`Localizer`)](../localizer/01_language_codes_and_resource_lookup_en.md).
+
+### 4.4. Service Context Auto-Injection via `service_name_str`
+When instantiating `ProjectLogger(name_str, service_name_str="")`, providing the optional `service_name_str` parameter permanently binds the service name to the logger instance.
+Calls to `get_log_msg()` and `get_log_id_description()` automatically substitute `{service_name}` and `{service_name_str}`:
+
+```python
+logger = ProjectLogger("BqPipeline", service_name_str="BigQuery")
+logger.error("connection_failed", error_msg="Timeout")
+# -> "❌ Failed to connect to BigQuery. (Reason: Timeout)"
+```
 
 ---
 
@@ -103,7 +115,7 @@ For language code normalization rules and per-language file lookup, see [8.1. La
 ```python
 from agent_common.logger import ProjectLogger
 
-logger = ProjectLogger("MigrationService")
+logger = ProjectLogger("MigrationService", service_name_str="Cloud_Storage")
 
 # 1. Log with message code and template kwargs
 logger.info("task_start", task_name="Cloud_Data_Sync", target_count=50000)
@@ -117,17 +129,18 @@ logger.info(
     percent=50.0,
 )
 
-# 3. Error logging with automatic failure counting & traceback preservation
+# 3. Error logging with automatic service_name interpolation
 try:
     raise TimeoutError("Endpoint unreachable")
 except Exception as e:
-    logger.exception("connection_failed", service_name="Cloud_Storage", error_msg=str(e))
+    logger.exception("connection_failed", error_msg=str(e))
 ```
 
 ### 5.2. Runtime Language Switching
 
 ```python
 from agent_common.logger import ProjectLogger
+from agent_common import Localizer
 
 logger = ProjectLogger("InternationalBatch")
 
@@ -136,7 +149,7 @@ logger.info("task_start", task_name="SyncJob", target_count=100)
 # Output: [INFO] 🚀 [SyncJob] 작업이 시작되었습니다. (대상: 100건)
 
 # Switch to English
-ProjectLogger.set_language("EN")
+Localizer.set_global_language("EN")
 
 logger.info("task_start", task_name="SyncJob", target_count=100)
 # Output: [INFO] 🚀 [SyncJob] task has started. (Targets: 100 items)

@@ -2,6 +2,43 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.101 (2026-10-16)
+
+- **`Localizer` 및 `ConfigLoader` BCP 47 표준 하이픈('-') 로케일 정규화 지원 (규칙 1.1.3, 1.5.3, 4.2 준수)**:
+  - `Localizer.normalize_language`: BCP 47 표준 하이픈(`-`) 구분자 및 서브태그/인코딩 분리 로직을 적용하여 `"en-US"`, `"ko-KR"`, `"zh-CN"`, `"ja-JP"` 등 실무 표준 로케일 문자열 유입 시 주 언어 코드로 정확하게 정규화되도록 개선. `str()` 방어적 우향 형변환 제거(규칙 1.5.3 준수).
+  - `Localizer.resolve_language`: 환경변수(`AGENT_LANGUAGE`, `APP_LANGUAGE`, `LANGUAGE`, `LANG`) 평가 시 하이픈(`-`) 구분자 분리를 지원하여 표준 HTTP 헤더 및 컨테이너 환경변수 유입 시 기본 언어 롤백 결함 해소.
+  - `ConfigLoader._resolve_logging_language`: 로깅 전용 환경변수(`AGENT_LOG_LANGUAGE`, `LOGGING_LANGUAGE`) 해석 시 하이픈(`-`) 구분자 분리를 지원하여 로깅 언어 결정 정합성 보장.
+- **`Localizer` 대문자 접미사(`_KO.yml`, `_EN.yml` 등) 및 하위 디렉터리(`localize/{lang}/`) 리소스 파일 탐색 지원 (규칙 1.4.4, 1.4.5, 4.2 준수)**:
+  - `Localizer.resolve_localized_file`: 기존 개별 파일 존재 여부 순차 확인 로직을 `resolve_localized_path_from_list` 공통 위임 구조로 리팩토링. 파일명의 소문자 `stem` 비교 방식을 적용하여 Linux 및 Windows 환경 모두에서 대문자 접미사 리소스 파일도 누락 없이 탐색되도록 보장하고 중복 코드 18라인 축소. 또한 언어별 하위 디렉터리(`localize/{lang}/`) 리소스 탐색을 지원.
+- **다국어 리소스 구조화 및 컴포넌트별 분리 (`localize/{ko,en,ja,zh}/`) (규칙 1.1.1, 1.1.2, 4.2 준수)**:
+  - `agent_common/src/agent_common/localize/` 하위에 언어별 디렉터리(`ko`, `en`, `ja`, `zh`)를 구축하고, 범용 로그 메시지(`logging_messages_{lang}.yml`)와 진행률 추적기 전용 설정/라벨(`progress_tracker_{lang}.yml`)을 독립 파일로 완전 분리.
+  - `ConfigLoader.get_settings()`: 활성 언어 폴더 내의 모든 `.yml` 파일을 자동 탐색하여 깊은 병합(deep merge)함으로써, 로그 템플릿과 컴포넌트 설정을 깔끔하게 분리 관리하도록 확장.
+  - `pyproject.toml`: 휠 패키징 시 `localize/**/*.yml`이 온전히 포함되도록 패키지 데이터 명세 갱신.
+- **`ProgressTracker` 하드코딩 완전 제거 및 외부 다국어 설정 연동 (규칙 1.1.1, 1.1.2, 1.4.2, 4.2 준수)**:
+  - 소스 코드 내부에 존재하던 다국어 사전 상수(`DEFAULT_TASK_NAMES_DICT`, `PROGRESS_LABELS_DICT`)를 전면 삭제.
+  - `config.progress_tracker`의 동적 속성(`default_task_name_str`, `milestone_title_str`, `progress_label_str`, `speed_label_str`, `unit_str`, `eta_label_str`)을 직접 참조하여 언어 설정에 따라 실시간 전환되도록 개선.
+- **`ProjectLogger.get_log_id_description()` 다국어 템플릿 정제 알고리즘 개선 (규칙 1.1.3, 1.5.3, 4.2 준수)**:
+  - 소괄호 `()` 내용 사전 제거를 통해 `(Path: ...)` 등 부가설명 내 콜론으로 인한 조기 절단 방지.
+  - 콜론(`:`, `：`) 및 정규 마침표(`\.\s+`, `\.$`, `。`) 기준 절단 로직을 도입하여 파일 확장자(`config.yml`) 오인 절단 방지 및 장황한 문장의 헤더 정제.
+  - 다국어 메시지 카탈로그(`logging_messages_{ko,en,ja,zh}.yml`)의 4대 에러 템플릿 구두점 표준화(한국어/영어: `. `, 일본어/중국어: `。`)를 통해 특정 언어 하드코딩 정규식을 제거하고, 대괄호 태그(`[...]`) 정제 및 미치환 플레이스홀더 `{}` 보존.
+- **`ProjectLogger` 선택적 `service_name_str` 인스턴스 바인딩 지원 (규칙 1.4.2, 1.6.1, 4.2 준수)**:
+  - 생성자에 선택적(Optional) `service_name_str: str = ""` 파라미터를 추가하여 특정 서비스(BigQuery, GCS 등) 전용 인스턴스에 서비스명을 바인딩 지원.
+  - `get_log_msg()` 및 `get_log_id_description()`에서 바인딩된 `self.service_name_str`를 자동 치환하여 매 호출 시 서비스명을 반복 전달하는 번거로움 해소 및 요약 레이블의 완성형 문맥 제공.
+- **표준 작업 결과 요약 리포터 (`StandardSummaryReporter`) 신설 및 `ProjectLogger` 경량화 분리 (규칙 1.1.1, 1.4.1, 1.4.2, 1.7.5, 4.2 준수)**:
+  - `ProjectLogger`: 로깅 및 지표 수집(`record_result`, `record_excluded`, `get_result_counts`, `get_error_counts`) 본연의 단일 책임(SRP)에 집중하도록 경량화 리팩토링.
+  - `StandardSummaryReporter`: 모든 데이터 처리 파이프라인에서 보편적으로 요구되는 '전체 = 성공 + 실패 + 제외(Skip)' 3대 분류 체계와 상세 에러 내역을 80열 표준 테이블로 생성 및 출력하는 전용 독립 유틸리티 클래스로 분리 신설.
+  - 다국어 라벨 및 템플릿 완전 외부화: `agent_common/src/agent_common/localize/{ko,en,ja,zh}/summary_reporter_{lang}.yml` 카탈로그와 연동하여 4개 언어(한국어, 영어, 일본어, 중국어) 완벽 지원 및 하드코딩 전면 제거(규칙 1.1.1 준수).
+  - 유니코드 동아시아 전각 문자 폭을 계산하는 `TableFormatter` 기반 80열 세로줄 정밀 칼맞춤과 `ProgressTracker` 연동(소요 시간, 처리 속도, 전송률) 완벽 지원.
+  - 단일 행 간편 호출 `log_summary(logger_obj, ...)` 및 포맷 문자열 반환 `build_summary_report(...)` 제공. 기존 구현체는 `backup/log_summary/log_summary_backup.py`에 안전 백업.
+- **`LlmClient` 인스턴스 로거 연동 및 로컬 모델 캐시 구조 통합 (규칙 1.4.1, 1.5.4, 4.2 준수)**:
+  - 모듈 레벨 헬퍼 함수 `_get_local_llm`을 `LlmClient`의 내부 인스턴스 메서드 `self._get_local_llm(...)`으로 통합하고 클래스 속성 `LlmClient._LOCAL_LLMS_DICT`로 캐시를 체계화.
+  - `ProjectLogger.get_log_msg(...)` 정적 호출 런타임 오류 및 불필요한 별도 로거 생성을 제거하고, 클래스 생성 시 바인딩된 78행의 `self.logger`를 직접 사용하여 일관된 로그 컨텍스트 유지.
+- **`ConfigLoader` 환경변수 오버라이드 해제 시 원본 설정 복원 및 캐시 오염 방지 (규칙 1.3.1, 1.5.3, 4.2 준수)**:
+  - `get_settings()`에서 `selected_lang_str` 주입 전 원래 YAML 파일에서 정의되었던 `logging.language_str` 값을 `self._raw_configured_logging_language_str`에 보존.
+  - 임시 로깅 환경변수(`AGENT_LOG_LANGUAGE` 등)가 해제되었을 때 캐시 오염 없이 원본 설정 파일 언어로 정상 복원되도록 보장.
+- **`README.md` 사용 예시 내 팬텀 파라미터 정정 (규칙 1.5.3, 4.2 준수)**:
+  - `README.md` 내 존재하지 않는 `ProgressTracker(..., item_name_str="파일")` 및 미지원 `log_summary()` 코드를 정규 파라미터 `task_name_str="파일 처리"` 및 `tracker.update(...)` 예시로 정정.
+
 ### v0.4.100 (2026-10-12)
 
 - **다국어 메시지 카탈로그 영문 템플릿 키 오타 수정 (규칙 4.2 준수)**:

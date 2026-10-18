@@ -2,6 +2,41 @@
 
 > [ KO 한국어 (CHANGELOG_KO.md) ](CHANGELOG_KO.md) | [ EN English (CHANGELOG_EN.md) ](CHANGELOG_EN.md) | [ ZH 中文 (CHANGELOG_ZH.md) ](CHANGELOG_ZH.md) | [ JA 日本語 (CHANGELOG_JA.md) ](CHANGELOG_JA.md)
 
+### v0.4.101 (2026-10-16)
+
+- **`Localizer` 与 `ConfigLoader` 支持 BCP 47 标准连字符 ('-') 区域设置规范化 (遵循规则 1.1.3, 1.5.3, 4.2)**:
+  - `Localizer.normalize_language`: 引入 BCP 47 标准连字符 (`-`) 分隔符及子标签/编码分离逻辑，准确将 `"en-US"`、`"ko-KR"`、`"zh-CN"`、`"ja-JP"` 等标准区域设置规范化为主语言代码。移除多余的 `str()` 防御性类型转换 (遵循规则 1.5.3)。
+  - `Localizer.resolve_language`: 支持环境变量解析中的连字符 (`-`) 分割，解决标准环境变量下回退至默认语言的问题。
+  - `ConfigLoader._resolve_logging_language`: 日志专用环境变量解析支持连字符 (`-`) 分割。
+- **`Localizer` 支持大写后缀 (`_KO.yml`, `_EN.yml` 等) 与子目录 (`localize/{lang}/`) 资源查找 (遵循规则 1.4.4, 1.4.5, 4.2)**:
+  - `Localizer.resolve_localized_file`: 通过不区分大小写的 `stem` 比较确保 Linux/Windows 跨平台文件查找一致性，并支持扫描语言子目录 (`localize/{lang}/`)。
+- **多语言资源目录结构重构与组件解耦 (`localize/{ko,en,ja,zh}/`) (遵循规则 1.1.1, 1.1.2, 4.2)**:
+  - 在 `agent_common/src/agent_common/localize/` 下建立独立语言子目录 (`ko`, `en`, `ja`, `zh`)，将通用日志模板 (`logging_messages_{lang}.yml`) 与进度跟踪器配置/标签 (`progress_tracker_{lang}.yml`) 彻底解耦为独立文件。
+  - `ConfigLoader.get_settings()`: 自动遍历活跃语言目录下的所有 `.yml` 文件并进行深度合并 (deep merge)。
+  - `pyproject.toml`: 更新 package-data 配置以确保 wheel 包含 `localize/**/*.yml` 目录资源。
+- **`ProgressTracker` 彻底移除硬编码字典并接入外部多语言配置 (遵循规则 1.1.1, 1.1.2, 1.4.2, 4.2)**:
+  - 彻底删除 Python 源码内部的硬编码语言字典 (`DEFAULT_TASK_NAMES_DICT`, `PROGRESS_LABELS_DICT`)。
+  - 直接读取 `config.progress_tracker` 动态属性 (`default_task_name_str`, `milestone_title_str`, `progress_label_str`, `speed_label_str`, `unit_str`, `eta_label_str`)，实现实时本地化。
+- **改进 `ProjectLogger.get_log_id_description()` 多语言模板标签解析 (遵循规则 1.1.3, 1.5.3, 4.2)**:
+  - 预先去除圆括号 `()` 及补充说明，防止内嵌冒号导致错误截断。
+  - 基于冒号 (`:`, `：`) 与标准句号 (`\.\s+`, `\.$`, `。`) 截断，避免破坏文件名后缀 (`config.yml`) 并精简标题。
+  - 通过标准化多语言消息字典 (`logging_messages_{ko,en,ja,zh}.yml`) 4 大错误模板的标点规范（韩语/英语：`. `，日语/中文：`。`），废除特定语言硬编码正则表达式，干净剔除方括号标签 (`[...]`) 并保留 `{}` 占位符。
+- **`ProjectLogger` 支持可选 `service_name_str` 实例绑定 (遵循规则 1.4.2, 1.6.1, 4.2)**:
+  - 构造函数新增可选 (Optional) 参数 `service_name_str: str = ""`，支持为特定服务专用 Logger 预先绑定服务名。
+  - `get_log_msg()` 与 `get_log_id_description()` 自动替换 `self.service_name_str`，提供完整且自然的摘要标签。
+- **新增标准任务执行结果汇总报告器 (`StandardSummaryReporter`) 并轻量化解耦 `ProjectLogger` (遵循规则 1.1.1, 1.4.1, 1.4.2, 1.7.5, 4.2)**:
+  - `ProjectLogger`: 遵循单一职责原则 (SRP) 进行轻量化重构，专注于核心日志记录与指标遥测 (`record_result`, `record_excluded`, `get_result_counts`, `get_error_counts`)。
+  - `StandardSummaryReporter`: 新增独立专用工具类，通用保证“总计 = 成功 + 失败 + 跳过 (Skip)”三级分类一致性，并将详细错误分类生成为 80 列标准对齐表格。
+  - 多语言标签与模板完全外部化: 联动 `agent_common/src/agent_common/localize/{ko,en,ja,zh}/summary_reporter_{lang}.yml` 字典，全面支持 4 种语言（中文、韩文、英文、日文），代码内部零硬编码 (遵循规则 1.1.1)。
+  - 基于 `TableFormatter` 针对东亚全角字符精确对齐 80 列竖线边框，无缝支持 `ProgressTracker` 遥测数据联动（耗时、处理吞吐量、传输速率）。
+  - 提供单行快速输出 `log_summary(logger_obj, ...)` 与格式化字符串获取 `build_summary_report(...)`。原有实现已安全归档至 `backup/log_summary/log_summary_backup.py`。
+- **`LlmClient` 整合实例 Logger 与本地模型缓存结构 (遵循规则 1.4.1, 1.5.4, 4.2)**:
+  - 将独立辅助函数 `_get_local_llm` 整合为内部实例方法 `self._get_local_llm(...)`，由类属性 `LlmClient._LOCAL_LLMS_DICT` 统一管理缓存，直接复用 `self.logger`。
+- **`ConfigLoader` 环境变量清除时恢复原始配置并防止缓存污染 (遵循规则 1.3.1, 1.5.3, 4.2)**:
+  - 保存 `_raw_configured_logging_language_str`，确保在临时环境变量被清除后能正确恢复至配置文件的原语言。
+- **修正 `README.md` 示例中的虚构参数 (遵循规则 1.5.3, 4.2)**:
+  - 纠正了 `ProgressTracker` 示例中不存在的 `item_name_str="파일"` 与未支持的 `log_summary()`，规范为 `task_name_str="파일 처리"` 与 `tracker.update(...)`。
+
 ### v0.4.100 (2026-10-12)
 
 - **修正多语言消息目录英文模板键拼写错误 (遵循规则 4.2)**:

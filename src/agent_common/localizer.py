@@ -81,15 +81,21 @@ class Localizer:
     def normalize_language(cls, language_str: str) -> str:
         """
         입력된 언어 문자열을 ISO 639-1 언어 코드('KO', 'EN', 'ZH', 'JA')로 정규화합니다.
-        'KOR'/'KOREAN' -> 'KO', 'ENG'/'ENGLISH' -> 'EN', 'CHI'/'CHINESE' -> 'ZH', 'JPN'/'JAPANESE' -> 'JA'
+        BCP 47 표준 하이픈('-') 구분 로케일('en-US', 'ko-KR', 'zh-CN', 'ja-JP') 및
+        별칭('KOR'/'KOREAN' -> 'KO', 'ENG'/'ENGLISH' -> 'EN', 'CHI'/'CHINESE' -> 'ZH', 'JPN'/'JAPANESE' -> 'JA')을 지원합니다.
 
         :param language_str: 입력 언어 문자열
         :return: 정규화된 대문자 언어 코드 (미식별 시 기본 언어 'KO' 반환)
         """
         if not language_str:
             return cls.DEFAULT_LANGUAGE_STR
-        clean_key_str: str = str(language_str).strip().upper()
-        return cls.LANGUAGE_ALIAS_DICT.get(clean_key_str, cls.DEFAULT_LANGUAGE_STR)
+        clean_key_str: str = language_str.strip().upper()
+        if clean_key_str in cls.LANGUAGE_ALIAS_DICT:
+            return cls.LANGUAGE_ALIAS_DICT[clean_key_str]
+
+        # BCP 47 표준 하이픈('-') 및 로케일 서브태그/인코딩 분리
+        primary_tag_str: str = clean_key_str.split(".")[0].split("-")[0].split("_")[0].strip()
+        return cls.LANGUAGE_ALIAS_DICT.get(primary_tag_str, cls.DEFAULT_LANGUAGE_STR)
 
     @classmethod
     def resolve_language(
@@ -119,7 +125,7 @@ class Localizer:
         for env_key_str in ("AGENT_LANGUAGE", "APP_LANGUAGE", "LANGUAGE", "LANG"):
             env_val_str: Optional[str] = os.environ.get(env_key_str)
             if env_val_str:
-                first_part_str: str = env_val_str.split(".")[0].split("_")[0].strip().upper()
+                first_part_str: str = env_val_str.split(".")[0].split("-")[0].split("_")[0].strip().upper()
                 if first_part_str in cls.LANGUAGE_ALIAS_DICT:
                     return cls.LANGUAGE_ALIAS_DICT[first_part_str]
 
@@ -146,29 +152,23 @@ class Localizer:
         if not dir_path or not dir_path.exists():
             return None
 
-        clean_lang_str: str = cls.normalize_language(language_str).lower()
-        exts_list: list[str] = extensions_list or [".yml", ".yaml"]
+        exts_set: set[str] = set(extensions_list or [".yml", ".yaml"])
+        valid_files_list: list[Path] = [
+            file_path for file_path in dir_path.iterdir()
+            if file_path.is_file() and file_path.suffix.lower() in exts_set
+        ]
+        for sub_dir in dir_path.iterdir():
+            if sub_dir.is_dir():
+                valid_files_list.extend(
+                    file_path for file_path in sub_dir.iterdir()
+                    if file_path.is_file() and file_path.suffix.lower() in exts_set
+                )
 
-        # 대상 언어 파일이 없으면 기본 언어 파일로 대체
-        lang_candidates_list: list[str] = [clean_lang_str]
-        default_lang_lower_str: str = cls.DEFAULT_LANGUAGE_STR.lower()
-        if default_lang_lower_str not in lang_candidates_list:
-            lang_candidates_list.append(default_lang_lower_str)
-
-        # 1. 언어별 파일 탐색 ({prefix}_{lang}.ext)
-        for lang_suffix_str in lang_candidates_list:
-            for ext_str in exts_list:
-                candidate_path: Path = dir_path / f"{prefix_str}_{lang_suffix_str}{ext_str}"
-                if candidate_path.exists():
-                    return candidate_path
-
-        # 2. 접미사 없는 기본 파일 탐색 ({prefix}.ext)
-        for ext_str in exts_list:
-            candidate_path: Path = dir_path / f"{prefix_str}{ext_str}"
-            if candidate_path.exists():
-                return candidate_path
-
-        return None
+        return cls.resolve_localized_path_from_list(
+            file_paths_list=valid_files_list,
+            prefix_str=prefix_str,
+            language_str=language_str,
+        )
 
     @classmethod
     def resolve_localized_path_from_list(
